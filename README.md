@@ -18,6 +18,8 @@ Download a platform package from [version 0.1.1](https://github.com/ad3rek/krita
 
 Version **0.1.1** includes the color-editing fix in both platform packages: Krita's foreground recolors selected strokes in Edit/Thickness, and Apply current color supports selected strokes or the whole layer. Existing geometry and brush settings are preserved.
 
+**Unreleased fix on `main`:** brush input received while Krita finishes rendering or saving a stroke is queued and replayed in order. This fixes disappearing strokes and the editor stopping after release. A new press also preserves an unfinished stroke if its release event was missed. The published 0.1.1 ZIPs do not yet include this additional fix.
+
 | Package | Required application | Validation environment |
 | --- | --- | --- |
 | [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.1/Krita-Linework-Tools-0.1.1-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
@@ -136,6 +138,11 @@ These values describe one drawing and run. Stabilizer timing changes its sample 
 | Group selection and editing | Select Shapes inheritance, Shift, rectangle, dragging, indicators, deletion and history. |
 | Recolor existing strokes | Native brushes and smooth lines, selected/whole-layer scope, one undo step and preserved `.kra` data. Linux and Windows/Wine color probes passed. |
 | Brush and smoothing | Four native filters, pressure, handles, reduction, Esc, delay, tool switching and saving during drawing. |
+| Release and continued drawing | Rapid mouse/tablet strokes in all four modes, input during native waits, queued undo/redo, missed release, rendered pixels and save/reopen. Linux and Windows/Wine probes passed. |
+
+![Sixteen synthetic brush strokes remain visible after saving and reopening](docs/images/stroke-lifecycle.png)
+
+*Stroke lifecycle regression in the real Linux application, after reopening the `.kra`. The test deliberately delivers another gesture inside a native render boundary to reproduce nested Qt input delivery. The original implementation failed with a missing stroke ID and cleared the editor; the fix retains both gestures and allows subsequent drawing. This is a controlled Qt event regression, not physical tablet validation. [Before](docs/validation/stroke-lifecycle-before.json), [Linux](docs/validation/stroke-lifecycle.json), [Windows/Wine](docs/validation/windows-stroke-lifecycle.json).*
 
 On the grayscale Pepper fixture, changing the whole layer's preset took **36.1 s** and setting all diameters took **81.8 s**, including rendering and layer writes. These are single local measurements with other processes active, not controlled benchmarks. Large layers and expensive presets can still take time; progress and cancellation are available during preparation.
 

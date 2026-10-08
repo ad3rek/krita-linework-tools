@@ -1,0 +1,21 @@
+{
+  "rapid_mouse_and_tablet_mode_0": "pass",
+  "rapid_mouse_and_tablet_mode_1": "pass",
+  "rapid_mouse_and_tablet_mode_2": "pass",
+  "rapid_mouse_and_tablet_mode_3": "pass",
+  "double_click_starts_next_brush_stroke": "pass",
+  "input_during_native_wait_is_ordered_and_both_strokes_persist": "pass",
+  "queued_mouse_and_shortcuts_preserve_event_order": "pass",
+  "new_press_preserves_previous_path_after_missing_release": "pass",
+  "individual_strokes_keep_separate_undo_steps": "pass",
+  "subsequent_drawing_and_kra_round_trip": "pass",
+  "result": "pass",
+  "krita": "5.2.14 (git 31056c6)",
+  "date": "2026-10-08",
+  "source_file": "linework/tool_options.py",
+  "source_sha256": "15eb6a92abaa0df76ad321501e2ad3ebc5568e6004d539a5899e123bbcbad7f2",
+  "krita_process_exit_code": 0,
+  "scope": "Qt event regression in the real application; not physical tablet validation. A second gesture is delivered inside NativeBrushRenderer._paint before the current render returns to reproduce nested input deterministically.",
+  "environment": "Official Windows Krita 5.2.14 x64 / Qt 5.15.7 / Python 3.10 under Wine 11.0",
+  "harness": "Reused initialized project-owned Wine prefix and isolated test resources; user Krita configuration and default Wine prefix were not used."
+}

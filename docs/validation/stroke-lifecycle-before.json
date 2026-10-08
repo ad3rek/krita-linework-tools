@@ -1,0 +1,17 @@
+{
+  "rapid_mouse_and_tablet_mode_0": "pass",
+  "rapid_mouse_and_tablet_mode_1": "pass",
+  "rapid_mouse_and_tablet_mode_2": "pass",
+  "rapid_mouse_and_tablet_mode_3": "pass",
+  "double_click_starts_next_brush_stroke": "pass",
+  "result": "fail",
+  "traceback": "Traceback (most recent call last):\n  File \"/tmp/linework-gui-sdfebtp4/data/krita/pykrita/probe/__init__.py\", line 26, in safe\n    try: fn()\n         ^^^^\n  File \"/tmp/linework-gui-sdfebtp4/data/krita/pykrita/probe/__init__.py\", line 126, in nested_checked\n    self.assert_saved(11, [650, 710])\n  File \"/tmp/linework-gui-sdfebtp4/data/krita/pykrita/probe/__init__.py\", line 83, in assert_saved\n    assert self.c.overlay and not self.c._error, self.c.status.text()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'lw_edb210fae2cc4b0ca72d03781ae31f04'\n",
+  "date": "2026-10-08",
+  "source_commit": "8a491075b864f33a14ce847e0ec32a003131b771",
+  "source_sha256": "ee475038ab1d5c169b07c725bcb1f7af551f7aa9111f82812c8c1c41bdf8504f",
+  "scope": "Qt event regression in the real application; not physical tablet validation. A second gesture is delivered inside NativeBrushRenderer._paint before the current render returns to reproduce nested input deterministically.",
+  "expected_failure": true,
+  "krita_process_exit_code": null,
+  "runner_exit_code": 1,
+  "note": "The pre-fix runner returned 1 because the regression failed. The original runner did not record the individual Krita process exit status."
+}

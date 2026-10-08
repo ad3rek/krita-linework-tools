@@ -3,9 +3,11 @@
 import copy
 import math
 import time
+from collections import deque
 from PyQt5.QtCore import Qt, QEvent, QPointF, QTimer, QRectF, QEventLoop, pyqtSignal
 from PyQt5 import sip
-from PyQt5.QtGui import QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen
+from PyQt5.QtGui import (QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen,
+                        QMouseEvent, QTabletEvent, QKeyEvent)
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout, QGroupBox,
     QLabel, QPushButton, QDoubleSpinBox, QFileDialog, QComboBox, QProgressBar, QHBoxLayout)
 from krita import Krita
@@ -63,6 +65,7 @@ class NativeCanvasOverlay(LineworkCanvas):
         self.view = view
         self.renderer = NativeBrushRenderer(view)
         self.smoother = None
+        self._finishing = False
         self._draw_session = None
         self.smoothing_options = None
         self.smoothing_timer = QTimer(self)
@@ -113,6 +116,10 @@ class NativeCanvasOverlay(LineworkCanvas):
 
     def begin(self, pos, pressure, button=Qt.LeftButton, modifiers=Qt.NoModifier):
         # Canvas focus remains in Krita. Pan and zoom are handled by Krita.
+        if self.mode == 'pen' and button == Qt.LeftButton and self.draft:
+            # A lost release must not let the next press replace a drawn path
+            # or leave its native smoothing/preview sessions running.
+            self.finish_draft()
         if button == Qt.LeftButton and self.mode in ("pen", "curve", "line") and self.draft is None:
             self.renderer.load_bridge()
             self.defaults["brush"] = capture_brush(self.view)
@@ -211,11 +218,7 @@ class NativeCanvasOverlay(LineworkCanvas):
 
     def end(self, pos, pressure):
         if self.smoother and self.draft and self.drag == 'pen':
-            self.smoother.finish(self.draft); self.smoother = None
-            self.smoothing_timer.stop()
-            self.renderer.append_live(self.draft); self.renderer.end_live()
-            del self.draft._live_points
-            self.drag = None; self.finish_draft()
+            self.finish_draft(); self.drag = None
             self.preview_timer.stop(); self.native_preview = None
             return
         self.renderer.end_live()
@@ -225,14 +228,21 @@ class NativeCanvasOverlay(LineworkCanvas):
             self.native_preview = None
 
     def finish_draft(self):
-        if self.smoother and self.draft:
-            self.smoother.finish(self.draft); self.smoother = None
-            if hasattr(self.draft, '_live_points'): del self.draft._live_points
-        self.smoothing_timer.stop()
-        self.end_draw_session()
-        self.restore_edit_preview(cancel=True)
-        self.renderer.end_live()
-        super().finish_draft()
+        if self._finishing:
+            return
+        self._finishing = True
+        try:
+            if self.smoother and self.draft:
+                self.smoother.finish(self.draft); self.smoother = None
+                self.renderer.append_live(self.draft)
+                if hasattr(self.draft, '_live_points'): del self.draft._live_points
+            self.smoothing_timer.stop()
+            self.end_draw_session()
+            self.restore_edit_preview(cancel=True)
+            self.renderer.end_live()
+            super().finish_draft()
+        finally:
+            self._finishing = False
 
     def drain_smoothing(self):
         if native_busy(): return
@@ -483,6 +493,12 @@ class LineworkToolOptions(QWidget):
         self._writing = False
         self._clearing = False
         self._updating = False
+        self._input_depth = 0
+        self._pending_input = deque()
+        self._replaying_input = False
+        self.input_timer = QTimer(self)
+        self.input_timer.setSingleShot(True)
+        self.input_timer.timeout.connect(self.drain_input)
         self._tablet_until = 0
         self._passing_navigation = False
         self._space = False
@@ -647,7 +663,7 @@ class LineworkToolOptions(QWidget):
         QTimer.singleShot(0, self.release_native_tool)
 
     def finish_native_request(self):
-        if self.overlay and self.overlay.smoother and self.overlay.draft and not self._writing:
+        if self.overlay and self.overlay.smoother and self.overlay.draft and not self._writing and not self.overlay._finishing:
             self.overlay.finish_draft()
         if self.overlay and self.overlay._edit_original and not self.overlay._edit_committing:
             self.overlay.restore_edit_preview(cancel=True)
@@ -668,6 +684,8 @@ class LineworkToolOptions(QWidget):
         if self._clearing:
             return
         self._clearing = True
+        self._pending_input.clear()
+        if not sip.isdeleted(self.input_timer): self.input_timer.stop()
         self.cancel_color_update()
         self._foreground_color = None
         self.cancel_brush_change()
@@ -1093,7 +1111,76 @@ class LineworkToolOptions(QWidget):
             except OSError as exc:
                 self.status.setText(str(exc))
 
+    def input_busy(self):
+        return (self._input_depth or self._writing or self._clearing or
+                (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy())
+
+    def copy_input(self, event):
+        kind = event.type()
+        if kind in (QEvent.TabletPress, QEvent.TabletMove, QEvent.TabletRelease):
+            copied = QTabletEvent(kind, event.posF(), event.globalPosF(), event.device(),
+                event.pointerType(), event.pressure(), event.xTilt(), event.yTilt(),
+                event.tangentialPressure(), event.rotation(), event.z(), event.modifiers(),
+                event.uniqueId(), event.button(), event.buttons())
+        elif kind in (QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride):
+            copied = QKeyEvent(kind, event.key(), event.modifiers(), event.nativeScanCode(),
+                event.nativeVirtualKey(), event.nativeModifiers(), event.text(),
+                event.isAutoRepeat(), event.count())
+        else:
+            copied = QMouseEvent(kind, event.localPos(), event.windowPos(), event.screenPos(),
+                event.button(), event.buttons(), event.modifiers(), event.source())
+        copied.setTimestamp(event.timestamp())
+        return copied
+
+    def drain_input(self):
+        if not self.active or not self.overlay:
+            self._pending_input.clear(); return
+        if self.input_busy():
+            self.input_timer.start(10); return
+        # Replaying through Qt preserves the native handling of navigation and
+        # shortcuts. The captured events own their data after the originals die.
+        while self._pending_input and self.active and self.overlay:
+            overlay, mode, event = self._pending_input.popleft()
+            if overlay is not self.overlay or mode != self.mode:
+                continue
+            self._replaying_input = True
+            try:
+                QApplication.sendEvent(self.native_widget, event)
+            finally:
+                self._replaying_input = False
+            if self.input_busy():
+                self.input_timer.start(10); break
+
     def eventFilter(self, watched, event):
+        input_event = event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease,
+            QEvent.MouseButtonDblClick, QEvent.MouseMove, QEvent.TabletPress, QEvent.TabletMove,
+            QEvent.TabletRelease, QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride)
+        if (watched == self.native_widget and self.overlay and self.active and input_event
+                and not self._brush_change):
+            if not self._replaying_input:
+                if event.type() in (QEvent.TabletPress, QEvent.TabletMove, QEvent.TabletRelease):
+                    self._tablet_until = time.monotonic()+.15
+                elif event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease,
+                                     QEvent.MouseButtonDblClick, QEvent.MouseMove):
+                    if time.monotonic() < self._tablet_until:
+                        event.accept(); return True
+            # Krita's native waits run a nested Qt loop. Never let input mutate
+            # the stroke list or scratch image in the middle of another event
+            # or a commit; retain gestures in order instead of dropping them.
+            if self.input_busy() or (self._pending_input and not self._replaying_input):
+                self._pending_input.append((self.overlay, self.mode, self.copy_input(event)))
+                self.input_timer.start(10)
+                event.accept(); return True
+            self._input_depth += 1
+            try:
+                return self.canvas_event(watched, event)
+            finally:
+                self._input_depth -= 1
+                if self._pending_input and not self._input_depth:
+                    self.input_timer.start(0)
+        return self.canvas_event(watched, event)
+
+    def canvas_event(self, watched, event):
         # Restore while the view/document are still alive, before Qt starts
         # destroying a window or hiding a closing/switched canvas.
         if self.overlay and self.overlay._edit_original and (
@@ -1149,11 +1236,6 @@ class LineworkToolOptions(QWidget):
                          QEvent.MouseButtonDblClick)
         if not tablet and not mouse:
             return False
-        if mouse and time.monotonic() < self._tablet_until:
-            event.accept()
-            return True
-        if tablet:
-            self._tablet_until = time.monotonic()+.15
         double_click = etype == QEvent.MouseButtonDblClick
         press = etype in (QEvent.TabletPress, QEvent.MouseButtonPress) or double_click
         release = etype in (QEvent.TabletRelease, QEvent.MouseButtonRelease)
