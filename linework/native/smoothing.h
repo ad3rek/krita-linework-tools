@@ -2,6 +2,7 @@
 // Use Krita's freehand helper as a geometry producer. Its native smoothing,
 // timers and pressure processing run unchanged; painting jobs are recorded
 // rather than submitted to the user's image or the preview image.
+#include "export.h"
 #include <tool/kis_tool_freehand_helper.h>
 #include <tool/kis_painting_information_builder.h>
 #include <tool/kis_smoothing_options.h>
@@ -29,7 +30,7 @@ static void setSmoothingValues(KisSmoothingOptions &o, const double *v) {
     o.setUseDelayDistance(v[6]); o.setFinishStabilizedCurve(v[7]); o.setStabilizeSensors(v[8]);
     o.setSmoothingType(static_cast<KisSmoothingOptions::SmoothingType>(std::clamp(int(v[0]),0,3)));
 }
-extern "C" __attribute__((visibility("default"))) void linework_smoothing_options(double *values, int write) {
+extern "C" LINEWORK_EXPORT void linework_smoothing_options(double *values, int write) {
     if (!values) return;
     KisSmoothingOptions options(true);
     if (write) {
@@ -99,7 +100,7 @@ struct LineworkSmoothing {
     }
 };
 
-extern "C" __attribute__((visibility("default"))) void *linework_smoothing_begin(Node *wrapper, View *viewWrapper,
+extern "C" LINEWORK_EXPORT void *linework_smoothing_begin(Node *wrapper, View *viewWrapper,
         const double *settings, const double *point) {
     if(!wrapper || !viewWrapper || !settings || !point) return nullptr;
     auto image=(wrapper->*member(NodeImage{}))();
@@ -120,15 +121,15 @@ extern "C" __attribute__((visibility("default"))) void *linework_smoothing_begin
     session->clock.start();session->event(point,QEvent::TabletPress,image,node);
     return session.release();
 }
-extern "C" __attribute__((visibility("default"))) void linework_smoothing_move(void *handle,const double *point) {
+extern "C" LINEWORK_EXPORT void linework_smoothing_move(void *handle,const double *point) {
     auto s=static_cast<LineworkSmoothing*>(handle);
     if(s && !s->ended && point)s->event(point,QEvent::TabletMove);
 }
-extern "C" __attribute__((visibility("default"))) void linework_smoothing_end(void *handle) {
+extern "C" LINEWORK_EXPORT void linework_smoothing_end(void *handle) {
     auto s=static_cast<LineworkSmoothing*>(handle);
     if(s && !s->ended) {s->helper->endPaint();s->ended=true;}
 }
-extern "C" __attribute__((visibility("default"))) int linework_smoothing_take(void *handle,double *output,int capacity) {
+extern "C" LINEWORK_EXPORT int linework_smoothing_take(void *handle,double *output,int capacity) {
     auto s=static_cast<LineworkSmoothing*>(handle);
     if(!s || !output || capacity<1)return 0;
     int count=0;
@@ -139,6 +140,6 @@ extern "C" __attribute__((visibility("default"))) int linework_smoothing_take(vo
     }
     return count;
 }
-extern "C" __attribute__((visibility("default"))) void linework_smoothing_delete(void *handle) {
+extern "C" LINEWORK_EXPORT void linework_smoothing_delete(void *handle) {
     delete static_cast<LineworkSmoothing*>(handle);
 }

@@ -1,0 +1,23 @@
+{
+  "release": "0.1",
+  "environment": "Official Windows Krita 5.2.14 / Qt 5.15.7 / Python 3.10 under Wine 11.0",
+  "passed": [
+    "Native plugin load and tools",
+    "Multiple selection, thickness and save/reopen regression",
+    "Four native smoothing modes and point reduction"
+  ],
+  "large_lineart": {
+    "fixture": "examples/pepper-lineart.png",
+    "preview_strokes": 743,
+    "preview_anchors": 2206,
+    "observed": [
+      "Grayscale preview",
+      "Zoom and fit",
+      "New native Linework layer with raster preserved",
+      "Initial Pixel Art replacement completed in diagnostic run"
+    ],
+    "result": "incomplete",
+    "issue": "The complete large-layer brush/thickness/history regression did not finish. Diagnostic traces reached native scratch-image waits during brush redo. Root cause and behavior on physical Windows are unconfirmed."
+  },
+  "status": "Experimental Windows preview; large-layer bulk replay/history has a known unresolved Wine test failure. Do not infer full Windows validation from the Linux results."
+}

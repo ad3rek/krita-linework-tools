@@ -4,11 +4,12 @@ import ctypes
 import json
 from pathlib import Path
 from .model import Point, Stroke, MAX_POINTS
+from .native_library import library_path
 
 
 class TraceEngine:
     def __init__(self):
-        self.lib=ctypes.CDLL(str(Path(__file__).with_name('native')/'liblinework_vectorize.so'))
+        self.lib=ctypes.CDLL(str(library_path('vectorize')))
         try:self.lib.linework_trace_backend.restype=ctypes.c_char_p
         except AttributeError:
             raise ValueError('Salve seu desenho e reabra o Krita para carregar o motor OpenToonz.') from None

@@ -1,0 +1,148 @@
+{
+  "release": "0.1",
+  "krita_version": "5.2.14",
+  "krita_source_revision": "31056c6b76a164069752fc9d5f655f9479aca246",
+  "platform": "Windows x86_64",
+  "qt": "5.15.7",
+  "compiler": "LLVM-MinGW Clang 18.1.8 UCRT (20240619)",
+  "toolchain_url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz",
+  "toolchain_sha256": "27d33157cc252c29ad6f777a96a0d94176fea1b534ff09b5071485def143b90e",
+  "runtime_url": "https://download.kde.org/Attic/krita/5.2.14/krita-x64-5.2.14.zip",
+  "runtime_sha256": "fe755f67e8b69297717e8a7a5551acf14e998cfa206b6a0aad11368704a735de",
+  "sdk_registry": "https://invent.kde.org/teams/ci-artifacts/krita-windows/-/packages",
+  "sdk_packages": {
+    "kcompletion": {
+      "identifier": "ext_kcompletion",
+      "branch": "master",
+      "version": "master-1789998474",
+      "timestamp": 1789998474,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_extra_cmake_modules": "master",
+        "ext_qt": "master",
+        "ext_kconfig": "master",
+        "ext_kwidgetsaddons": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "175581475c99d92614ab99fb0b1c19120fbee81c05f0952a0cee87032c112d12"
+    },
+    "kguiaddons": {
+      "identifier": "ext_kguiaddons",
+      "branch": "master",
+      "version": "master-1789997976",
+      "timestamp": 1789997976,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_qt": "master",
+        "ext_extra_cmake_modules": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "0e3e6326b95e76d8e693cddc00fd6b1c8b6e70fd762b1593dbe4a653fabcfbdc"
+    },
+    "kitemmodels": {
+      "identifier": "ext_kitemmodels",
+      "branch": "master",
+      "version": "master-1789998110",
+      "timestamp": 1789998110,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_qt": "master",
+        "ext_extra_cmake_modules": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "c20ef5bc7d24551d06d621ed8837ce0ba5ef19abab8f1060a4bc4b777f021742"
+    },
+    "kcoreaddons": {
+      "identifier": "ext_kcoreaddons",
+      "branch": "master",
+      "version": "master-1789997944",
+      "timestamp": 1789997944,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_extra_cmake_modules": "master",
+        "ext_qt": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "77bba2f175d90913fc4576b7d8e2b3a082e83f82c4d5d24b66a2d1ed765d7631"
+    },
+    "kwidgetsaddons": {
+      "identifier": "ext_kwidgetsaddons",
+      "branch": "master",
+      "version": "master-1789998197",
+      "timestamp": 1789998197,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_qt": "master",
+        "ext_extra_cmake_modules": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "7884e650c5b413e09ad0d2ac5aa8178d3feecf241623b0292d7ae27b097fa37b"
+    },
+    "boost": {
+      "identifier": "ext_boost",
+      "branch": "master",
+      "version": "master-1789993185",
+      "timestamp": 1789993185,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {},
+      "runtime-dependencies": {},
+      "archive_sha256": "82b917ee94ac26638469bd8e97442469ad7f7b63a2978993381e04475bb29166"
+    },
+    "kconfig": {
+      "identifier": "ext_kconfig",
+      "branch": "master",
+      "version": "master-1789997906",
+      "timestamp": 1789997906,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_qt": "master",
+        "ext_extra_cmake_modules": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "7d698944ae0a90e3c66c63c3910e332b15e8d7b90794a3046ceba51ebbb46f72"
+    },
+    "qt": {
+      "identifier": "ext_qt",
+      "branch": "master",
+      "version": "master-1790326547",
+      "timestamp": 1790326547,
+      "gitRevision": "7eab9569cb65fe8422224fc1de644a169fd8b0f4",
+      "dependencies": {
+        "ext_icu": "master",
+        "ext_freetype": "master",
+        "ext_png": "master",
+        "ext_jpeg": "master",
+        "ext_googleangle": "master",
+        "ext_openssl": "master",
+        "ext_zlib": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "119d8ef9c1305607ae6d94e0a9ecf296d112649c19a564bef65c9560d321db22"
+    },
+    "ki18n": {
+      "identifier": "ext_ki18n",
+      "branch": "master",
+      "version": "master-1789998033",
+      "timestamp": 1789998033,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {
+        "ext_qt": "master",
+        "ext_extra_cmake_modules": "master",
+        "ext_gettext": "master"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "6a97186fe48c4d53b23f2467060bad14134957edc5638cee9baf51d46179a6e0"
+    }
+  },
+  "host_build_adjustment": "Generated tgeometry.h omits only Windows C++ template export instantiations before specializations. Original mathematical code and vendored files unchanged.",
+  "binaries": {
+    "linework_vectorize.dll": {
+      "size": 300544,
+      "sha256": "04b0e1284c0bcee56cb8b0b897e0c01e0bcb72bd86ed9007320a3b99be270d4a"
+    },
+    "linework_native.dll": {
+      "size": 306688,
+      "sha256": "eb27b6da3bbf70cb5e4fe5bef9badda9c57f78723c697f717c39bf34751bc21c"
+    }
+  }
+}

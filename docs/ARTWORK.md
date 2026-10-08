@@ -1,17 +1,17 @@
-# Arte dos exemplos
+# Example artwork
 
-**Characters lineart**, de **David Revoy**, criada em 25 de fevereiro de 2016 para **Pepper&Carrot**, publicada sob [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+**Characters lineart**, by **David Revoy**, created on February 25, 2016 for **Pepper&Carrot**, is published under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
-- [Página original com atribuição e licença](https://www.peppercarrot.com/kr/viewer/misc-src__2016-02-25_characters-lineart_by-David-Revoy.html)
-- [Imagem original em alta resolução](https://www.peppercarrot.com/0_sources/0ther/misc/hi-res/2016-02-25_characters-lineart_by-David-Revoy.jpg)
-- [Autor](https://www.davidrevoy.com/) e [Pepper&Carrot](https://www.peppercarrot.com/)
+- [Original page with attribution and license](https://www.peppercarrot.com/kr/viewer/misc-src__2016-02-25_characters-lineart_by-David-Revoy.html)
+- [Original high-resolution image](https://www.peppercarrot.com/0_sources/0ther/misc/hi-res/2016-02-25_characters-lineart_by-David-Revoy.jpg)
+- [Author](https://www.davidrevoy.com/) and [Pepper&Carrot](https://www.peppercarrot.com/)
 
-O arquivo `examples/pepper-lineart.png` é um **recorte da personagem Pepper**, com caixa `(3860, 0, 5259, 2150)` na imagem original de 5259 × 2400 pixels, redimensionado para **833 × 1280 pixels** com LANCZOS convertido para escala de cinza de 8 bits (luma ITU-R 601) tratado com níveis de entrada **128–220**, gama **1,0** e saída **0–255**, e salvo em PNG. Os níveis escurecem as linhas e removem o preenchimento claro, mantendo a gradação dos pixels de borda. O desenho não foi retocado. Parâmetros e hashes: [artwork-source.json](validation/artwork-source.json).
+`examples/pepper-lineart.png` is a **crop of Pepper**, using the box `(3860, 0, 5259, 2150)` in the original 5259 × 2400 image. It was resized to **833 × 1280** with LANCZOS, converted to **8-bit grayscale** (ITU-R 601 luma), treated with input levels **128–220**, gamma **1.0**, output **0–255**, and saved as PNG. Levels darken the lines and remove light shading while preserving edge gradation. No manual drawing retouch was performed. [Parameters and hashes](validation/artwork-source.json).
 
-`examples/pepper-linework.kra` e as capturas `docs/images/pepper-*.png` mostram adaptações feitas com o Krita Linework Tools: extração da linha central, renderização, aplicação de preset e alteração da espessura. Esses derivados mantêm o crédito a David Revoy e a licença **CC BY 4.0** para a arte; a interface e o código do software têm suas próprias licenças. O autor não endossa este plugin.
+`examples/pepper-linework.kra` and `docs/images/pepper-*.png` show adaptations made with Krita Linework Tools: centerline extraction, rendering, preset replacement and thickness editing. The artwork in these derivatives retains **David Revoy** attribution and **CC BY 4.0**. The software interface and code have their own licenses. The author does not endorse this plugin.
 
-Para reutilizar os exemplos ou as capturas, preserve o nome do autor, o link da obra, o link da licença e a indicação de alterações. Crédito sugerido:
+When reusing the examples or screenshots, preserve the author's name, original artwork link, license link and description of modifications. Suggested credit:
 
-> Arte: David Revoy, “Characters lineart”, Pepper&Carrot, CC BY 4.0. Recorte, redimensionamento e adaptação em Linework por Krita Linework Tools.
+> Artwork: David Revoy, “Characters lineart”, Pepper&Carrot, CC BY 4.0. Cropped, resized, converted to grayscale, adjusted with levels and adapted into Linework by Krita Linework Tools.
 
-As curvas dos testes sintéticos e de suavização foram criadas para este projeto. A imagem particular enviada durante o desenvolvimento e o exemplo de gato descartado não são distribuídos.
+Synthetic and smoothing test curves were created for this project. Private development images are not distributed.

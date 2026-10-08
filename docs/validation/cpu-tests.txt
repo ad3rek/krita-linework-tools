@@ -32,6 +32,11 @@ test_elevated_thickness_survives_split_save_and_affine_transform (test_opentoonz
 test_old_abi_requests_restart_instead_of_reading_missing_arguments (test_opentoonz.OpenToonzTests.test_old_abi_requests_restart_instead_of_reading_missing_arguments) ... ok
 test_original_source_hashes_and_only_declared_host_patches (test_opentoonz.OpenToonzTests.test_original_source_hashes_and_only_declared_host_patches) ... ok
 test_same_quadratic_controls_as_unmodified_upstream_for_all_fixtures (test_opentoonz.OpenToonzTests.test_same_quadratic_controls_as_unmodified_upstream_for_all_fixtures) ... ok
+test_library_selection_and_directory_lifetime (test_platform.PlatformTests.test_library_selection_and_directory_lifetime) ... ok
+test_linux_locations (test_platform.PlatformTests.test_linux_locations) ... ok
+test_unsupported_architecture_fails_before_loading (test_platform.PlatformTests.test_unsupported_architecture_fails_before_loading) ... ok
+test_windows_install_locations (test_platform.PlatformTests.test_windows_install_locations) ... ok
+test_windows_install_preserves_previous_plugin_and_config (test_platform.PlatformTests.test_windows_install_preserves_previous_plugin_and_config) ... ok
 test_native_shapes_target_all_anchors (test_selection.SelectionTests.test_native_shapes_target_all_anchors) ... ok
 test_points_from_different_curves_do_not_target_unselected_anchors (test_selection.SelectionTests.test_points_from_different_curves_do_not_target_unselected_anchors) ... ok
 test_removed_shape_or_point_is_pruned_after_history (test_selection.SelectionTests.test_removed_shape_or_point_is_pruned_after_history) ... ok
@@ -51,6 +56,10 @@ test_varying_width_survives_as_pressure (test_vectorize.VectorizeTests.test_vary
 test_white_background_and_alpha_keep_color (test_vectorize.VectorizeTests.test_white_background_and_alpha_keep_color) ... ok
 
 ----------------------------------------------------------------------
-Ran 51 tests in 13.494s
+Ran 56 tests in 13.213s
 
 OK
+Installed in: /tmp/tmp_wko0a29/roaming/krita/pykrita
+Restart Krita to load the native bridge.
+Manual activation: Settings > Configure Krita > Python Plugin Manager > Linework.
+Select Linework Brush in the toolbox; controls appear in Tool Options.

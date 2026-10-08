@@ -1,118 +1,108 @@
-VETORIZAÇÃO — REIMPLEMENTAÇÃO DO ALGORITMO CENTERLINE DO OPENTOONZ NO KRITA
-Linework 0.7.1 · núcleo introduzido na 0.6.0
+VECTORIZATION — THE OPENTOONZ CENTERLINE ALGORITHM PORTED TO KRITA
 
-Esta versão porta o mesmo algoritmo Centerline do OpenToonz para o Krita,
-reutilizando seus fontes BSD-3-Clause com uma camada de integração própria.
-A 0.6.0 substitui o motor de afinamento por pixels usado na série 0.5.
-Não é uma reescrita independente do straight skeleton: o núcleo original
-é incluído no pacote e compilado para uso no plugin, sem abrir o OpenToonz.
+This integration reimplements/ports the same OpenToonz Centerline algorithm
+inside Krita by compiling its original BSD-3-Clause sources with host adapters.
+It replaced the pixel-thinning implementation in version 0.6.0.
 
-Origem e licença
-Repositório oficial: https://github.com/opentoonz/opentoonz
-Revisão fixa: 8c5345182b1c3d2ff011a1cf08dad067b6700f08
-Fluxo original:
+Origin and license
+Official repository: https://github.com/opentoonz/opentoonz
+Pinned revision: 8c5345182b1c3d2ff011a1cf08dad067b6700f08
+Original orchestration:
 https://github.com/opentoonz/opentoonz/blob/8c5345182b1c3d2ff011a1cf08dad067b6700f08/toonz/sources/toonzlib/tcenterlinevectorizer.cpp
 
-Arquivos originais completos ficam em linework/native/opentoonz/upstream.
-ORIGIN.json registra os caminhos e SHA-256 de 18 arquivos da revisão acima.
-A licença e os créditos originais ficam em LICENSE-OpenToonz.txt e também
-em THIRD-PARTY-NOTICES.txt. A integração própria é GPL-3.0-or-later.
-O código original do OpenToonz mantém sua licença BSD-3-Clause.
+Complete original files are in linework/native/opentoonz/upstream.
+ORIGIN.json records the paths and SHA-256 hashes of 18 original files.
+Original credits and BSD-3-Clause notices remain in LICENSE-OpenToonz.txt
+and THIRD-PARTY-NOTICES.txt. The host integration is GPL-3.0-or-later.
 
-Algoritmo executado
-1. tcenterlinepolygonizer.cpp: PixelEvaluator classifica o raster; extractBorders
-   extrai contornos externos/internos e remove manchas por área; reduceBorders
-   reduz os contornos a polígonos com o critério original.
-2. tcenterlineskeletonizer.cpp: skeletonize contrai os contornos orientados,
-   inclusive buracos, processando os mesmos eventos geométricos do straight
-   skeleton. A coordenada Z dos nós mantém o raio/espessura calculado.
-3. tcenterlineadjustments.cpp: organizeGraphs organiza junções, sequências,
-   ciclos e pontos com o código original. junctionRecovery fica desativado,
-   como no fluxo centerlineVectorize da revisão consultada.
-4. tcenterlinecolors.cpp: calculateSequenceColors e applyStrokeColors são
-   chamados na mesma ordem. Raster RGB/cinza usa o estilo mais próximo do preto.
-5. tcenterlinetostrokes.cpp: conversionToStrokes usa SequenceSimplifier e
-   SequenceConverter originais. O ajuste quadrático penaliza também o desvio
-   da espessura, com ellProd e os critérios originais.
+Executed algorithm
+1. tcenterlinepolygonizer.cpp: PixelEvaluator classifies the raster;
+   extractBorders extracts outer/inner contours and removes small areas;
+   reduceBorders reduces contours into polygons using the original criterion.
+2. tcenterlineskeletonizer.cpp: skeletonize contracts oriented contours,
+   including holes, through the original straight-skeleton geometric events.
+   Node Z coordinates retain the calculated radius.
+3. tcenterlineadjustments.cpp: organizeGraphs organizes junctions, sequences,
+   cycles and points. junctionRecovery remains disabled, as in the original
+   centerlineVectorize flow at this revision.
+4. tcenterlinecolors.cpp: calculateSequenceColors and applyStrokeColors run
+   in their original order. RGB/grayscale uses the closest-to-black style.
+5. tcenterlinetostrokes.cpp: original SequenceSimplifier/SequenceConverter
+   produce quadratic strokes, penalizing radius deviation through ellProd.
 
-Os headers tgeometry.h, tutil.h, tcommon.h, tnztypes.h e o arquivo tgeometry.cpp
-originais fornecem as mesmas operações de geometria, tolerâncias e inversão de
-matriz. A camada compat fornece buffers de raster, armazenamento de controles
-TStroke, paleta preto/transparente e cancelamento/progresso sem objetos Qt.
-Os controles emitidos pelo ajuste têm raios não negativos; a integração valida
-isso antes de importá-los. Não foi mantido o ajuste cúbico aproximado da 0.5.
+Original tgeometry.h, tutil.h, tcommon.h, tnztypes.h and tgeometry.cpp provide
+geometry, tolerances and matrix inversion. compat supplies raster buffers,
+TStroke control storage, a black/transparent palette and progress/cancellation,
+without application Qt objects. Emitted radii are validated as nonnegative.
 
-Parâmetros expostos no Krita
-- Fundo claro: max(R,G,B) < limiar * alfa / 255, exatamente o PixelEvaluator
-  RGB original. O corte usa o valor máximo de canal, não luminância ponderada.
-- Alfa: a integração prepara cinza = 255 - alfa e limiar = 256 - limiarAlfa.
-  O mesmo polygonizer GR8 do OpenToonz produz alfa >= limiarAlfa.
-- Remover manchas: m_despeckling, área de contorno em pixels quadrados.
-- Precisão: m_penalty = 10 - precisão, igual ao mapeamento do OpenToonz.
-- Espessura máxima: m_maxThickness = larguraMáxima / 2, igual ao mapeamento
-  do OpenToonz. A integração usa valores positivos; o modo outline separado
-  e os preenchimentos de regiões não são ferramentas Linework.
-Os valores iniciais do painel Linework não são uma cópia de todos os presets
-ou configurações da interface OpenToonz. Compare usando os mesmos parâmetros.
+Exposed parameters
+- Light background: max(R,G,B) < threshold * alpha / 255, the original RGB
+  PixelEvaluator criterion. This uses maximum channel value, not weighted luma.
+- Alpha: prepare grayscale = 255 - alpha, threshold = 256 - alphaThreshold.
+  The same GR8 polygonizer then implements alpha >= alphaThreshold.
+- Despeckling: m_despeckling, contour area in square pixels.
+- Accuracy: m_penalty = 10 - accuracy, matching OpenToonz's parameter mapping.
+- Maximum width: m_maxThickness = maximumWidth / 2. Width is positive;
+  separate outline mode and filled regions are not Linework tools.
+The panel defaults do not reproduce every OpenToonz UI preset. Compare cores
+with identical input and parameters.
 
-Conversão para as alças e a pressão Linework
-As coordenadas do raster são invertidas em Y na entrada e devolvidas à orientação
-Krita na saída, mantendo as coordenadas dos cantos de pixel usadas pelo núcleo.
-Cada quadrática (A,C,B) é elevada a cúbica (A,A+2(C-A)/3,B+2(C-B)/3,B).
-A mesma fórmula é aplicada ao raio, além de X e Y. Não há novo ajuste, mediana,
-RDP ou suavização após o núcleo original. Em cada ponto Linework, pressure_in
-/pressure_out guardam os controles escalares relativos do perfil de espessura.
-O esquema .kra 5 preserva esses dados e lê os esquemas anteriores.
-Inserir um ponto subdivide também esse perfil de espessura por de Casteljau;
-mover/escala nativa e desfazer/refazer mantêm os controles.
+Exact degree elevation
+Raster Y is flipped on input and returned to Krita orientation on output,
+preserving the core's pixel-corner coordinates. Each quadratic (A,C,B) becomes
+(A,A+2(C-A)/3,B+2(C-B)/3,B). This applies equally to X, Y and radius.
+No refitting, median filter, RDP or smoothing follows the original core.
+pressure_in/out initially store relative scalar controls for the width profile.
+Schema 6 also supports diameter independent of recorded pressure and reads
+older schemas. De Casteljau insertion subdivides the scalar profile too;
+affine transforms and undo/redo preserve its controls.
 
-Adaptações de aparência e integração
-Preservar cor e transparência, ligado inicialmente, amostra o bitmap sobre as
-curvas já calculadas. Desmarcado mantém a escolha de preto do núcleo original
-para raster RGB. Essa amostragem e o preset nativo do Krita não alteram a
-geometria detectada e não fazem parte do algoritmo original.
-O Linework desenha seus contornos/pincéis e não usa o renderizador do OpenToonz.
-Por isso não se promete igualdade pixel a pixel entre as interfaces dos apps.
-Não há suporte a colormaps TLV, preparação NAA, preenchimento/regiões do
-TVectorImage ou à técnica outline separada; o núcleo usado é Centerline.
-Ramificações continuam sendo traços independentes no editor Linework.
+Appearance and host integration
+Preserve color/transparency samples the bitmap after geometry extraction.
+Disabling it retains the original RGB core's black palette choice. Appearance
+sampling and native Krita presets do not change detected geometry.
+Linework/Krita render the result; OpenToonz's renderer is not used.
+Pixel-identical output to the complete OpenToonz application is not claimed.
+TLV colormaps, NAA preparation, TVectorImage regions/fills and the separate
+outline technique are not implemented. Branches remain independent strokes.
 
-Patches de hospedagem, sem alteração dos cálculos geométricos
-As cópias compiladas em opentoonz/core diferem dos originais somente por:
-- delete do BorderList já esvaziado pelo polygonizer, evitando vazamento por prévia;
-- m_number = 0 no RandomizedNode: o membro e seu comparator não são usados
-  pelo fluxo dessa revisão; evita consumir rand() global do aplicativo;
-- verificação adicional de cancelar na timeline, seguida da limpeza original.
-Ao cancelar, nenhum resultado parcial é aplicado ao documento.
-Um mutex serializa o núcleo, cujas rotinas originais usam globais de arquivo.
-O histograma colormap não utilizado pelo caminho RGB/cinza recebe um adapter
-std::map com as mesmas operações de chaves ordenadas; colormaps não são expostos.
+Host patches without changed geometric calculations
+Compiled copies in opentoonz/core differ only through:
+- Deleting BorderList after the polygonizer empties it, avoiding preview leaks.
+- Initializing RandomizedNode::m_number to zero. Its member/comparator are
+  unused by this flow; initialization avoids consuming the host's global rand().
+- An extra cancellation checkpoint in the timeline, followed by original cleanup.
+Cancellation applies no partial result. A mutex serializes the core because
+original adjustment routines use file-local globals. An unused colormap
+histogram has a std::map adapter with equivalent ordered-key operations;
+colormaps are not exposed.
 
-Validação de correspondência
-tests/test_opentoonz.py compila uma biblioteca de referência usando as cinco
-rotinas originais sem os patches acima, a matemática original e os mesmos tipos
-host. Um driver separado chama o fluxo original na mesma ordem. Não usa as
-cópias compiladas em core nem o antigo algoritmo de afinamento.
-Em 16 casos — cápsula, laço com buraco, junção, cruzamento, largura variável,
-cantos, ambiguidades diagonais, limite do canvas, manchas/buracos, corte de
-espessura, valor HSV no/abaixo do limiar, três penalidades e alfa branco —
-os controles quadráticos X/Y/raio coincidiram exatamente com essa referência.
-Também se conferem hashes dos fontes e somente os três patches declarados.
-A equivalência quadrática/cúbica é verificada em 101 parâmetros por trecho,
-incluindo largura, serialização, inserção de ponto e transformação afim.
-Esses testes comparam o núcleo; não são uma comparação visual com o aplicativo
-OpenToonz inteiro. Evidências e testes de integração: docs/validation/opentoonz-reference.json.
+Correspondence validation
+tests/test_opentoonz.py compiles the five unpatched original routines and
+original math with the same host types. Its separate driver calls the original
+flow in the same order; it does not use the patched core or old thinning code.
+Sixteen cases cover capsules, holes, junctions, crossings, variable width,
+corners, diagonal ambiguity, canvas edges, despeckling, thickness limits,
+threshold equality, three penalties and white alpha. Quadratic X/Y/radius
+controls match exactly. Source hashes and the three declared patches are checked.
+Quadratic/cubic equality is tested at 101 parameters per segment, including
+width, serialization, insertion and affine transforms. This compares the core,
+not the full OpenToonz application. See docs/validation/opentoonz-reference.json.
 
+Execution
+The native vectorizer runs through ctypes.CDLL in a QThread, releasing the GIL.
+The worker prepares curves/preview outlines; zoom uses cached geometry.
+Document and brush objects are accessed only on Krita's main thread.
+Confirming creates the new layer and preserves the active bitmap source.
+Progress, cancellation and old-ABI restart diagnostics are provided.
 
-Execução e compilação
-liblinework_vectorize.so roda por ctypes.CDLL em QThread, liberando o GIL.
-Ajuste e contornos da prévia são preparados no worker; o zoom usa o cache.
-Objetos de documento/pincel são acessados na thread principal do Krita.
-A nova camada é criada somente ao confirmar, preservando o bitmap ativo.
-Há progresso/cancelamento e tratamento da ABI antiga para pedir reabertura.
-
-Compilar: python3 linework/native/build_vectorize.py
-Testar: python3 -m unittest discover -s tests -v
-Exige g++ C++17/biblioteca padrão; não exige SDK Qt/OpenToonz para este núcleo.
-A ponte do Krita continua separada: linework/native/BUILD.txt.
-Limites da integração: 32 milhões de pixels, 10000 traços e 20000 âncoras por traço.
+Linux build: python3 linework/native/build_vectorize.py
+Tests: python3 -m unittest discover -s tests -v
+Requires a C++17 compiler and its standard library, not Qt or OpenToonz SDKs.
+The Krita bridge is separate; see linework/native/BUILD.txt for platform builds.
+The Windows build uses a generated tgeometry.h that omits only Windows C++
+template export instantiations before their specializations, which Clang rejects.
+Original mathematical definitions and vendored files remain unchanged; these
+private C++ templates do not need DLL exports. This is a build adaptation,
+separate from the three host patches to the compiled algorithm sources.
+Limits: 32 million pixels, 10,000 strokes and 20,000 anchors per stroke.

@@ -1,154 +1,41 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Krita Linework Tools</title></head><body>
-<h2>Krita Linework Tools</h2>
-<p>As seis ferramentas ficam na barra do Krita, em um grupo separado por uma linha.
-Os ícones acompanham a cor do tema. Os controles ficam no painel nativo <b>Opções da ferramenta</b>;
-se estiver escondido, abra-o em <b>Configurações → Painéis → Opções da ferramenta</b>.</p>
-<ul>
-<li><b>Linework Brush:</b> escolha um preset em Pincéis e desenhe no canvas com mouse ou caneta.</li>
-<li><b>Linework Curve / Line:</b> clique nos pontos; Enter ou botão direito termina. Esc cancela.</li>
-<li><b>Linework Edit:</b> selecione e arraste um ou vários pontos e traços. Selecionar um ponto de curva
-mostra suas <b>alças quadradas</b>; arraste-as para ajustar a tangente. <b>Alt+arrastar uma alça</b>
-move só esse lado; arrastar normalmente alinha a alça oposta.
-<b>Duplo clique no traço</b> ou Alt+clique insere ponto sem deformar a curva.
-Delete remove os pontos selecionados. Espessura, opacidade e pontas editam os traços da seleção.</li>
-<li><b>Linework Thickness:</b> selecione um ou vários pontos e arraste verticalmente ou ajuste o diâmetro em pixels.
-Guias laterais e o indicador de espessura acompanham os pontos editados.
-A pressão capturada da caneta permanece independente para os outros sensores.</li>
-<li><b>Linework Erase:</b> clique para excluir um traço inteiro.</li>
-</ul>
-<p>Brush/Curve/Line configuram o próximo traço. Edit/Thickness ajustam a seleção atual.
-Para trocar o pincel de vetores existentes, use <b>Linework Edit</b> ou <b>Thickness</b> e escolha
-outro preset no painel Pincéis do Krita. Em <b>Opções da ferramenta → Pincel</b>, escolha
-<b>Traços selecionados</b> ou <b>Todos os traços da camada</b> e clique
-<b>Trocar pincel</b>. O painel mostra o preset atual e os pincéis da seleção;
-<b>Linha lisa</b> indica um vetor sem preset. Pontos, alças, espessura, pressão, cor, opacidade
-e pontas são preservados. Perfis de espessura editados mantêm o diâmetro entre presets Pixel/Color Smudge;
-outros sensores continuam recebendo a pressão original.</p>
-<h3>Suavização do Linework Brush (0.8.0)</h3>
-<p>Em <b>Opções da ferramenta → Suavização</b>, escolha <b>Sem suavização</b>,
-<b>Básica (leve)</b>, <b>Ponderada (pesada)</b> ou <b>Estabilizador</b>.
-A Ponderada oferece distância, finalização, suavizar pressão e ajuste proporcional ao zoom.
-O Estabilizador oferece amostras, distância de atraso, concluir linha e estabilizar sensores;
-o círculo no canvas mostra a distância de atraso.</p>
-<p>São os motores de <b>KisToolFreehandHelper/KisSmoothingOptions do próprio Krita 5.2.14</b>.
-Suas linhas e cúbicas alimentam a prévia enquanto você desenha.
-As opções compartilham a configuração nativa do Krita,
-persistem entre aberturas e são lidas ao voltar à ferramenta. Mudar o modo conclui o traço atual
-e configura o próximo; traços anteriores conservam sua geometria.</p>
-<p><b>Redução de pontos (0.8.1):</b> ao terminar um novo traço do Brush, todos os modos,
-incluindo <b>Básica, Ponderada e Estabilizador</b>, compactam o resultado em curvas Bézier
-com menos pontos e alças. A pressão e o perfil de espessura são considerados no ajuste;
-cantos, curvas fechadas e picos de pressão são conservados. A redução acontece depois da
-suavização nativa, antes de produzir a aparência final e salvar o traço.</p>
-<p>O limite geométrico por modo é 0,18 / 0,25 / 0,40 / 0,55 px do documento;
-pontas finas usam limites menores. Pressão tem tolerância máxima 0,003, menor para
-pincéis largos; diâmetro independente usa 0,1 px. Detalhes e variações rápidas podem exigir
-mais pontos. Se o ajuste não reduzir a quantidade, ou atingir seu limite de trabalho,
-o original é conservado. Vetores já existentes, curvas por clique e a vetorização OpenToonz
-conservam seus pontos. Salvar ou trocar a ferramenta também conclui e compacta o novo traço.</p>
-<p>Suavizar pressão/Estabilizar sensores também filtra a pressão gravada; o Linework ainda
-não captura os sensores físicos de inclinação e rotação. <b>Concluir linha</b> usa a conclusão
-nativa do estabilizador; desativado, o final pode ficar antes do cursor.
-<b>Esc</b> cancela o desenho e seus timers. Salvar durante o desenho conclui o traço antes de salvar.</p>
-<p>A troca é preparada por traço com progresso e <b>Cancelar</b>. Cancelar, Esc ou mudar
-de ferramenta/camada conserva a versão anterior. A aplicação só é gravada quando todos
-os traços estiverem prontos. Ctrl+Z/Ctrl+Shift+Z desfaz/refaz a troca inteira em uma ação.</p>
-<p>A camada aparece no painel <b>Camadas</b> com seu ícone de curva azul.
-O primeiro traço cria uma Linework quando a camada atual não é Linework.
-Use <b>Ferramentas → Scripts → Nova camada Linework</b> para começar outra.
-Selecionar uma camada Linework recupera seus traços.
-Selecionar outra ferramenta libera a entrada do Krita. Esconder Opções da ferramenta não desativa o pincel.</p>
-<p>Zoom, Espaço+arrastar, botão central e Ctrl+clique para cor seguem o Krita.
-Shift+arrastar altera o tamanho em Brush/Curve/Line; em Edit/Thickness, Shift modifica a seleção.
-Ctrl+Z/Ctrl+Shift+Z no canvas usam o histórico Linework da sessão,
-separado do histórico nativo. Alternar entre ferramentas Linework mantém esse histórico.</p>
-<p>A prévia do Brush envia apenas novos segmentos aos workers do motor nativo e reaproveita a imagem
-interna, sem comprimir PNG a cada movimento. A curva final suavizada é reproduzida ao soltar a caneta.
-A prévia de edição é limitada a intervalos curtos; presets pesados ainda podem ser lentos.</p>
-<p>Ao arrastar um ponto, alça, traço ou espessura, as aparências originais dos traços afetados
-são ocultadas apenas no renderizador e substituídas pelas prévias. As imagens salvas ficam em cache. Esc ou trocar de ferramenta/camada cancela
-o arraste e restaura o original; soltar confirma a edição. Salvar durante o arraste mantém a última
-versão confirmada. Opções da ferramenta contém apenas os ajustes e a aplicação do preset.</p>
-<p><b>Espessura independente (0.8.0):</b> o desenho continua usando a pressão da caneta
-no motor do Krita. Na primeira edição de diâmetro, o próprio interpolador KisCubicCurve
-converte a contribuição do sensor pressão/tamanho do preset em um perfil separado.
-Presets sem tamanho por pressão partem de um diâmetro constante. Linha lisa/OpenToonz
-mantém exatamente o polinômio de raio. O controle direto está disponível para Linha lisa
-e motores Pixel/Color Smudge.</p>
-<p>Pixels representam o diâmetro nominal da ponta, antes de Mínima e Afinar pontas;
-textura e dureza podem mudar a área de tinta visível. Apenas os sensores de Tamanho são
-substituídos na cópia privada do preset; opacidade, fluxo e outros parâmetros recebem a
-pressão original. O preset instalado permanece intacto. A conversão inicial de um traço
-nativo com curva de sensor não linear pode mudar a interpolação entre âncoras; outros
-sensores de Tamanho deixam de atuar após editar seu diâmetro. O perfil independente e
-suas alças são preservados em .kra. O ID antigo da ferramenta é mantido para os atalhos.</p>
-<p>A versão 0.7.1 protege a importação/substituição das formas contra consultas simultâneas
-por timers de outros plugins. Corrige o crash em operações de pincel/espessura em camadas grandes
-com observadores vetoriais, como o editor de poses do AI Diffusion. A preparação mantém progresso
-e Cancelar; a gravação final espera as formas e a projeção completas. Reabra o Krita após instalar
-para carregar a ponte nativa atualizada.</p>
-<h3>Selecionar vários pontos e traços</h3>
-<p>Em <b>Linework Edit</b> e <b>Thickness</b>, use <b>Shift+clique</b> para adicionar ou retirar
-pontos/traços. Arraste em uma área vazia para selecionar pontos com um <b>retângulo</b>;
-Shift+arraste acrescenta à seleção, e Esc cancela o retângulo. <b>Ctrl+A</b> seleciona todos
-os traços e pontos da camada Linework ativa.</p>
-<p>A seleção da ferramenta nativa <b>Seleção de formas</b> é herdada ao entrar em Edit ou Thickness:
-cada traço selecionado inclui todos os seus pontos. Pontos selecionados ficam laranja;
-o painel informa a quantidade de traços e pontos. As alças aparecem no ponto ativo.
-Alternar entre Edit e Thickness mantém a seleção.</p>
-<p><b>Espessura dos pontos</b> modifica só os pontos selecionados: o campo define o mesmo
-valor em pixels, inclusive entre curvas com espessuras base diferentes; o arraste aplica a
-mesma diferença em pixels aos valores iniciais. Intervalo: 0–2000 px.
-<b>Espessura base, opacidade, Mínima, pontas e pincel</b>
-modificam os traços que contêm os pontos selecionados. Campos com valores diferentes mostram
-<b>Vários</b>; digitar um valor aplica-o à seleção inteira.</p>
-<p>Arrastar um ponto selecionado move o grupo de pontos; arrastar o corpo de traços selecionados
-move o grupo de traços. Cada edição em grupo ocupa uma ação de desfazer/refazer.
-Selecionar não cria histórico, e a seleção não é gravada no .kra.
-Em Edit, Delete remove os pontos selecionados; com traços inteiros selecionados, remove esses traços.</p>
-<h3>Seleção de formas</h3>
-<p>Mover, redimensionar, girar e espelhar traços na ferramenta nativa <b>Seleção de formas</b>
-atualiza os pontos e as alças e reproduz o traço com seu pincel e a nova espessura ao terminar o gesto.
-A camada continua editável em Linework. Desfazer/refazer nativo continua funcionando para a transformação.
-A escala uniforme multiplica a espessura; escalas diferentes em X/Y usam a média geométrica dos fatores.
-Presets aleatórios podem mudar a textura ao renderizar novamente.</p>
-<h3>Vetorizar uma camada raster</h3>
-<p>Selecione a camada bitmap ativa e use <b>Ferramentas → Scripts → Vetorizar camada em Linework…</b>.
-Ajuste detecção por fundo claro/alfa, limiar, remoção de manchas, precisão e espessura máxima e atualize a prévia.
-Clique <b>Criar camada Linework</b>. O original permanece intacto e pode ser ocultado ao concluir.
-A conversão cria linhas centrais com pontos, alças, cor e espessura/pressão editáveis.</p>
-<p>Na prévia, use a <b>roda do mouse</b> para zoom sob o cursor e <b>arraste</b> com
-o botão esquerdo ou central para navegar. Os botões <b>+/−</b> e o percentual mostram o zoom;
-<b>Ajustar</b> ou um <b>duplo clique</b> enquadra a imagem inteira. O original usa a resolução
-completa e as curvas são desenhadas do cache. Trocar a comparação ou atualizar a prévia
-preserva o zoom e a região observada.</p>
-<p>O resultado padrão usa contornos vetoriais lisos. <b>Usar o preset atual do Krita</b> renderiza as
-curvas com o pincel escolhido; a prévia nesse modo mostra a geometria. Cancelar não cria camada.
-Ctrl+Z/Ctrl+Shift+Z na sessão Linework desfaz/refaz a conversão e restaura a visibilidade da origem.</p>
-<p><b>Reimplementação no Krita do mesmo algoritmo Centerline do OpenToonz.</b>
-A versão 0.6.0 porta o núcleo original: contornos poligonais, <i>straight skeleton</i>, organização
-dos grafos e ajuste quadrático com espessura. As quadráticas são convertidas exatamente em cúbicas
-para as alças Linework, incluindo os controles de espessura, sem novo ajuste.
-Os fontes da revisão <code>8c5345182b1c3d2ff011a1cf08dad067b6700f08</code> e sua licença BSD-3-Clause
-estão no pacote. A comparação de 16 casos e da imagem de teste do usuário (416 traços / 1520 pontos)
-com os fontes originais sem patches confirmou os mesmos controles de posição e raio.</p>
-<p>Fundo claro usa o máximo de R/G/B e o alfa, como no detector original. Precisão corresponde
-à penalidade <code>10 − precisão</code>; espessura máxima corresponde ao dobro do raio limite.
-<b>Preservar cor e transparência</b> amostra a aparência depois da detecção; desmarcado usa preto,
-como o OpenToonz para raster RGB. O modo alfa prepara o raster de tons de cinza para o mesmo núcleo.</p>
-<p>Prioriza lineart. A renderização é do Linework/Krita; não reconstrói fotos, preenchimentos ou gradientes
-como regiões e não implementa colormaps TLV/modo NAA. Interseções são segmentos independentes.
-Limite: 32 milhões de pixels dentro do canvas. Detalhes em VECTORIZATION.txt.</p>
-<p>Salve em <b>.kra</b> para manter os dados editáveis. A curva central, as alças e a espessura são editáveis;
-a textura dos presets é raster e fica embutida na camada vetorial. SVG mantém a aparência,
-mas não transforma a textura em vetor puro nem mantém a edição do plugin.</p>
-<p>Limites: cada traço pinta sobre transparência; mistura e borracha entre traços/outras camadas
-não são reproduzidas. Inclinação, rotação e velocidade real da caneta não são gravadas.
-Afinar fim aparece na curva final. Os presets precisam continuar instalados para reeditar.
-Não há importação .sai2 nem repetição do canvas. Redimensionar o documento inteiro não atualiza
-os dados centrais. Alterações manuais no conteúdo SVG continuam protegidas.</p>
-<p>A versão 0.8.1 lê os documentos anteriores. Novas gravações usam esquema 6; plugins antigos
-recusam a edição para proteger as alças e os controles de espessura. Linework Line permanece com segmentos retos.</p>
-<p>Versão 0.8.1, compilada para <b>Krita 5.2.14 / Linux x86_64 / Qt 5</b>.
-Consulte README e docs/TESTING.md no pacote para os testes e as medições.
-A mesa física ainda precisa ser testada no seu equipamento.</p></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Krita Linework Tools 0.1</title>
+<style>body{font-family:sans-serif;line-height:1.55;max-width:900px;margin:2em auto;padding:0 1em}code{background:#eee;color:#222;padding:.1em .3em}li{margin:.5em 0}</style></head><body>
+<h1>Krita Linework Tools 0.1</h1>
+<p>Six tools appear in Krita's toolbox as a separate group. Icons follow the theme. Controls appear in <b>Tool Options</b>; show it through <b>Settings → Dockers → Tool Options</b>. Linework layers appear in <b>Layers</b> with their own icon. Plugin control labels currently use Portuguese; this manual uses their English meanings.</p>
+<h2>Draw and edit</h2><ul>
+<li><b>Brush:</b> choose a Krita brush preset and draw on the canvas with mouse or stylus. Color, size, opacity, flow and preset are captured when the stroke starts.</li>
+<li><b>Curve / Line:</b> click to place points. Enter or right click finishes; Esc cancels. Line uses straight segments.</li>
+<li><b>Edit:</b> drag points, groups or strokes. The active point shows square handles. Normal handle dragging aligns the opposite handle; Alt-drag moves one side independently. Double click or Alt-click on a stroke inserts a point without deforming the curve. Delete removes selected points or fully selected strokes.</li>
+<li><b>Thickness:</b> select points and drag vertically or enter a nominal diameter in pixels. Side guides and a canvas indicator show the width. Recorded pressure remains independent for other brush sensors.</li>
+<li><b>Erase:</b> click to remove an entire stroke.</li></ul>
+<p>Brush/Curve/Line configure the next stroke. Edit/Thickness modify the current selection. The first stroke creates a Linework layer when necessary; <b>Tools → Scripts → New Linework Layer</b> starts another. Selecting a Linework layer recovers its strokes. Switching to another Krita tool releases input; hiding Tool Options does not disable Brush.</p>
+<p>Space-drag, middle mouse navigation, zoom and Ctrl-click color sampling follow Krita. Shift-drag changes brush size in Brush/Curve/Line and modifies selection in Edit/Thickness. Ctrl+Z/Ctrl+Shift+Z use Linework's session history, separate from native history and retained across Linework tool switches.</p>
+<h2>Multiple selection</h2>
+<p>Shift-click toggles points/strokes. Drag empty canvas to select points with a rectangle; Shift-drag adds, Esc cancels. Ctrl+A selects all strokes and points. Native <b>Select Shapes</b> selection is inherited on entering Edit/Thickness. Selected points are orange; the active point shows handles. Switching Edit/Thickness retains selection.</p>
+<p><b>Point thickness</b> affects selected points only: typing sets the same diameter even across different stroke base widths; dragging applies the same pixel difference to initial values. Range: 0–2000 px. Base width, opacity, minimum width, tapers and brush replacement affect strokes containing selected points. Mixed values show Multiple; typing applies to the group. Group edits are one undo step. Selection is not saved in .kra.</p>
+<h2>Change brushes on existing vectors</h2>
+<p>In Edit or Thickness, choose a new Krita preset. In Tool Options → Brush, choose <b>Selected strokes</b> or <b>All strokes in the layer</b> and click <b>Change brush</b>. Smooth line means a stroke without a raster preset. Points, handles, width, pressure, color, opacity and tapers are preserved. Independent diameter profiles retain their width across Pixel/Color Smudge presets.</p>
+<p>Preparation runs stroke by stroke with progress and Cancel. Cancel, Esc or switching tools/layers retains the old result. Application commits after all strokes are ready and is one undo step. Installed presets are unchanged.</p>
+<h2>Native smoothing and point reduction</h2>
+<p>Tool Options → Smoothing offers <b>None, Basic, Weighted and Stabilizer</b>, using Krita 5.2.14's own KisToolFreehandHelper/KisSmoothingOptions. Weighted provides distance, finishing, pressure smoothing and zoom scaling. Stabilizer provides sample count, delay, finish line and sensor stabilization; a circle shows delay distance. Options share Krita's configuration and are reread on activation. Changing them finishes the current stroke.</p>
+<p>Every mode compacts new Brush strokes after native smoothing into fewer Bézier anchors. Geometric limits for None/Basic/Weighted/Stabilizer are 0.18/0.25/0.40/0.55 document px, tighter for thin tips. Pressure tolerance is at most 0.003 and independent diameter tolerance is 0.1 px. Corners, loops and stationary sensor changes are preserved. If work limits are reached or anchors cannot be reduced, the original remains. Existing strokes, click-created curves and imported OpenToonz vectors keep their points.</p>
+<p>Pressure smoothing also filters recorded pressure. Physical tilt and rotation are not recorded. Without finish line, a Stabilizer stroke may end before the cursor. Esc cancels the stroke and timers. Saving or switching tools finishes and compacts the stroke before saving.</p>
+<h2>Editing previews and native transformations</h2>
+<p>During dragging, original affected appearances are hidden only from rendering and cached; previews replace them. Esc or tool/layer changes restore the confirmed result. Release rerenders and commits. Saving during an edit keeps the last confirmed version. The cache is limited to 64 MiB. Brush preview sends new segments incrementally and reuses its internal image; expensive presets can still be slow.</p>
+<p>Native Select Shapes move/scale/rotate/mirror operations update points and handles and replay the stored preset after the gesture. Native transformation undo references remain valid. Uniform scale changes width; nonuniform scale uses the geometric mean of X/Y factors. Random textures may change on replay. Whole-document resizing does not update centerline metadata.</p>
+<h2>Independent diameter</h2>
+<p>Drawing uses original stylus pressure. First diameter editing converts the preset's pressure-to-size contribution through Krita's KisCubicCurve into a separate profile. Presets without pressure size begin at constant diameter; smooth/OpenToonz strokes retain their radius polynomial.</p>
+<p>Diameter is nominal tip size before minimum width/tapers. Texture, hardness and tip shape change the painted footprint. Only Size sensors are replaced in a private preset; opacity, flow and other sensors keep recorded pressure. Direct control supports Smooth line and Pixel/Color Smudge. Nonlinear sensor conversion can change interpolation between anchors, and other Size sensors stop contributing after explicit diameter editing.</p>
+<h2>Vectorize the active raster layer</h2>
+<p>Select a paint or file layer and use <b>Tools → Scripts → Vectorize Layer to Linework</b>. Choose light background or alpha detection, threshold, despeckling, accuracy and maximum width, then update preview. Confirm creates a new editable layer. Source pixels remain unchanged; source visibility can be restored with Linework undo.</p>
+<p>Wheel zooms under the cursor; left/middle drag pans. +/- and the percentage control zoom. Fit or double click frames the image. Original-resolution pixels and cached geometry are used; comparison/preview updates retain the viewed region.</p>
+<p>This is a <b>reimplementation/port of the same OpenToonz Centerline algorithm inside Krita</b>, pinned to <code>8c5345182b1c3d2ff011a1cf08dad067b6700f08</code>. The original BSD-3-Clause core runs polygonization, straight skeleton, graph organization and quadratic fitting. Position and radius controls are elevated exactly to cubics without refitting. Sixteen synthetic fixtures match the unpatched core's controls exactly.</p>
+<p>Light-background detection uses max(R,G,B) and alpha. Accuracy maps to penalty 10 − accuracy; maximum width is twice the radius limit. Alpha mode prepares grayscale for the same core. Preserve color/transparency samples appearance after detection; disabling it uses black. Use current Krita preset renders the detected geometry with that brush; preview remains geometric.</p>
+<p>Input is limited to 32 million pixels, 10,000 strokes and 20,000 anchors per stroke. Extraction runs in a worker; Cancel creates no layer. Lineart is the intended input. TLV colormaps, NAA, filled regions, photographs and gradients are not reconstructed. Intersections are independent segments. Final rendering is Krita's, not OpenToonz's.</p>
+<h2>Save, compatibility and limitations</h2>
+<p>Save as <b>.kra</b> to retain geometry, handles, pressure, diameter and presets. Native preset texture is raster and embedded in the vector layer; SVG preserves appearance but not plugin editing. Presets/resources must remain installed to rerender. Saved appearance is visible without the plugin. Schema 6 reads earlier documents; old plugins reject its edits.</p>
+<p>Each stroke paints on transparency. Interaction with pigment in other layers and erasing parts of other strokes is not reproduced. Physical tilt, rotation and velocity are not captured. No .sai2 import, curve cutting/joining or wraparound canvas is provided. Whole-document resizing does not update stored geometry. Manual SVG edits are protected against overwrite.</p>
+<p>The native bridge protects shape mutations with an outer busy wait, preventing shape-reading timers from running during worker writes. Restart Krita after installing an update. This experimental build targets <b>Krita 5.2.14 desktop x86_64</b> with the matching platform package. Other application builds require native recompilation and validation. Physical tablets must be tested on each device.</p>
+<p>OpenAI Codex assisted development. Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2 feature strings and references. No SAI executable, proprietary assets or decompiled code are included. See the main README for screenshots, tests, scope and attribution.</p>
+<p>To uninstall, close Krita and remove <code>linework.desktop</code>, <code>linework.action</code> and <code>linework/</code> from the resource folder's <code>pykrita/</code>. Saved appearances remain visible.</p>
+<p><strong>Windows preview limitation:</strong> the full 743-stroke bulk brush/thickness/history regression did not finish under Wine. Large-layer replay/history and physical Windows hardware remain unvalidated. See README and docs/validation/windows-status.json.</p></body></html>

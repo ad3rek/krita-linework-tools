@@ -4,22 +4,31 @@
 import argparse
 import datetime
 import os
+import platform
 from pathlib import Path
 import re
 import shutil
 
 
+def default_locations():
+    if platform.system() == 'Windows':
+        roaming = Path(os.environ.get('APPDATA', str(Path.home()/'AppData/Roaming')))
+        local = Path(os.environ.get('LOCALAPPDATA', str(Path.home()/'AppData/Local')))
+        return local/'kritarc', roaming/'krita'
+    return (Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home()/'.config')))/'kritarc',
+            Path(os.environ.get('XDG_DATA_HOME', str(Path.home()/'.local/share')))/'krita')
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Instala o plugin Linework no Krita.")
-    parser.add_argument("--resources", type=Path, help="Pasta de recursos personalizada do Krita")
-    parser.add_argument("--enable", action="store_true", help="Ativa o plugin para a próxima abertura do Krita")
+    parser = argparse.ArgumentParser(description="Install Krita Linework Tools.")
+    parser.add_argument("--resources", type=Path, help="Custom Krita resource directory")
+    parser.add_argument("--enable", action="store_true", help="Enable the plugin for the next Krita launch")
     args = parser.parse_args()
     source = Path(__file__).resolve().parent
-    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home()/".config")))/"kritarc"
+    config, default_resources = default_locations()
     contents = config.read_text(encoding="utf-8") if config.exists() else ""
     match = re.search(r"(?m)^ResourceDirectory=(.+)$", contents)
-    resources = args.resources or (Path(match.group(1)) if match else
-        Path(os.environ.get("XDG_DATA_HOME", str(Path.home()/".local/share")))/"krita")
+    resources = args.resources or (Path(match.group(1)) if match else default_resources)
     destination = resources/"pykrita"
     destination.mkdir(parents=True, exist_ok=True)
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -57,10 +66,10 @@ def main():
         temporary = config.with_name("kritarc.linework-tmp")
         temporary.write_text(contents, encoding="utf-8")
         temporary.replace(config)
-    print("Instalado em:", destination)
-    print("Abra o Krita. Se ele já estava aberto, feche e abra novamente.")
-    print("Ativação manual: Configurações > Configurar Krita > Gerenciador de plugins Python > Linework.")
-    print("Uso: selecione Linework Brush na barra; controles em Opções da ferramenta.")
+    print("Installed in:", destination)
+    print("Restart Krita to load the native bridge.")
+    print("Manual activation: Settings > Configure Krita > Python Plugin Manager > Linework.")
+    print("Select Linework Brush in the toolbox; controls appear in Tool Options.")
 
 
 if __name__ == "__main__":

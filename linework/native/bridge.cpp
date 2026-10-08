@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Krita 5.2.14 ABI bridge; use only from its GUI thread and loaded libkis objects.
+#include "export.h"
 #include <Node.h>
 #include <View.h>
 #include <Resource.h>
@@ -87,18 +88,18 @@ template struct Access<ShapeShape,&Shape::shape>;
 
 #include "smoothing.h"
 
-extern "C" __attribute__((visibility("default"))) int linework_native_busy() {
+extern "C" LINEWORK_EXPORT int linework_native_busy() {
     return KisBusyWaitBroker::instance()->guiThreadIsWaitingForBetterWeather();
 }
 
-extern "C" __attribute__((visibility("default"))) int linework_shape_info(Shape *wrapper,double *out){
+extern "C" LINEWORK_EXPORT int linework_shape_info(Shape *wrapper,double *out){
     if(!wrapper || !out)return 0;
     auto shape=(wrapper->*member(ShapeShape{}))();if(!shape)return 0;
     auto t=shape->absoluteTransformation();auto size=shape->size();
     out[0]=t.m11();out[1]=t.m12();out[2]=t.m21();out[3]=t.m22();out[4]=t.dx();out[5]=t.dy();
     out[6]=size.width();out[7]=size.height();out[8]=dynamic_cast<KoShapeGroup*>(shape)?1:0;return 1;
 }
-extern "C" __attribute__((visibility("default"))) const char *linework_shape_canonical(Shape *wrapper){
+extern "C" LINEWORK_EXPORT const char *linework_shape_canonical(Shape *wrapper){
     static thread_local QByteArray text;
     if(!wrapper)return nullptr;
     auto shape=(wrapper->*member(ShapeShape{}))();if(!shape)return nullptr;
@@ -109,7 +110,7 @@ extern "C" __attribute__((visibility("default"))) const char *linework_shape_can
     {SvgSavingContext context(buffer,styles);SvgWriter writer({clone.get()});writer.saveDetached(context);}
     text=buffer.data();return text.constData();
 }
-extern "C" __attribute__((visibility("default"))) int linework_shape_image_bounds(Shape *wrapper,double *out){
+extern "C" LINEWORK_EXPORT int linework_shape_image_bounds(Shape *wrapper,double *out){
     if(!wrapper || !out)return 0;
     auto shape=(wrapper->*member(ShapeShape{}))();
     auto group=dynamic_cast<KoShapeGroup*>(shape);
@@ -173,7 +174,7 @@ public:
     KoToolBase *createTool(KoCanvasBase *canvas)override{return new LineworkTool(canvas,mode);}
 };
 
-extern "C" __attribute__((visibility("default"))) int linework_register_tools(ToolCallback callback,const char *icons){
+extern "C" LINEWORK_EXPORT int linework_register_tools(ToolCallback callback,const char *icons){
     if(!callback || !QCoreApplication::instance() || QThread::currentThread()!=QCoreApplication::instance()->thread())return 0;
     toolCallback=callback;
     auto registry=KoToolRegistry::instance();
@@ -192,17 +193,17 @@ extern "C" __attribute__((visibility("default"))) int linework_register_tools(To
     return 1;
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_select_tool(int mode){
+extern "C" LINEWORK_EXPORT void linework_select_tool(int mode){
     if(mode>=0 && mode<6)KoToolManager::instance()->switchToolRequested(QString::fromLatin1(toolIds[mode]));
 }
 
-extern "C" __attribute__((visibility("default"))) int linework_active_tool(){
+extern "C" LINEWORK_EXPORT int linework_active_tool(){
     QString id=KoToolManager::instance()->activeToolId();
     for(int i=0;i<6;i++)if(id==QLatin1String(toolIds[i]))return i;
     return -1;
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_clear_callbacks(){toolCallback=nullptr;}
+extern "C" LINEWORK_EXPORT void linework_clear_callbacks(){toolCallback=nullptr;}
 
 class LineworkEditStrategy final:public KisSimpleStrokeStrategy {
 public:
@@ -213,7 +214,7 @@ public:
     }
 };
 struct LineworkEditSession { KisImageSP image; KisStrokeId stroke; };
-extern "C" __attribute__((visibility("default"))) void *linework_edit_begin(Node *wrapper){
+extern "C" LINEWORK_EXPORT void *linework_edit_begin(Node *wrapper){
     if(!wrapper)return nullptr;
     auto image=(wrapper->*member(NodeImage{}))();
     if(!image)return nullptr;
@@ -222,7 +223,7 @@ extern "C" __attribute__((visibility("default"))) void *linework_edit_begin(Node
     session->stroke=image->startStroke(new LineworkEditStrategy);
     return session;
 }
-extern "C" __attribute__((visibility("default"))) void linework_edit_end(void *pointer){
+extern "C" LINEWORK_EXPORT void linework_edit_end(void *pointer){
     auto session=static_cast<LineworkEditSession*>(pointer);
     if(!session)return;
     session->image->endStroke(session->stroke);
@@ -236,7 +237,7 @@ extern "C" __attribute__((visibility("default"))) void linework_edit_end(void *p
 // it is stable: subsequent waits drain workers without pumping that feedback.
 // Keep this narrowly scoped to committing already-prepared shape appearances.
 struct LineworkShapeWrite { KisImageSP image; };
-extern "C" __attribute__((visibility("default"))) void *linework_shape_write_begin(Node *wrapper){
+extern "C" LINEWORK_EXPORT void *linework_shape_write_begin(Node *wrapper){
     if(!wrapper || QThread::currentThread()!=QCoreApplication::instance()->thread())return nullptr;
     auto image=(wrapper->*member(NodeImage{}))();
     if(!image)return nullptr;
@@ -245,7 +246,7 @@ extern "C" __attribute__((visibility("default"))) void *linework_shape_write_beg
     KisBusyWaitBroker::instance()->notifyWaitOnImageStarted(image.data());
     return session;
 }
-extern "C" __attribute__((visibility("default"))) void linework_shape_write_end(void *pointer){
+extern "C" LINEWORK_EXPORT void linework_shape_write_end(void *pointer){
     auto session=static_cast<LineworkShapeWrite*>(pointer);
     if(!session)return;
     session->image->waitForDone();
@@ -256,7 +257,7 @@ extern "C" __attribute__((visibility("default"))) void linework_shape_write_end(
 // Suppress only the layer's render registration. The shape remains a visible
 // child of the layer, so SVG, fingerprints, save/autosave and document clones
 // retain the committed appearance. Never retain a raw shape pointer across edits.
-extern "C" __attribute__((visibility("default"))) int linework_preview_hidden(
+extern "C" LINEWORK_EXPORT int linework_preview_hidden(
         Node *wrapper,const char *name,int hidden){
     if(!wrapper || !name || QThread::currentThread()!=QCoreApplication::instance()->thread())return 0;
     auto node=(wrapper->*member(NodeNode{}))();
@@ -279,7 +280,7 @@ extern "C" __attribute__((visibility("default"))) int linework_preview_hidden(
     return 1;
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_refresh_layer(Node *wrapper){
+extern "C" LINEWORK_EXPORT void linework_refresh_layer(Node *wrapper){
     if(!wrapper)return;
     auto node=(wrapper->*member(NodeNode{}))();
     auto layer=dynamic_cast<KisShapeLayer*>(node.data());
@@ -292,7 +293,7 @@ extern "C" __attribute__((visibility("default"))) void linework_refresh_layer(No
 
 // Keep the selected top-level shape and its transform alive: native resize and
 // move undo commands retain that pointer. Only regenerate its local appearance.
-extern "C" __attribute__((visibility("default"))) int linework_shape_render(
+extern "C" LINEWORK_EXPORT int linework_shape_render(
         Node *wrapper,Shape *item,const char *png,const double *coords,int count,
         double x,double y,double width,double height,double sx,double sy){
     if(!wrapper || !item || QThread::currentThread()!=QCoreApplication::instance()->thread())return 0;
@@ -386,7 +387,7 @@ public:
     bool helpEvent(QHelpEvent *e,QAbstractItemView *v,const QStyleOptionViewItem &o,const QModelIndex &i)override{return original&&original->helpEvent(e,v,o,i);}
 };
 
-extern "C" __attribute__((visibility("default"))) int linework_layer_icons(void *viewHandle,const char *ids,const char *iconPath){
+extern "C" LINEWORK_EXPORT int linework_layer_icons(void *viewHandle,const char *ids,const char *iconPath){
     if(!QCoreApplication::instance()||QThread::currentThread()!=QCoreApplication::instance()->thread()||!viewHandle)return 0;
     auto view=static_cast<QAbstractItemView*>(viewHandle);
     if(!view->model()||!view->itemDelegate())return 0;
@@ -404,7 +405,7 @@ extern "C" __attribute__((visibility("default"))) int linework_layer_icons(void 
 // Read the pressure contribution to Size with Krita's own curve interpolator.
 // Other Size sensors are replaced by the editable diameter when that profile
 // is first edited; pressure for opacity/flow/etc. remains independent.
-extern "C" __attribute__((visibility("default"))) double linework_pressure_to_size(const char *xml, double pressure) {
+extern "C" LINEWORK_EXPORT double linework_pressure_to_size(const char *xml, double pressure) {
     QDomDocument doc;
     if (!xml || !doc.setContent(QString::fromUtf8(xml))) return 1.0;
     KisPropertiesConfiguration config;
@@ -444,7 +445,7 @@ static void useEditableThickness(KisPaintOpSettingsSP settings) {
     settings->setProperty("SizecurveMode", 0);
 }
 
-extern "C" __attribute__((visibility("default"))) int linework_paint_with_thickness(void *nodeHandle, void *viewHandle, void *resourceHandle,
+extern "C" LINEWORK_EXPORT int linework_paint_with_thickness(void *nodeHandle, void *viewHandle, void *resourceHandle,
     const char *xml, const char *color, double size, double opacity, double flow,
     const double *input, int count, int explicitThickness, char *error, int capacity)
 {
@@ -576,7 +577,7 @@ struct LineworkPreviewImage {QImage image;QRect bounds;};
 
 // Read-only, color-managed snapshot of a source layer. Conversion is performed
 // on a copy, including 16-bit/float and non-RGB documents; no source is changed.
-extern "C" __attribute__((visibility("default"))) void *linework_layer_snapshot(Node *wrapper,int *geometry){
+extern "C" LINEWORK_EXPORT void *linework_layer_snapshot(Node *wrapper,int *geometry){
     if(!wrapper || !geometry)return nullptr;
     auto node=(wrapper->*member(NodeNode{}))();
     auto image=(wrapper->*member(NodeImage{}))();
@@ -601,14 +602,14 @@ public:
     void purgeRedoState()override{}
 };
 
-extern "C" __attribute__((visibility("default"))) void linework_prepare_scratch(void *nodeHandle){
+extern "C" LINEWORK_EXPORT void linework_prepare_scratch(void *nodeHandle){
     auto node=static_cast<Node*>(nodeHandle);
     auto image=(node->*member(NodeImage{}))();
     image->waitForDone();
     image->setUndoStore(new LineworkScratchUndo());
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_clear_scratch(void *nodeHandle){
+extern "C" LINEWORK_EXPORT void linework_clear_scratch(void *nodeHandle){
     auto node=static_cast<Node*>(nodeHandle);
     auto image=(node->*member(NodeImage{}))();
     image->waitForDone();
@@ -616,7 +617,7 @@ extern "C" __attribute__((visibility("default"))) void linework_clear_scratch(vo
     target->paintDevice()->clear();
 }
 
-extern "C" __attribute__((visibility("default"))) void *linework_stream_begin(void *nodeHandle,void *viewHandle,void *resourceHandle,
+extern "C" LINEWORK_EXPORT void *linework_stream_begin(void *nodeHandle,void *viewHandle,void *resourceHandle,
     const char *xml,const char *color,double size,double opacity,double flow,char *error,int capacity){
     auto fail=[&](const char *message)->void*{if(capacity>0){std::strncpy(error,message,capacity-1);error[capacity-1]=0;}return nullptr;};
     auto stream=std::make_unique<LineworkStream>();
@@ -686,7 +687,7 @@ extern "C" __attribute__((visibility("default"))) void *linework_stream_begin(vo
     catch(...){return fail("Falha ao iniciar a prévia nativa.");}
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_stream_append(void *handle,const double *input,int count){
+extern "C" LINEWORK_EXPORT void linework_stream_append(void *handle,const double *input,int count){
     auto stream=static_cast<LineworkStream*>(handle);
     for(int i=0;i<count;i++){
         const double *v=input+4*i;
@@ -697,7 +698,7 @@ extern "C" __attribute__((visibility("default"))) void linework_stream_append(vo
     }
 }
 
-extern "C" __attribute__((visibility("default"))) void *linework_stream_snapshot(void *handle,int *bounds){
+extern "C" LINEWORK_EXPORT void *linework_stream_snapshot(void *handle,int *bounds){
     auto stream=static_cast<LineworkStream*>(handle);
     bool request=false;
     auto result=std::make_unique<LineworkPreviewImage>();
@@ -715,15 +716,15 @@ extern "C" __attribute__((visibility("default"))) void *linework_stream_snapshot
     return result.release();
 }
 
-extern "C" __attribute__((visibility("default"))) const void *linework_preview_pixels(void *handle){
+extern "C" LINEWORK_EXPORT const void *linework_preview_pixels(void *handle){
     return static_cast<LineworkPreviewImage*>(handle)->image.constBits();
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_preview_delete(void *handle){
+extern "C" LINEWORK_EXPORT void linework_preview_delete(void *handle){
     delete static_cast<LineworkPreviewImage*>(handle);
 }
 
-extern "C" __attribute__((visibility("default"))) void linework_stream_end(void *handle){
+extern "C" LINEWORK_EXPORT void linework_stream_end(void *handle){
     if(!handle)return;
     auto stream=static_cast<LineworkStream*>(handle);
     stream->image->addJob(stream->id,new KisAsynchronousStrokeUpdateHelper::UpdateData(true));

@@ -1,0 +1,177 @@
+KRITA LINEWORK TOOLS — TECHNICAL USER REFERENCE
+Krita 5.2.14 / desktop x86_64 / Qt 5
+Integration: GPL-3.0-or-later; OpenToonz core: BSD-3-Clause
+
+The main README.md contains the article, screenshots, installation and tests.
+This file documents editing behavior and data limits. Native toolbox tools use
+Krita's theme colors and a separator. Controls appear in native Tool Options;
+the Linework layer has its own icon in Layers. Plugin controls currently use
+Portuguese labels; their English meanings are used below.
+
+Drawing and tools
+Choose Linework Brush and a Krita preset. Color, size, opacity, flow and preset
+are captured at stroke start. Each stroke stores its preset configuration.
+Curve/Line accept clicks; Enter or right click finishes, Esc cancels.
+Edit selects/moves points and strokes. Square handles belong to the active
+point. Normal handle dragging aligns the opposite handle; Alt moves one side.
+Double click or Alt-click on the stroke inserts through De Casteljau subdivision.
+Delete removes selected points or entirely selected strokes. Line has straight
+segments and no curve handles. Thickness edits nominal point diameter in pixels;
+Erase removes entire strokes. Brush/Curve/Line configure the next stroke;
+Edit/Thickness edit the current selection.
+
+The first stroke creates a Linework layer when necessary. Tools > Scripts >
+New Linework Layer starts another. Selecting a Linework layer reloads its data.
+Selecting other tools immediately returns input to Krita. Hiding Tool Options
+does not disable Brush. Space-drag, middle mouse, zoom and Ctrl-click color
+sampling follow Krita. Shift-drag changes size in Brush/Curve/Line and modifies
+selection in Edit/Thickness. Ctrl+Z/Ctrl+Shift+Z use Linework's session history,
+which is independent of native history and survives switching Linework tools.
+
+Native smoothing
+None uses direct sample segments; Basic uses Krita freehand Bézier interpolation;
+Weighted uses the native distance filter with finishing, pressure smoothing and
+zoom scaling; Stabilizer uses native sample averaging, delay distance, finish
+line and sensor stabilization. A canvas circle visualizes delay.
+KisToolFreehandHelper/KisSmoothingOptions produce the lines/cubics, not a Python
+approximation. Stationary constant-pressure lines do not create duplicate anchors.
+Options share Krita's configuration, persist and are reread upon tool activation.
+Changing smoothing finishes the current stroke and configures the next one.
+Pressure smoothing/sensor stabilization filter recorded pressure; physical tilt
+and rotation are not captured. With finish line disabled, the end may stop before
+the cursor. Esc cancels the native timers and stroke. Saving finishes the stroke.
+
+Point compaction for new Brush strokes
+Every smoothing mode compacts each new Brush stroke after the native filter.
+Geometry is rerendered and stored with fewer Bézier anchors and handles.
+Geometric limits are 0.18 / 0.25 / 0.40 / 0.55 document pixels for None / Basic /
+Weighted / Stabilizer; thin tips use tighter limits. Corners remain boundaries,
+loops remain closed, and stationary sensor changes are preserved.
+Pressure tolerance is at most 0.003, tighter for large brushes; independent
+diameter tolerance is 0.1 px. Scalar controls are fitted with geometry.
+If compaction cannot reduce anchors or reaches work/sample limits, the original
+stroke is retained. Live preview remains incremental. Existing/imported strokes
+and click-created curves are not automatically compacted.
+
+Changing existing brushes
+In Edit or Thickness, choose a new Krita preset. In Tool Options > Brush select
+Selected strokes or All strokes in layer, then Change brush. Smooth line means
+no raster preset. Geometry, handles, color, pressure, thickness, opacity and
+tapers are retained. Edited width profiles retain diameter across Pixel/Color
+Smudge presets; old strokes without this profile retain their pressure-based
+size interpretation until first width editing.
+Preparation proceeds stroke by stroke with progress and Cancel. Cancel, Esc or
+switching tools/layers retains the old strokes. Commit occurs after preparation;
+the whole replacement is one undo step. Save as .kra to retain the result.
+
+Selection and groups
+Shift-click toggles a point/stroke. Drag empty canvas to select points by rectangle;
+Shift-drag adds, Esc cancels. Ctrl+A selects every stroke and point in the layer.
+Native Select Shapes selection is inherited when entering Edit/Thickness, with
+all points of each selected stroke. Selected points are orange, handles appear
+at the active point, and switching Edit/Thickness preserves the selection.
+Point thickness affects only selected points: typing sets the same diameter,
+even across different stroke base widths. Vertical dragging applies the same
+pixel difference to initial diameters. Point range: 0–2000 px.
+Base width scales the complete stroke profile. Opacity, minimum width, tapers
+and brush replacement affect strokes containing selected points. Mixed fields
+show Multiple; typing applies one value to the group. Point dragging moves the
+point group; dragging a selected stroke body moves the stroke group.
+Each group edit is one undo step. Selection creates no history and is not saved.
+
+Edit previews and performance
+Only affected previews appear during dragging. Original images are hidden only
+from the renderer and cached from saved appearances, avoiding random rerendering
+on selection. The on-demand cache is limited to 64 MiB. Esc/tool/layer changes
+restore exact confirmed data and images. Release commits edited strokes while
+preserving others. Saving during dragging keeps the last confirmed version.
+Brush preview sends only new segments to native workers and reuses its internal
+image. Ready images return without waiting for the whole stroke or compressing
+PNG per move. Final geometry is replayed once on release. Editing previews are
+rate limited; expensive presets and large layers can still be slow. Unchanged
+stroke images are not reserialized on every write. Timing scope: docs/TESTING.md.
+
+Independent thickness (introduced in 0.8.0)
+Drawing still sends raw recorded pressure to Krita. First diameter editing uses
+KisCubicCurve, including nonlinear pressure-to-size curves, to make a separate
+width profile. Presets with pressure size disabled begin with constant diameter.
+Smooth/OpenToonz lines preserve their radius polynomial exactly.
+Pixels mean nominal tip diameter before minimum width/tapers; tip shape, texture
+and hardness can change the visible ink footprint. Base width scales the profile.
+Pressure and its controls remain untouched for opacity, flow and other sensors.
+Only Size sensors in a private preset copy are replaced with a linear diameter
+sensor on KisPaintInformation's Perspective channel. Pressure uses its own
+channel. Installed presets and the user's current preset are unchanged.
+Continuous stroke spacing is retained, and diameter can exceed the base width.
+Direct control supports Smooth line and Pixel/Color Smudge. Unsupported engines
+are rejected before application. Converting a nonlinear sensor curve at anchors
+and controls can change interpolation between anchors; other Size sensors stop
+contributing once diameter is explicitly edited. Old appearance remains saved
+until an edit. Schema 6 preserves the independent profile and reads schemas 1–5.
+Internal tool ID LineworkPressure remains for shortcut compatibility; the visible
+tool name is Linework Thickness.
+
+Protected shape writes (introduced in 0.7.1)
+Import/replacement enters an outer native busy wait before scene mutation.
+Nested Krita waits drain workers without processing other plugins' shape-reading
+timers during writes. This fixed brush/thickness crashes on large layers with
+vector observers, including the AI Diffusion pose editor access pattern.
+Preparation still offers progress/cancellation; final writes wait for shapes
+and projection. The same guard protects drawing, editing, deletion, history and
+raster conversion. It does not modify or disable other plugins' timers.
+Restart Krita after updating so the native bridge is reloaded.
+
+Native affine transforms
+Move, resize, rotate and mirror with Select Shapes update points/handles and
+replay the stored preset and transformed thickness after the gesture. Returning
+to Edit synchronizes immediately. The selected top-level KoShape object and
+matrix are retained so native move/resize undo references remain valid.
+Uniform scaling multiplies width; nonuniform scaling uses the geometric mean
+of the two factors. Only transformed strokes rerender; random presets may change
+texture. Older documents recover from origin geometry, newer saves record the
+transform and SVG signature. Full document resizing/copying is not adopted.
+
+Raster vectorization
+Select an active paint or file layer and use Tools > Scripts > Vectorize Layer
+to Linework. Settings include light background/alpha, threshold, despeckling,
+accuracy and maximum width. Confirm creates a new layer; the source is unchanged
+and hidden by default. Undo/redo also restores source visibility.
+Mouse wheel zooms under the cursor; left/middle dragging pans; +/- changes zoom;
+Fit/double click frames the image. Original-resolution pixels and cached curves
+are used. Comparison changes and preview updates preserve the viewed region.
+Light background uses max(R,G,B) against threshold times alpha; alpha mode supports
+light or white strokes on transparency. Accuracy maps to 10 - accuracy; maximum
+width maps to half that value as radius. Despeckling uses contour area.
+Extraction and outline preparation run in a worker. Cancel applies no layer.
+RGBA8/16/float inputs are color-converted in a copy. Canvas input is limited to
+32 million pixels; maximum 10,000 strokes and 20,000 anchors per stroke.
+Default output is smooth vector outlines. Use current Krita preset renders the
+same geometry with a raster brush; preview remains geometric. Preserve color
+and transparency samples appearance after detection. Disabling it uses black,
+as the original RGB core does. Intersections remain independent segments.
+This ports the same OpenToonz Centerline algorithm, pinned to revision
+8c5345182b1c3d2ff011a1cf08dad067b6700f08. Original BSD code and notices are
+included. Position/radius quadratics are elevated exactly to cubics without
+refitting/smoothing. The 16-fixture comparison matches unpatched core controls.
+Rendering/storage use Krita; TLV, NAA, regions/fills and outline mode are excluded.
+Details: VECTORIZATION.txt and docs/validation/opentoonz-reference.json.
+
+Persistence and limits
+Save as .kra for editable centerlines, handles, pressure, thickness and presets.
+Raster texture is embedded in the vector layer. SVG preserves appearance but
+not plugin editing or purely vector brush texture. Installed resources are
+required for replay; the saved appearance is visible without plugin/preset.
+Older schemas are readable. Old plugins reject schema 6 edits to protect data.
+Each stroke renders over transparency; smudging/sampling other layers and native
+erasers cutting other strokes are not reproduced. Use Linework Erase.
+Physical tilt, rotation and velocity are not recorded. End taper applies when
+the final stroke completes. There is no .sai2 import, curve cut/join or canvas
+wraparound. Full document resizing does not update centerline metadata. Manual
+SVG changes are protected against overwrite. Test physical tablets separately.
+
+Analysis and removal
+OpenAI Codex assisted development; Ghidra 11.0.3 examined static feature strings
+and references in the supplied local SAI2 executable. No executable, decompiled
+code or proprietary SAI resource is included. See README.md for method/scope.
+To uninstall, close Krita and remove linework.desktop, linework.action and the
+linework folder from resources/pykrita. Saved .kra appearances remain visible.

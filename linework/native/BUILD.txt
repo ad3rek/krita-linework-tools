@@ -1,140 +1,129 @@
-PONTE NATIVA LINEWORK — KRITA 5.2.14
+LINEWORK NATIVE BRIDGE — KRITA 5.2.14
+Public release: 0.1 (development reports retain their original version labels)
 
-O binário fornecido foi compilado e validado no Linux x86_64, Krita 5.2.14 do KDE
-Neon, com Qt 5.15.17. Não carrega em outra versão do Krita. Para recompilar são
-necessários g++, os fontes oficiais v5.2.14 e os headers de desenvolvimento
-Qt 5, Boost e KF5 (I18n, CoreAddons, Config, WidgetsAddons, Completion, GuiAddons,
-ItemModels). As bibliotecas compartilhadas do Krita precisam estar instaladas.
+Linux build: KDE Neon x86_64, Qt 5.15.17, Python 3.12.
+Windows build: official Krita 5.2.14 x64, Qt 5.15.7, LLVM-MinGW 18.1.8 UCRT,
+Python 3.10. The bridge requires the matching application ABI. Do not substitute
+other native DLLs or load it into another Krita version.
 
-Fontes oficiais:
-https://github.com/KDE/krita/tree/v5.2.14
-Revisão: 31056c6b76a164069752fc9d5f655f9479aca246
+Official sources: https://github.com/KDE/krita/tree/v5.2.14
+Revision: 31056c6b76a164069752fc9d5f655f9479aca246
 
-Na pasta deste arquivo:
-python3 build.py --krita-source /caminho/krita-5.2.14
+Linux
+Requires g++ C++17, official headers, compatible installed Krita libraries,
+Qt 5 SDK, Boost and KF5 (I18n, CoreAddons, Config, WidgetsAddons, Completion,
+GuiAddons, ItemModels). From this folder:
+python3 build.py --krita-source /path/krita-5.2.14 --sdk-prefix /path/sdk/usr
+The default SDK prefix is /usr. Output: liblinework_native.so.
+Standalone vectorizer: python3 build_vectorize.py
+Output: liblinework_vectorize.so. No Qt/OpenToonz application SDK is required.
 
-Para headers extraídos em um prefixo separado, sem instalar pacotes no sistema:
-python3 build.py --krita-source /caminho/krita-5.2.14 --sdk-prefix /caminho/sdk/usr
+Windows cross-build from Linux
+Use LLVM-MinGW's 20240619 UCRT release (Clang 18.1.8):
+https://github.com/mstorsjo/llvm-mingw/releases/tag/20240619
+Use the official portable Krita 5.2.14 Windows archive:
+https://download.kde.org/Attic/krita/5.2.14/krita-x64-5.2.14.zip
+Fetch Windows Qt 5.15.7, Boost and KF5 SDK packages from KDE's public Krita
+Windows package registry, not Linux headers. Package provenance is recorded
+in docs/validation/windows-build.json. The SDK contains include/QtCore,
+include/KF5 and include/boost. Krita's dependency management repository:
+https://invent.kde.org/packaging/krita-deps-management/-/tree/krita/5.2
 
-O resultado substitui liblinework_native.so nesta pasta. Reinstale o plugin e
-reabra o Krita. Verifique a compilação em uma instância com recursos isolados.
+python3 build_windows.py --krita-source /path/krita-5.2.14 \
+  --sdk-prefix /path/windows-sdk --krita-bin /path/krita-x64-5.2.14/bin \
+  --toolchain /path/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64
 
-Arquitetura
-A API Python do Krita 5.2.14 não oferece reprodução contínua de uma sequência
-completa de amostras através dos presets. A ponte recebe objetos libkis via SIP,
-obtém sua imagem/nó e o provedor de recursos da visualização, e usa o mesmo
-FreehandStrokeStrategy dos motores de pintura do Krita. Um único stroke contém
-todas as linhas interpoladas, mantendo o espaçamento contínuo do pincel.
+The script generates import libraries from the official application's DLL
+exports; it never substitutes the SDK's runtime DLLs. Output:
+linework_native.dll and linework_vectorize.dll. Krita already supplies libc++
+and the UCRT runtime; system/Krita DLLs are not bundled with the plugin.
+The generated OpenToonz tgeometry.h omits only Windows template export
+instantiations placed before explicit specializations, which Clang rejects.
+This private DLL does not expose those C++ templates. Mathematical code and
+vendored originals are unchanged; the generated header is build-only.
+Reinstall and restart Krita after rebuilding. Validate with isolated resources.
 
-São usados os headers oficiais e as funções exportadas Node::image/Node::node,
-View::view, Resource::resource, Shape::shape e KisShapeLayer::canvas. O acesso a esses membros privados utiliza
-instanciação explícita de ponteiros de membro; nenhuma definição/layout de classe
-é alterada. A ponte depende da ABI exata do Krita 5.2.14.
+Architecture
+Krita's Python API cannot replay a complete continuous sample sequence through
+native presets. The bridge receives libkis objects through SIP, obtains the
+image/node and view resources, and uses FreehandStrokeStrategy. One native
+stroke contains all interpolated lines, preserving continuous brush spacing.
+Official headers and exported Node::image/node, View::view, Resource::resource,
+Shape::shape and KisShapeLayer::canvas are used. Explicit member-pointer
+instantiation accesses private members without modifying class layouts.
+The bridge is GUI-thread-only and depends on the exact Krita ABI.
 
-A renderização ocorre em uma imagem interna sem visualização/aba adicional.
-Um preset clonado, provedor de recursos local e seleção vazia evitam modificar o
-preset original, as cores, os recursos ou a seleção da visualização do usuário.
-A imagem interna é reaproveitada. Na prévia incremental, jobs de barreira copiam
-a aparência no worker; a interface lê imagens prontas sem bloquear um stroke
-aberto. O PNG é produzido ao gravar um traço. Sair/fechar o canvas libera a imagem.
-A chamada é aceita somente na thread principal do aplicativo.
+Rendering uses an internal image without an extra document/view. A private
+preset, local resource provider and empty selection preserve user settings.
+The scratch image is reused. Barrier jobs copy preview appearance in a worker;
+the GUI reads ready images without waiting for an open stroke. PNG compression
+happens at commit. Closing the canvas releases the scratch image.
 
-O código é GPL-3.0-or-later. Não contém código ou recursos do Paint Tool SAI.
+Tools
+KoToolFactoryBase/KisToolPaint factories register in KoToolRegistry before the
+first canvas. The KoToolManager action list is refreshed. Each tool provides
+a QWidget to native Tool Options. Native layer models and indices are retained.
 
-Ferramentas
-A ponte registra KoToolFactoryBase/KisToolPaint no KoToolRegistry e atualiza a
-lista de ações do KoToolManager antes da criação dos primeiros canvases. Cada
-ferramenta fornece um QWidget às opções nativas. Os headers oficiais definem
-o acesso à lista do manager; seu modelo/índices de camadas são preservados.
+Editing
+Confirmed KoShapes remain layer children. During dragging, only their render
+registration is removed; preview replaces appearance. SVG and fingerprints
+remain intact. A native stroke coordinates save/close so original appearance
+is restored before projection reads. Python caches existing embedded images,
+including reopened documents, without rerunning random presets on selection.
 
-Edição
-A forma salva permanece visível como filha da camada. Durante o arraste ela é
-excluída apenas do KoShapeManager de renderização; a prévia substitui sua imagem
-na tela. SVG e fingerprints permanecem intactos. Uma sessão de stroke coordena
-o arraste com as solicitações nativas de salvar/encerrar: restaurar a aparência
-confirmada antecede a leitura da projeção. O cache Python copia o PNG já embutido,
-inclusive de arquivos reabertos, sem repetir o motor aleatório ao selecionar.
+Affine transforms
+Absolute matrix and normalized size are read, and an untransformed clone is
+serialized to check for affine-only edits. Adoption preserves the top-level
+KoShape and matrix, updates local ImageShape/KoPathShape content and compensates
+for the transform. Native move/scale undo references remain valid. Sync waits
+for input release and two stable matrix reads. Schema 6 stores independent
+width profiles, transforms, signatures, handles and scalar controls.
 
-Transformações nativas
-A ponte lê a matriz absoluta e o tamanho normalizado da forma, e serializa um
-clone sem a transformação para validar que houve somente uma operação afim.
-Ao adotar uma transformação, preserva o KoShape superior e sua matriz, atualiza
-apenas o conteúdo local do ImageShape/KoPathShape e compensa a transformação
-para que a nova aparência represente as coordenadas já aplicadas no documento.
-Isso mantém as referências dos comandos nativos de seleção, mover e escala.
-A sincronização espera mouse/caneta liberados e duas leituras estáveis da matriz;
-não substitui objetos durante um arraste. O esquema 6 guarda os perfis independentes, matriz, assinatura,
-alças e controles de espessura; documentos dos esquemas anteriores continuam legíveis.
+Vectorization
+linework_layer_snapshot color-converts a copied QImage, preserving source pixels.
+The original OpenToonz Centerline core runs through ctypes.CDLL in a worker;
+progress/cancellation use atomics, and a mutex protects file-local globals.
+Original BSD sources/math and host patches: opentoonz/ and VECTORIZATION.txt.
+Tests compare 16 fixtures against unpatched original sources using host adapters.
+Run from repository root: python3 -m unittest discover -s tests -v
 
-Vetorização
-linework_layer_snapshot cria uma QImage RGBA em cópia com conversão de cor, sem
-alterar a camada original. A reimplementação/portabilidade do mesmo algoritmo
-Centerline do OpenToonz compila com python3 build_vectorize.py e produz
-liblinework_vectorize.so, sem SDK Qt/Krita/OpenToonz nem dependências externas
-além de g++ C++17 e a biblioteca padrão. Os fontes BSD-3-Clause e headers
-matemáticos originais estão em opentoonz/upstream; as cópias compiladas em
-opentoonz/core só têm os patches de integração descritos em VECTORIZATION.txt.
-Roda em worker por ctypes.CDLL; progresso e cancelamento são atomics. Um mutex
-protege os globais do núcleo original contra workers concorrentes. A API nova
-tem nome próprio; chamadas da ABI antiga pedem para reabrir o Krita.
-Para comparar com o núcleo original sem patches:
-python3 -m unittest discover -s ../../tests -v
+Protected writes
+VectorLayer::addShapesFromSvg and Shape::remove execute image worker commands.
+KisImage::waitForDone may normally process Qt events, letting timers query
+KoShapes during mutation. linework_shape_write_begin/end hold an outer wait
+through KisBusyWaitBroker::notifyWaitOnImageStarted/Ended, after draining prior
+jobs. Nested waits do not reopen event feedback; workers finish before release.
+Python uses finally, guarding imports, removals, metadata and projection.
+Rendering/PNG preparation precedes mutation. Other plugins' timers are unchanged.
 
-Gravação das formas — 0.7.1
-As APIs libkis VectorLayer::addShapesFromSvg e Shape::remove executam comandos
-em workers da imagem. KisImage::waitForDone abre uma espera com feedback que
-processa eventos Qt, permitindo a timers de outros plugins consultar KoShapes
-enquanto os comandos alteram as formas. A corrida foi confirmada no core do
-usuário (AI Diffusion PoseLayers.update) e reproduzida com um timer observador.
+Independent diameter
+linework_pressure_to_size uses KisCubicCurve's 256-entry interpolation table.
+A private preset replaces Size sensors with a linear Perspective-channel
+sensor; Pressure still carries original input. Edited samples use five values
+versus legacy four. Diameter maximum: 2000 px. Pixel/Color Smudge validation
+happens before SVG preparation. linework_paint_with_thickness has its own ABI
+name so old bridges cannot silently accept the new argument layout.
 
-linework_shape_write_begin/end mantêm uma espera externa por imagem no
-KisBusyWaitBroker, usando sua API pública notifyWaitOnImageStarted/Ended.
-Entram com a lista estável, após drenar jobs anteriores. As esperas internas
-não reabrem o feedback; os workers terminam antes de liberar a espera externa.
-O escopo Python usa finally para liberar também em erro, e engloba importação,
-remoções, metadados e projeção. Renderização/PNG são preparados antes do escopo.
-Os timers de outros plugins continuam ativos e não são modificados.
+Native smoothing
+smoothing.h uses KisToolFreehandHelper, KisPaintingInformationBuilder and
+KisSmoothingOptions directly. A KisStrokesFacade intercepts native freehand
+jobs without painting into the user document. Eleven doubles per segment
+copy line/cubic geometry and pressure into native_smoothing.py.
+Filters, timers, tablet pressure curves and finishing are native. Zero-length
+constant-pressure lines are dropped; closed cubics and stationary pressure
+changes remain. Resources are private. cancelPaint stops native timers.
+A nonpainting document stroke coordinates save/clone; its end signal finalizes
+geometry before saving. Python timers and overlays check KisBusyWaitBroker,
+including during native view destruction.
 
-Espessura independente (0.8.0)
-linework_pressure_to_size usa KisCubicCurve e sua tabela/interpolação de 256
-valores para converter o sensor pressão/tamanho salvo no preset. O perfil
-editado usa um sensor Size linear no canal Perspective da informação de
-pintura; o canal Pressure permanece com a entrada capturada. São cinco
-valores por amostra nesse modo, contra quatro no modo legado. O diâmetro
-nominal máximo é 2000 px. A reprodução valida Pixel/Color Smudge antes de
-preparar SVG. A API recebeu o nome linework_paint_with_thickness para que
-uma ponte antiga não receba silenciosamente a nova estrutura de argumentos.
+Compaction
+After endPaint/take, native_smoothing.py calls curve_fit.compact_stroke for new
+Brush strokes only. Python fits cubics with endpoint tangents and least squares;
+pressure/diameter have scalar controls sharing the same parameter. De Casteljau
+subdivision bounds chord error. Full interval control polygons, including
+sensors, are validated. Corners above 60 degrees form boundaries. Sample/work
+limits preserve originals. _live_points stays unchanged, avoiding cursor jumps.
+Schema 6 stores the new cubics with the same preset and stroke ID.
 
-Suavização nativa (0.8.0)
-smoothing.h usa diretamente KisToolFreehandHelper, KisPaintingInformationBuilder
-e KisSmoothingOptions das bibliotecas compartilhadas do Krita. Uma implementação
-de KisStrokesFacade recebe os jobs FreehandStrokeStrategy::Data sem pintá-los
-no documento. Linhas e controles cúbicos são copiados pela API de 11 doubles
-por segmento e materializados como alças relativas em native_smoothing.py.
-Os filtros, timers, curvas de pressão da mesa e finalização são nativos.
-Linhas de comprimento zero e pressão constante são descartadas para evitar
-âncoras duplicadas; cúbicas fechadas e alterações estacionárias de pressão
-continuam registradas. O preview raster amostra somente os novos segmentos.
-
-KisSmoothingOptions lê/grava a configuração compartilhada; a ferramenta lê
-novamente ao ser ativada. O helper recebe recursos privados da view; não pinta
-nem muda presets na imagem do usuário. Cancelar chama cancelPaint e interrompe
-os timers nativos. Um stroke sem pintura no documento coordena salvar/clonar:
-o sinal de fim de stroke conclui a geometria e libera a sessão antes de gravar.
-Os timers Python e a pintura da sobreposição consultam KisBusyWaitBroker antes
-de acessar o canvas, inclusive durante a destruição nativa de uma view.
-
-Compactação de curvas (0.8.1)
-Após endPaint/take, native_smoothing.py chama curve_fit.compact_stroke apenas
-para o novo Brush. A ponte e os motores nativos continuam iguais aos de 0.8.0.
-O ajuste cúbico em Python usa tangentes nas extremidades e mínimos quadrados;
-pressão e diâmetro independente usam controles próprios no mesmo parâmetro.
-Subdivisão de De Casteljau limita o erro da aproximação por cordas. O ajuste
-valida o polígono de controle de cada intervalo completo, incluindo os sensores,
-para evitar desvios entre as amostras. Curvas e mudanças estacionárias de
-pressão não são reduzidas a pontos pela coincidência das coordenadas XY.
-Cantos acima de 60 graus são fronteiras; limites de amostras/trabalho preservam
-o original sem alterar parcialmente o traço. A lista _live_points não muda na
-compactação, evitando saltos no cursor e no render incremental. O documento
-guarda as novas cúbicas com os mesmos campos do esquema 6 e o mesmo preset/ID.
-Não é necessário recompilar liblinework_native.so para esta alteração.
+The integration is GPL-3.0-or-later and contains no proprietary SAI resources
+or decompiled SAI code. See README.md for Codex/Ghidra disclosure and tests.

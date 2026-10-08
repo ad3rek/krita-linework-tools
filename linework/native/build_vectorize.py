@@ -11,4 +11,4 @@ sources.append(port/'upstream/toonz/sources/common/tgeometry/tgeometry.cpp')
 subprocess.run(['g++','-std=c++17','-DLINUX','-O2','-fPIC','-shared','-fvisibility=hidden',
     '-pthread','-I'+str(port/'compat'),'-I'+str(include),'-I'+str(port/'core'),
     *map(str,sources),'-Wl,--no-undefined','-o',str(root/'liblinework_vectorize.so')],check=True)
-print('Vetorizador compilado:',root/'liblinework_vectorize.so')
+print('Vectorizer built:',root/'liblinework_vectorize.so')

@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Test the official Windows application under Wine in a disposable prefix."""
+import argparse
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+from run import blank_png
+
+
+def windows_path(path):
+    return 'Z:'+str(path.resolve()).replace('/', '\\')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing'])
+    parser.add_argument('--krita-bin',required=True,type=Path,help='Official Windows Krita 5.2.14 bin directory')
+    parser.add_argument('--output',type=Path)
+    args = parser.parse_args()
+    checkout = Path(__file__).resolve().parents[2]
+    output = (args.output or checkout/'work/windows-gui-results'/args.probe).resolve()
+    for directory in ('docs/validation','docs/images','examples'):
+        (output/directory).mkdir(parents=True,exist_ok=True)
+    name = {'cc_lineart':'cc-lineart.json','multi_point':'multi-point.json','smoothing':'smoothing.json'}[args.probe]
+    report = output/'docs/validation'/name
+    report.unlink(missing_ok=True)
+    command = ['xvfb-run','-a','-s','-screen 0 1600x1100x24']
+    # Wine prefixes are large; keep them on the results filesystem, not /tmp.
+    with tempfile.TemporaryDirectory(prefix='linework-wine-',dir=output) as temporary:
+        base = Path(temporary)
+        (base/'prefix').mkdir()
+        env = dict(os.environ,WINEPREFIX=str(base/'prefix'),WINEDEBUG='-all',
+                   WINEARCH='win64',LINEWORK_TEST_ROOT=windows_path(output),QT_LOGGING_RULES='*.debug=false')
+        # Krita's Qt 5.15.7 startup cannot inherit the host Plasma workaround.
+        env.pop('KDE_FULL_SESSION',None)
+        with (output/'wineboot.log').open('w') as log:
+            subprocess.run(command+['timeout','90s','wine','wineboot.exe','-u'],env=env,
+                           stdout=log,stderr=subprocess.STDOUT,check=True)
+        # Boot services belong to the first Xvfb display, which has now closed.
+        subprocess.run(['wineserver','-k'],env=env,check=True)
+        subprocess.run(['wineserver','-w'],env=env,check=True)
+        users = base/'prefix/drive_c/users'
+        profiles = [p for p in users.iterdir() if (p/'AppData/Local').is_dir() and p.name != 'Public']
+        if len(profiles) != 1:
+            raise SystemExit('Expected one disposable Wine user profile.')
+        # Empty Wine prefixes have no font faces for Krita's SVG text factory.
+        fonts = Path('/usr/share/fonts/truetype/dejavu')
+        if not fonts.exists():
+            raise SystemExit('Install DejaVu fonts for this Wine test environment.')
+        for font in fonts.glob('DejaVuSans*.ttf'):
+            shutil.copy2(font,base/'prefix/drive_c/windows/Fonts'/font.name)
+        resources = base/'resources'
+        pykrita = resources/'pykrita'
+        pykrita.mkdir(parents=True)
+        shutil.copytree(checkout/'linework',pykrita/'linework',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+        for file in ('linework.desktop','linework.action'):
+            shutil.copy2(checkout/file,pykrita/file)
+        (pykrita/'probe').mkdir()
+        shutil.copy2(Path(__file__).with_name(args.probe+'.py'),pykrita/'probe/__init__.py')
+        (pykrita/'probe.desktop').write_text('[Desktop Entry]\nType=Service\nServiceTypes=Krita/PythonPlugin\n'
+            'X-KDE-Library=probe\nX-Python-2-Compatible=false\nName=Isolated Windows Linework test\n')
+        (profiles[0]/'AppData/Local/kritarc').write_text('CanvasOnlyActive=false\nuseOpenGL=false\n'
+            'ResourceDirectory='+windows_path(resources).replace('\\','/')+'\n\n[python]\n'
+            'enable_linework=true\nenable_probe=true\n')
+        (profiles[0]/'AppData/Local/kritadisplayrc').write_text('OpenGLRenderer=none\nLogUsage=false\n')
+        fixture = output/'examples'/('pepper-lineart.png' if args.probe == 'cc_lineart' else 'blank.png')
+        if args.probe == 'cc_lineart':shutil.copy2(checkout/'examples/pepper-lineart.png',fixture)
+        else:blank_png(fixture)
+        try:
+            with (output/'krita.log').open('w') as log:
+                result = subprocess.run(command+['timeout','1200s','wine',
+                    windows_path(args.krita_bin/'krita.exe'),'--nosplash',windows_path(fixture)],
+                    env=env,stdout=log,stderr=subprocess.STDOUT)
+        finally:
+            subprocess.run(['wineserver','-k'],env=env,check=False)
+    if not report.exists():raise SystemExit('No test report; see '+str(output/'krita.log'))
+    data = json.loads(report.read_text())
+    print(json.dumps(data,indent=2,ensure_ascii=False))
+    raise SystemExit(0 if result.returncode == 0 and data.get('result') == 'pass' else 1)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Krita adapter for the BSD-3-Clause OpenToonz centerline algorithm.
 // Algorithm sources, original revision and license: opentoonz/ORIGIN.json.
+#include "export.h"
 #include "tcenterlinevectP.h"
 #include <atomic>
 #include <chrono>
@@ -46,19 +47,19 @@ static void appearance(const TStroke &s,const uint8_t *pixels,int width,int heig
   if(count){r=std::lround(sr/count);g=std::lround(sg/count);b=std::lround(sb/count);opacity=sa/(255.*count);}
 }
 extern "C" {
-__attribute__((visibility("default"))) const char *linework_trace_backend(){return "opentoonz-centerline-1";}
-__attribute__((visibility("default"))) void *linework_trace_new(){return new TraceContext;}
-__attribute__((visibility("default"))) void linework_trace_cancel(void *p){if(p)static_cast<TraceContext*>(p)->cancel.store(true);}
-__attribute__((visibility("default"))) void linework_trace_delete(void *p){delete static_cast<TraceContext*>(p);}
-__attribute__((visibility("default"))) int linework_trace_progress(void *p){return p?static_cast<TraceContext*>(p)->progress.load():0;}
-__attribute__((visibility("default"))) const char *linework_trace_result(void *p){return static_cast<TraceContext*>(p)->json.c_str();}
-__attribute__((visibility("default"))) const char *linework_trace_error(void *p){return static_cast<TraceContext*>(p)->error.c_str();}
+LINEWORK_EXPORT const char *linework_trace_backend(){return "opentoonz-centerline-1";}
+LINEWORK_EXPORT void *linework_trace_new(){return new TraceContext;}
+LINEWORK_EXPORT void linework_trace_cancel(void *p){if(p)static_cast<TraceContext*>(p)->cancel.store(true);}
+LINEWORK_EXPORT void linework_trace_delete(void *p){delete static_cast<TraceContext*>(p);}
+LINEWORK_EXPORT int linework_trace_progress(void *p){return p?static_cast<TraceContext*>(p)->progress.load():0;}
+LINEWORK_EXPORT const char *linework_trace_result(void *p){return static_cast<TraceContext*>(p)->json.c_str();}
+LINEWORK_EXPORT const char *linework_trace_error(void *p){return static_cast<TraceContext*>(p)->error.c_str();}
 // A still-open Krita can retain Python from 0.5.x after files are updated.
 // Refuse its old ABI instead of interpreting missing float arguments.
-__attribute__((visibility("default"))) int linework_trace_run(void *handle,const uint8_t*,int,int,int,int,int){
+LINEWORK_EXPORT int linework_trace_run(void *handle,const uint8_t*,int,int,int,int,int){
   static_cast<TraceContext*>(handle)->error="Salve seu desenho e reabra o Krita para carregar o motor OpenToonz.";return 0;
 }
-__attribute__((visibility("default"))) int linework_trace_run_opentoonz(void *handle,const uint8_t *bgra,int width,int height,
+LINEWORK_EXPORT int linework_trace_run_opentoonz(void *handle,const uint8_t *bgra,int width,int height,
   int mode,int threshold,int despeckle,double penalty,double maximumWidth,int preserveColor){
   auto &ctx=*static_cast<TraceContext*>(handle);
   try {

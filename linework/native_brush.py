@@ -3,7 +3,7 @@
 import ctypes
 import hashlib
 import json
-import platform
+import re
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import lru_cache
@@ -14,6 +14,7 @@ from PyQt5.QtCore import QByteArray, QBuffer, QIODevice, QRect
 from PyQt5.QtGui import QImage
 from krita import Krita, Preset
 from .model import samples, distance, clamp, freeze_thickness, thickness_factor
+from .native_library import library_path
 
 _BRIDGE_LIBRARY = None
 
@@ -62,10 +63,10 @@ def load_library():
     # Keep their library loaded for the complete plugin/application lifetime.
     global _BRIDGE_LIBRARY
     if _BRIDGE_LIBRARY is None:
-        if Krita.instance().version().split("-")[0] != "5.2.14" or platform.machine() != "x86_64":
-            raise ValueError("Esta ponte foi compilada para Krita 5.2.14 / Linux x86_64.")
+        if not re.fullmatch(r'5\.2\.14(?:[- ].*)?', Krita.instance().version()):
+            raise ValueError("This native bridge requires Krita 5.2.14.")
         try:
-            _BRIDGE_LIBRARY = ctypes.PyDLL(str(Path(__file__).with_name("native")/"liblinework_native.so"))
+            _BRIDGE_LIBRARY = ctypes.PyDLL(str(library_path('native')))
         except OSError as exc:
             raise ValueError("Não foi possível carregar o motor nativo Linework: "+str(exc)) from exc
     return _BRIDGE_LIBRARY

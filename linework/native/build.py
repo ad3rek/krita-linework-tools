@@ -8,16 +8,16 @@ import tempfile
 
 
 def main():
-    parser=argparse.ArgumentParser(description='Compila a ponte nativa para Krita 5.2.14.')
+    parser=argparse.ArgumentParser(description='Build the native Krita 5.2.14 bridge.')
     parser.add_argument('--krita-source',required=True,type=Path)
     parser.add_argument('--sdk-prefix',default=Path('/usr'),type=Path,
-                        help='Prefixo contendo include/Qt5 e include/KF5; padrão /usr')
+                        help='Prefix containing Qt 5 and KF5 headers; default: /usr')
     args=parser.parse_args()
     root=Path(__file__).resolve().parent
     source=args.krita_source.resolve();sdk=args.sdk_prefix.resolve()/'include'
     qt=sdk/'x86_64-linux-gnu/qt5';kf=sdk/'KF5'
     if not (source/'libs/libkis/Node.h').exists() or not qt.exists() or not kf.exists():
-        parser.error('São necessários os fontes Krita 5.2.14 e os headers Qt 5 / KF5.')
+        parser.error('Krita 5.2.14 sources and Qt 5 / KF5 headers are required.')
     with tempfile.TemporaryDirectory(prefix='linework-build-') as tmp:
         generated=Path(tmp)
         exports=['kritaglobal','kritaimage','kritaui','kritalibkis','kritapigment',
@@ -47,7 +47,7 @@ def main():
         for name in ['Qt5Core','Qt5Gui','Qt5Widgets','Qt5Xml']:
             command += ['-l:lib'+name+'.so.5']
         subprocess.run(command,check=True)
-    print('Ponte compilada:',root/'liblinework_native.so')
+    print('Bridge built:',root/'liblinework_native.so')
 
 
 if __name__=='__main__':main()

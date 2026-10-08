@@ -22,7 +22,7 @@ ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 
 class Probe(Extension):
     def setup(self):
-        self.result = {'fixture': 'examples/pepper-lineart.png', 'version': '0.8.1'}
+        self.result = {'fixture': 'examples/pepper-lineart.png', 'version': '0.1'}
         self.tries = 0
         self.observer = QTimer()
         self.observer.setInterval(5)
