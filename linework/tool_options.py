@@ -9,7 +9,7 @@ from PyQt5 import sip
 from PyQt5.QtGui import (QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen,
                         QMouseEvent, QTabletEvent, QKeyEvent)
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout, QGroupBox,
-    QLabel, QPushButton, QDoubleSpinBox, QFileDialog, QComboBox, QProgressBar, QHBoxLayout)
+    QLabel, QPushButton, QDoubleSpinBox, QFileDialog, QComboBox, QProgressBar, QHBoxLayout, QCheckBox)
 from krita import Krita
 from .editor import LineworkCanvas, painter_path
 from .model import Point, samples, svg, handle_vector, geometry_key, set_point_thickness
@@ -18,6 +18,9 @@ from .native_brush import (NativeBrushRenderer, capture_brush, set_preview_hidde
                           begin_edit_session, end_edit_session, point_thickness, ensure_thickness, native_busy)
 from .native_smoothing import NativeSmoother, SmoothingOptions
 from .preview import SavedAppearanceCache
+from .eraser import hit_center, point_weights, reduce_points
+from .topology import (bake_minimum, merge_points, join_strokes, close_stroke,
+                       selection_kind)
 
 
 class MixedSpinBox(QDoubleSpinBox):
@@ -74,13 +77,20 @@ class NativeCanvasOverlay(LineworkCanvas):
         self.source_layer = source_layer
         self.saved_appearances = SavedAppearanceCache()
         self._edit_original = None
+        self._edit_order = None
+        self._edit_selection = None
         self._edit_session = None
         self._edit_committing = False
+        self._edit_mutating = False
         self.conversion_origin = None
         self.native_preview = None
         self.native_previews = {}
         self._preview_keys = {}
         self._preview_cursor = 0
+        self.eraser_mode = 'line'
+        self.eraser_strength = 1.0
+        self._erase_baselines = {}
+        self._erase_coverage = {}
         self.preview_timer = QTimer(self)
         self.preview_timer.setSingleShot(True)
         self.preview_timer.setInterval(16)
@@ -116,6 +126,8 @@ class NativeCanvasOverlay(LineworkCanvas):
 
     def begin(self, pos, pressure, button=Qt.LeftButton, modifiers=Qt.NoModifier):
         # Canvas focus remains in Krita. Pan and zoom are handled by Krita.
+        if self.mode == 'erase' and button == Qt.LeftButton:
+            self.begin_erase(pos, pressure); return
         if self.mode == 'pen' and button == Qt.LeftButton and self.draft:
             # A lost release must not let the next press replace a drawn path
             # or leave its native smoothing/preview sessions running.
@@ -161,6 +173,92 @@ class NativeCanvasOverlay(LineworkCanvas):
             self.restore_edit_preview(cancel=True); raise
         self.update()
 
+    def protect_erase_stroke(self, stroke):
+        if stroke.uid in self._edit_original: return
+        cached = self.saved_appearances.get(self.view.document(), self.source_layer, stroke)
+        if cached:
+            self.native_previews[stroke.uid] = cached
+            self._preview_keys[stroke.uid] = self.preview_key(stroke)
+        self._edit_original[stroke.uid] = copy.deepcopy(stroke)
+        if not set_preview_hidden(self.source_layer, stroke.uid, True):
+            raise ValueError('Não foi possível ocultar a aparência original do traço.')
+
+    def begin_erase(self, pos, pressure):
+        if self.drag == 'erase': self.finish_erase()
+        if not self.source_layer: return
+        if self.source_layer.locked():
+            self.message.emit('Desbloqueie a camada para apagar.'); return
+        if not self.source_layer.visible():
+            self.message.emit('Exiba a camada para apagar.'); return
+        self.restore_edit_preview(cancel=True)
+        self._edit_original = {}
+        self._edit_order = [s.uid for s in self.strokes]
+        self._edit_selection = copy.deepcopy(self.selection)
+        self._erase_baselines = {}; self._erase_coverage = {}
+        self.drag = 'erase'; self.last_doc = self.local_point(pos, pressure)
+        self.hover_pos = pos
+        self.erase_segment(self.last_doc, self.last_doc, pressure)
+
+    def erase_segment(self, start, end, pressure):
+        radius = max(.05, self.view.brushSize()/2)
+        changed = False
+        try:
+            targets = []
+            for stroke in list(self.strokes):
+                if self.eraser_mode == 'line':
+                    if not hit_center(self.cached_center(stroke), start, end, radius): continue
+                    targets.append((stroke, None))
+                else:
+                    weights = point_weights(stroke, start, end, radius, self.eraser_strength*pressure)
+                    if not any(weights.values()): continue
+                    targets.append((stroke, weights))
+                    if stroke.uid not in self._erase_baselines:
+                        baseline = copy.deepcopy(stroke)
+                        ensure_thickness(baseline); bake_minimum(baseline)
+                        self._erase_baselines[stroke.uid] = baseline
+                        self._erase_coverage[stroke.uid] = {}
+            new_targets = [stroke for stroke, _ in targets if stroke.uid not in self._edit_original]
+            if new_targets:
+                # Hiding a shape waits for its image. Finish our no-paint
+                # token before adding protection for newly hit strokes, then
+                # restart it once after the batch. Waiting with an open token
+                # would deadlock a gesture that crosses another stroke.
+                self._edit_mutating = True
+                try:
+                    session, self._edit_session = self._edit_session, None
+                    end_edit_session(session)
+                    for stroke in new_targets: self.protect_erase_stroke(stroke)
+                    self._edit_session = begin_edit_session(self.source_layer)
+                finally:
+                    self._edit_mutating = False
+            for stroke, weights in targets:
+                if self.eraser_mode == 'line':
+                    self.strokes.remove(stroke); changed = True
+                else:
+                    if not self._erase_coverage[stroke.uid]:
+                        baseline = self._erase_baselines[stroke.uid]
+                        stroke.minimum = 0
+                        for p, original in zip(stroke.points, baseline.points):
+                            p.thickness, p.thickness_in, p.thickness_out = original.thickness, original.thickness_in, original.thickness_out
+                    changed |= reduce_points(stroke, self._erase_baselines[stroke.uid], weights,
+                                             self._erase_coverage[stroke.uid])
+            if changed:
+                self.selection.prune(self.strokes)
+                self.selectedChanged.emit()
+                self.queue_native_preview(); self.update()
+        except Exception as exc:
+            self.restore_edit_preview(cancel=True)
+            self.message.emit(str(exc)); self.selectedChanged.emit()
+
+    def finish_erase(self):
+        if self._edit_committing: return
+        self._edit_committing = True
+        if self._edit_original:
+            self.commit()
+        else:
+            self.restore_edit_preview(cancel=True)
+        self.drag = None
+
     def restore_edit_preview(self, cancel=False):
         original, self._edit_original = self._edit_original, None
         if original is None:
@@ -173,9 +271,15 @@ class NativeCanvasOverlay(LineworkCanvas):
         session, self._edit_session = self._edit_session, None
         end_edit_session(session)
         if cancel:
-            for i, stroke in enumerate(self.strokes):
-                if stroke.uid in original:
-                    self.strokes[i] = original[stroke.uid]
+            if self._edit_order is not None:
+                restored = {s.uid: s for s in self.strokes}; restored.update(original)
+                self.strokes = [restored[uid] for uid in self._edit_order]
+                self.selection = self._edit_selection
+            else:
+                for i, stroke in enumerate(self.strokes):
+                    if stroke.uid in original: self.strokes[i] = original[stroke.uid]
+        self._edit_order = self._edit_selection = None
+        self._erase_baselines = {}; self._erase_coverage = {}
         if self.source_layer:
             for uid in original: set_preview_hidden(self.source_layer, uid, False)
         if not sip.isdeleted(self):
@@ -183,7 +287,8 @@ class NativeCanvasOverlay(LineworkCanvas):
 
     def commit(self):
         original = self._edit_original
-        if original and all(s.data() == original[s.uid].data() for s in self.strokes if s.uid in original):
+        current = {s.uid: s for s in self.strokes}
+        if original and all(uid in current and current[uid].data() == saved.data() for uid, saved in original.items()):
             self.restore_edit_preview(cancel=True)
             return
         try:
@@ -207,6 +312,11 @@ class NativeCanvasOverlay(LineworkCanvas):
                     self.saved_appearances.forget(stroke.uid)
 
     def move(self, pos, pressure, modifiers=Qt.NoModifier):
+        if self.drag == 'erase':
+            self.hover_pos = pos
+            point = self.local_point(pos, pressure)
+            self.erase_segment(self.last_doc, point, pressure); self.last_doc = point
+            return
         if self.smoother and self.draft and self.drag == 'pen':
             self.hover_pos = pos
             self.smoother.move(self.local_point(pos, pressure))
@@ -217,6 +327,10 @@ class NativeCanvasOverlay(LineworkCanvas):
         self.queue_native_preview()
 
     def end(self, pos, pressure):
+        if self.drag == 'erase':
+            # Release pressure can be zero. Already captured samples define
+            # the local reduction; commit the entire gesture as one operation.
+            self.finish_erase(); return
         if self.smoother and self.draft and self.drag == 'pen':
             self.finish_draft(); self.drag = None
             self.preview_timer.stop(); self.native_preview = None
@@ -232,6 +346,7 @@ class NativeCanvasOverlay(LineworkCanvas):
             return
         self._finishing = True
         try:
+            if self.drag == 'erase': self.finish_erase()
             if self.smoother and self.draft:
                 self.smoother.finish(self.draft); self.smoother = None
                 self.renderer.append_live(self.draft)
@@ -280,7 +395,7 @@ class NativeCanvasOverlay(LineworkCanvas):
         super().keyPressEvent(event)
 
     def undo(self):
-        if self._edit_original:
+        if self._edit_original is not None:
             self.restore_edit_preview(cancel=True)
             self.selectedChanged.emit()
             return
@@ -311,7 +426,7 @@ class NativeCanvasOverlay(LineworkCanvas):
         super().set_mode(mode)
 
     def queue_native_preview(self):
-        if not self.draft and self.drag not in ("point", "stroke", "pressure", "handle"):
+        if not self.draft and self.drag not in ("point", "stroke", "pressure", "handle", "erase"):
             return
         if not self.preview_timer.isActive():
             self.preview_timer.setInterval(16 if self.renderer.stream else 75)
@@ -466,6 +581,21 @@ class NativeCanvasOverlay(LineworkCanvas):
             painter.setBrush(QColor("#e8f6ff"))
             for p in self.draft.points:
                 painter.drawEllipse(QPointF(p.x, p.y), 4/self.zoom, 4/self.zoom)
+        if self.mode == 'erase' and self.hover_pos is not None:
+            point = self.widget_to_image.map(self.hover_pos)
+            radius = max(.05, self.view.brushSize()/2)
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(self.palette().window().color(), 3/self.zoom))
+            painter.drawEllipse(point, radius, radius)
+            painter.setPen(QPen(self.palette().windowText().color(), 1/self.zoom))
+            painter.drawEllipse(point, radius, radius)
+            if self.eraser_mode == 'points':
+                color = self.palette().highlight().color()
+                painter.setPen(QPen(color, 1/self.zoom)); painter.setBrush(color)
+                for stroke in self.strokes:
+                    for anchor in stroke.points:
+                        if math.hypot(anchor.x-point.x(), anchor.y-point.y()) < radius:
+                            painter.drawEllipse(QPointF(anchor.x, anchor.y), 3.5/self.zoom, 3.5/self.zoom)
         options = self.smoothing_options
         if self.mode == 'pen' and options and int(options[0]) == 3 and options[6] and self.hover_pos is not None:
             center = (QPointF(self.draft.points[-1].x, self.draft.points[-1].y)
@@ -600,6 +730,54 @@ class LineworkToolOptions(QWidget):
         self.smoothing = SmoothingOptions()
         self.smoothing.changed.connect(self.smoothing_changed)
         forms['curve'].addRow(self.smoothing)
+        self.eraser_group = QGroupBox('Borracha')
+        eraser_form = QFormLayout(self.eraser_group)
+        self.eraser_mode = QComboBox()
+        self.eraser_mode.addItems(['Apagar linha', 'Apagar pontos'])
+        self.eraser_mode.setToolTip('Linha remove o traço inteiro. Pontos reduz o diâmetro dos pontos atingidos, sem excluir sua geometria nem alterar a pressão capturada.')
+        self.eraser_size = QDoubleSpinBox(); self.eraser_size.setRange(.1, 2000)
+        self.eraser_size.setDecimals(1); self.eraser_size.setSuffix(' px'); self.eraser_size.setKeyboardTracking(False)
+        self.eraser_size.setToolTip('Mesmo tamanho do pincel na barra do Krita.')
+        self.eraser_strength = QDoubleSpinBox(); self.eraser_strength.setRange(0,100)
+        self.eraser_strength.setValue(100); self.eraser_strength.setSuffix(' %'); self.eraser_strength.setKeyboardTracking(False)
+        eraser_form.addRow('Modo', self.eraser_mode); eraser_form.addRow('Tamanho', self.eraser_size)
+        eraser_form.addRow('Força', self.eraser_strength)
+        self.eraser_mode.currentIndexChanged.connect(self.eraser_changed)
+        self.eraser_strength.valueChanged.connect(self.eraser_changed)
+        self.eraser_size.valueChanged.connect(self.eraser_size_changed)
+        layout.addWidget(self.eraser_group); self.eraser_group.hide()
+        self.topology_group = QGroupBox('Pontos e conexões')
+        topology_layout = QVBoxLayout(self.topology_group)
+        self.merge_position = QComboBox(); self.merge_position.addItems(['No centro', 'No ponto ativo'])
+        self.merge_position.setToolTip('Posição e espessura do ponto mesclado: média dos selecionados ou valores do ponto ativo.')
+        topology_layout.addWidget(self.merge_position)
+        self.merge_button = QPushButton('Mesclar pontos')
+        self.merge_button.setToolTip('Mescla pontos consecutivos de um traço ou solda uma ponta de cada um de dois traços. Shift+clique adiciona pontos; o último ponto escolhido é o ativo.')
+        self.merge_button.clicked.connect(lambda: self.topology_action('merge'))
+        self.join_button = QPushButton('Unir pontas')
+        self.join_button.setToolTip('Selecione duas pontas. Conecta os traços preservando os diâmetros e usando pincel e cor do ativo. Duas pontas do mesmo traço fecham a curva.')
+        self.join_button.clicked.connect(lambda: self.topology_action('join'))
+        topology_buttons = QHBoxLayout()
+        topology_buttons.addWidget(self.merge_button); topology_buttons.addWidget(self.join_button)
+        topology_layout.addLayout(topology_buttons)
+        layout.removeWidget(self.selection_label)
+        layout.insertWidget(0, self.selection_label)
+        layout.insertWidget(1, self.topology_group); self.topology_group.hide()
+        self.selection_group = QGroupBox('Seleção')
+        selection_form = QFormLayout(self.selection_group)
+        self.selection_mode = QComboBox(); self.selection_mode.addItems(['Pontos e traços', 'Pontos', 'Traços'])
+        self.selection_mode.setToolTip('Pontos seleciona apenas âncoras; Traços seleciona a curva inteira, inclusive ao clicar numa ponta. Shift adiciona à seleção.')
+        self.pick_radius = QDoubleSpinBox(); self.pick_radius.setRange(4,40); self.pick_radius.setValue(16)
+        self.pick_radius.setDecimals(0); self.pick_radius.setSuffix(' px')
+        self.pick_radius.setToolTip('Raio de clique dos pontos e alças em pixels de tela, independente do zoom. O alvo mais próximo ganha.')
+        self.lock_point = QCheckBox('Travar ponto ativo')
+        self.lock_point.setToolTip('Mantém apenas o ponto ativo selecionado. Cliques fora não mudam a seleção; arraste o ponto ou suas alças para editar. Desmarque para escolher outro.')
+        selection_form.addRow('Modo', self.selection_mode)
+        selection_form.addRow(self.lock_point); selection_form.addRow('Raio de clique', self.pick_radius)
+        self.selection_mode.currentIndexChanged.connect(self.selection_options_changed)
+        self.pick_radius.valueChanged.connect(self.selection_options_changed)
+        self.lock_point.toggled.connect(self.selection_options_changed)
+        layout.insertWidget(1, self.selection_group); self.selection_group.hide()
         self.status = QLabel()
         self.status.setWordWrap(True)
         self.status.hide()
@@ -627,12 +805,15 @@ class LineworkToolOptions(QWidget):
         self.mode = modes[mode]
         if mode == 0: self.smoothing.reload()
         self.selection_label.setVisible(mode in (3, 4))
+        self.selection_group.setVisible(mode in (3, 4))
         self.tool_label.setText(labels[mode])
         self.setWindowTitle(labels[mode])
         self.groups["stroke"].setVisible(mode in (0, 1, 2, 3))
         self.groups["pressure"].setVisible(mode != 5)
         self.groups["tips"].setVisible(mode in (0, 1, 2, 3))
         self.groups["curve"].setVisible(mode == 0)
+        self.eraser_group.setVisible(mode == 5)
+        self.topology_group.setVisible(mode == 3)
         self.thickness.setVisible(mode in (3, 4))
         self.field_labels[self.thickness].setVisible(mode in (3, 4))
         self.brush_group.setVisible(mode != 5)
@@ -663,10 +844,12 @@ class LineworkToolOptions(QWidget):
         QTimer.singleShot(0, self.release_native_tool)
 
     def finish_native_request(self):
+        if self.overlay and (self.overlay._finishing or self.overlay._edit_committing or self.overlay._edit_mutating): return
         if self.overlay and self.overlay.smoother and self.overlay.draft and not self._writing and not self.overlay._finishing:
             self.overlay.finish_draft()
         if self.overlay and self.overlay._edit_original and not self.overlay._edit_committing:
-            self.overlay.restore_edit_preview(cancel=True)
+            if self.overlay.drag == 'erase': self.overlay.finish_erase()
+            else: self.overlay.restore_edit_preview(cancel=True)
             self.update_controls()
 
     def release_native_tool(self):
@@ -792,6 +975,11 @@ class LineworkToolOptions(QWidget):
                 self.overlay.defaults.update(self._defaults)
                 self.overlay.smoothing_options = list(self.smoothing.values)
                 self.overlay.mode = self.mode
+                self.overlay.selection_mode = ('auto', 'point', 'stroke')[self.selection_mode.currentIndex()]
+                self.overlay.pick_radius = self.pick_radius.value()
+                self.lock_point.blockSignals(True); self.lock_point.setChecked(False); self.lock_point.blockSignals(False)
+                self.overlay.eraser_mode = 'points' if self.eraser_mode.currentIndex() else 'line'
+                self.overlay.eraser_strength = self.eraser_strength.value()/100
                 self.overlay.changed.connect(self.save_changes)
                 self.overlay.selectedChanged.connect(self.update_controls)
                 self.overlay.message.connect(self.show_error)
@@ -822,6 +1010,10 @@ class LineworkToolOptions(QWidget):
             if self.mode in ("pen", "curve", "line"):
                 self.overlay.defaults.update(width=view.brushSize(), opacity=view.paintingOpacity())
                 self.update_controls()
+            elif self.mode == 'erase':
+                self._updating = True
+                self.eraser_size.setValue(view.brushSize())
+                self._updating = False
         except Exception as exc:
             self.fail(exc)
 
@@ -870,6 +1062,13 @@ class LineworkToolOptions(QWidget):
 
     def update_controls(self):
         self._updating = True
+        overlay = self.overlay
+        if overlay and overlay.locked_point is not None:
+            if overlay.selection.primary != overlay.locked_point or overlay.selection.points != {overlay.locked_point}:
+                overlay.locked_point = None
+        locked = bool(overlay and overlay.locked_point is not None)
+        self.lock_point.blockSignals(True); self.lock_point.setChecked(locked); self.lock_point.blockSignals(False)
+        self.lock_point.setEnabled(bool(overlay and overlay.point_index >= 0 and overlay.selection_mode != 'stroke'))
         stroke = self.selected_stroke()
         selected = self.overlay.selected_strokes() if self.overlay and self.mode in ('edit', 'pressure') else []
         point_refs = self.overlay.selected_point_refs() if selected else []
@@ -897,7 +1096,85 @@ class LineworkToolOptions(QWidget):
         self.thickness.setEnabled(bool(point_refs))
         self.thickness.setValue(widths[0] if widths else 0)
         self.thickness.set_mixed(len({round(width, 6) for width in widths}) > 1)
+        self.eraser_strength.setEnabled(bool(self.eraser_mode.currentIndex()))
+        can_edit = bool(self.overlay and self.layer and not self.layer.locked() and not changing and not self._writing)
+        for operation, button in (('merge', self.merge_button), ('join', self.join_button)):
+            allowed = False
+            if can_edit:
+                try:
+                    selection_kind(self.overlay.strokes, self.overlay.selection.point_keys(self.overlay.strokes),
+                                   self.overlay.selection.primary, operation)
+                    allowed = True
+                except ValueError: pass
+            button.setEnabled(allowed)
+        self.merge_position.setEnabled(self.merge_button.isEnabled())
         self._updating = False
+
+    def eraser_changed(self, *args):
+        if self._updating: return
+        if self.overlay:
+            if self.overlay.drag == 'erase': self.overlay.finish_draft()
+            self.overlay.eraser_mode = 'points' if self.eraser_mode.currentIndex() else 'line'
+            self.overlay.eraser_strength = self.eraser_strength.value()/100
+            self.overlay.update()
+        self.update_controls()
+
+    def selection_options_changed(self, *args):
+        if self._updating or self.overlay is None: return
+        overlay = self.overlay
+        if overlay.drag: overlay.finish_draft()
+        overlay.selection_mode = ('auto', 'point', 'stroke')[self.selection_mode.currentIndex()]
+        overlay.pick_radius = self.pick_radius.value()
+        uid, index = overlay.selection.primary
+        if self.lock_point.isChecked() and index >= 0 and overlay.selection_mode != 'stroke':
+            overlay.locked_point = uid, index
+            overlay.selection.set_points([overlay.locked_point])
+        else:
+            overlay.locked_point = None
+            self.lock_point.blockSignals(True); self.lock_point.setChecked(False); self.lock_point.blockSignals(False)
+        if overlay.selection_mode == 'stroke' and overlay.selection.ids():
+            overlay.selection.set_strokes(overlay.selection.ids())
+        overlay.selectedChanged.emit(); overlay.update()
+
+    def eraser_size_changed(self, value):
+        if self._updating: return
+        view = self.current_view()
+        if view: view.setBrushSize(value)
+        if self.overlay: self.overlay.update()
+
+    def topology_action(self, operation):
+        if self._writing or self._brush_change or not self.overlay or not self.layer or self.mode != 'edit': return
+        if self.layer.locked(): self.show_error('Desbloqueie a camada para editar.'); return
+        try:
+            overlay = self.overlay
+            overlay.restore_edit_preview(cancel=True)
+            keys = overlay.selection.point_keys(overlay.strokes)
+            kind, first, second = selection_kind(overlay.strokes, keys, overlay.selection.primary, operation)
+            updated = copy.deepcopy(overlay.strokes)
+            by_id = {s.uid: s for s in updated}
+            if kind == 'merge':
+                stroke = by_id[first]; ensure_thickness(stroke)
+                active_index = overlay.selection.primary[1]
+                result, index = merge_points(stroke, second, active_index, 'active' if self.merge_position.currentIndex() else 'center')
+                selected = [index]; removed = None
+            elif kind == 'close':
+                stroke = by_id[first]; ensure_thickness(stroke)
+                result = close_stroke(stroke); selected = [0, len(result.points)-1]; removed = None
+            else:
+                a, b = by_id[first[0]], by_id[second[0]]
+                ensure_thickness(a); ensure_thickness(b)
+                result, selected = join_strokes(a, first[1], b, second[1], weld=operation == 'merge',
+                    position='active' if self.merge_position.currentIndex() else 'center')
+                removed = b.uid
+            updated = [result if s.uid == result.uid else s for s in updated if s.uid != removed]
+            selection = copy.deepcopy(overlay.selection)
+            selection.set_points((result.uid, i) for i in selected)
+            selection.primary = result.uid, selected[0]
+            message = ('Pontos mesclados.' if operation == 'merge' else
+                       'Pontas unidas com pincel e cor do traço ativo; diâmetros preservados.')
+            self.start_model_update(updated, [result], message, selection)
+        except Exception as exc:
+            self.show_error(str(exc)); self.update_controls()
 
     def selected_stroke(self):
         return self.overlay.active_stroke() if self.overlay and self.mode in ("edit", "pressure") else None
@@ -932,11 +1209,12 @@ class LineworkToolOptions(QWidget):
         except Exception as exc:
             self.show_error(str(exc))
 
-    def start_model_update(self, updated, changed, message=None):
+    def start_model_update(self, updated, changed, message=None, selection=None):
         if not changed: return
         view = self.current_view()
         self._brush_change = dict(view=view, document=self.document, layer=self.layer,
             overlay=self.overlay, updated=updated, changed=changed, index=0, images={}, message=message,
+            selection=selection,
             renderer=NativeBrushRenderer(view), baseline=[s.data() for s in self.overlay.strokes])
         self.brush_progress.setRange(0, len(changed)); self.brush_progress.setValue(0)
         self.brush_progress_row.show(); self.status.hide(); self.update_controls(); self.brush_timer.start(0)
@@ -966,6 +1244,8 @@ class LineworkToolOptions(QWidget):
             try:
                 write_layer(state['document'], state['layer'], state['updated'], Prepared())
                 overlay = state['overlay']; overlay.strokes = state['updated']
+                if state['selection'] is not None: overlay.selection = state['selection']
+                overlay.selection.prune(overlay.strokes)
                 overlay.history.commit(overlay.strokes)
                 overlay.saved_appearances.clear(); overlay.native_preview = None
                 overlay.selectedChanged.emit(); overlay.update()

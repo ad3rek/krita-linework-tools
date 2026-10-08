@@ -17,7 +17,7 @@ def windows_path(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle'])
+    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology'])
     parser.add_argument('--krita-bin',required=True,type=Path,help='Official Windows Krita 5.2.14 bin directory')
     parser.add_argument('--output',type=Path)
     args = parser.parse_args()
@@ -26,7 +26,7 @@ def main():
     for directory in ('docs/validation','docs/images','examples'):
         (output/directory).mkdir(parents=True,exist_ok=True)
     name = {'cc_lineart':'cc-lineart.json','multi_point':'multi-point.json','smoothing':'smoothing.json',
-            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json'}[args.probe]
+            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json'}[args.probe]
     report = output/'docs/validation'/name
     report.unlink(missing_ok=True)
     command = ['xvfb-run','-a','-s','-screen 0 1600x1100x24']

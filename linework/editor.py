@@ -38,6 +38,9 @@ class LineworkCanvas(QWidget):
         self.history = History(self.strokes)
         self.mode = "pen"
         self.selection = Selection()
+        self.selection_mode = 'auto'
+        self.pick_radius = 16.0  # Logical screen pixels, independent of canvas zoom.
+        self.locked_point = None
         self.handle_side = None
         self.zoom = 1.0
         self.offset = QPointF(20, 20)
@@ -91,6 +94,9 @@ class LineworkCanvas(QWidget):
         self.selectedChanged.emit(); self.update()
 
     def select_all(self):
+        if self.locked_point is not None: return
+        if self.selection_mode == 'stroke':
+            self.select_strokes(s.uid for s in self.strokes); return
         self.selection.set_points((s.uid, i) for s in self.strokes for i in range(len(s.points)))
         self.selectedChanged.emit(); self.update()
 
@@ -116,15 +122,21 @@ class LineworkCanvas(QWidget):
         return cached[1]
 
     def hit_at(self, p):
-        threshold = 10/self.zoom
-        # Selected anchors win over nearby outlines at intersections.
+        threshold = self.pick_radius/self.zoom
+        # Pick the nearest anchor; selection priority only breaks equal distances.
         selected = self.selected_strokes()
         ids = self.selection.ids()
         candidates = selected+[s for s in reversed(self.strokes) if s.uid not in ids]
-        for stroke in candidates:
-            closest = min(range(len(stroke.points)), key=lambda i: distance(p, stroke.points[i]))
-            if distance(p, stroke.points[closest]) <= threshold:
-                return stroke, closest
+        if self.selection_mode != 'stroke':
+            best_point = None; best_distance = threshold
+            for stroke in candidates:
+                if not stroke.points: continue
+                closest = min(range(len(stroke.points)), key=lambda i: distance(p, stroke.points[i]))
+                d = distance(p, stroke.points[closest])
+                if d <= threshold and (best_point is None or d < best_distance-1e-9):
+                    best_point, best_distance = (stroke, closest), d
+            if best_point is not None: return best_point
+            if self.selection_mode == 'point': return None, -1
         best = threshold
         hit = None
         for index in reversed(range(len(self.strokes))):
@@ -164,20 +176,25 @@ class LineworkCanvas(QWidget):
 
     def handle_at(self, p):
         stroke = self.active_stroke()
-        if self.mode != "edit" or stroke is None or self.point_index < 0:
+        if self.mode != "edit" or self.selection_mode == 'stroke' or stroke is None or self.point_index < 0:
             return None
         anchor = stroke.points[self.point_index]
-        # The anchor itself must remain easy to select with collapsed handles.
-        if distance(p, anchor) <= 6/self.zoom:
-            return None
+        anchor_distance = distance(p, anchor)
+        best = self.pick_radius/self.zoom
+        side_hit = None
         for side in ("in", "out"):
             vector = handle_vector(stroke, self.point_index, side)
-            if vector and distance(p, Point(anchor.x+vector[0], anchor.y+vector[1])) <= 7/self.zoom:
-                return side
-        return None
+            if vector:
+                d = distance(p, Point(anchor.x+vector[0], anchor.y+vector[1]))
+                if d <= best and d < anchor_distance:
+                    best, side_hit = d, side
+        if side_hit is not None and self.locked_point is None:
+            if any(distance(p, point) < best for target in self.strokes for point in target.points):
+                return None
+        return side_hit
 
     def insert_at(self, pos):
-        if self.mode != "edit":
+        if self.mode != "edit" or self.locked_point is not None:
             return
         self.select_at(self.local_point(pos))
         stroke = self.active_stroke()
@@ -225,6 +242,18 @@ class LineworkCanvas(QWidget):
                 self._opposite_length = math.hypot(*opposite) if opposite is not None else None
                 self.drag = "handle"
                 return
+            if self.locked_point is not None and self.mode in ('edit', 'pressure'):
+                stroke = self.active_stroke()
+                if stroke is None or self.point_index < 0 or distance(p, stroke.points[self.point_index]) > self.pick_radius/self.zoom:
+                    return
+                # A miss or Shift-click cannot replace the pinned anchor.
+                if self.mode == 'pressure':
+                    self.drag = 'pressure'
+                    self._initial_thicknesses = {(s.uid, i): point_thickness(s, i) for s, i in self.selected_point_refs()}
+                    self.drag_start = pos
+                else:
+                    self.drag = 'point'; self.last_doc = p
+                self.update(); return
             if self.mode == "edit" and modifiers & Qt.AltModifier:
                 self.insert_at(pos)
                 return
@@ -269,7 +298,12 @@ class LineworkCanvas(QWidget):
                          QPointF(self._selection_end.x, self._selection_end.y)).normalized()
             keys = {(s.uid, i) for s in self.strokes for i, p in enumerate(s.points) if box.contains(QPointF(p.x, p.y))}
             if self._selection_add: keys.update(self._selection_before.point_keys(self.strokes))
-            self.selection.set_points(keys); self.selectedChanged.emit()
+            if self.selection_mode == 'stroke':
+                ids = {uid for uid, _ in keys}
+                if self._selection_add: ids.update(self._selection_before.ids())
+                self.selection.set_strokes(ids)
+            else: self.selection.set_points(keys)
+            self.selectedChanged.emit()
         elif self.drag in ("point", "stroke", "pressure", "handle"):
             stroke = self.active_stroke()
             if stroke:

@@ -46,6 +46,20 @@ test_changed_path_and_child_transform_still_detected (test_storage_fingerprint.S
 test_color_opacity_and_embedded_bitmap_edits_still_detected (test_storage_fingerprint.StorageFingerprintTests.test_color_opacity_and_embedded_bitmap_edits_still_detected) ... ok
 test_existing_pose_fingerprint_is_preserved_by_version_one (test_storage_fingerprint.StorageFingerprintTests.test_existing_pose_fingerprint_is_preserved_by_version_one) ... ok
 test_reloaded_zero_radius_cap_stays_editable (test_storage_fingerprint.StorageFingerprintTests.test_reloaded_zero_radius_cap_stays_editable) ... ok
+test_minimum_is_baked_before_erase_so_zero_is_reachable (test_topology.EraserTests.test_minimum_is_baked_before_erase_so_zero_is_reachable) ... ok
+test_point_eraser_preserves_geometry_pressure_and_has_stable_coverage (test_topology.EraserTests.test_point_eraser_preserves_geometry_pressure_and_has_stable_coverage) ... ok
+test_swept_line_hit_includes_crossings_and_handles_stationary_cursor (test_topology.EraserTests.test_swept_line_hit_includes_crossings_and_handles_stationary_cursor) ... ok
+test_close_preserves_existing_curve_and_removes_tip_taper (test_topology.TopologyTests.test_close_preserves_existing_curve_and_removes_tip_taper) ... ok
+test_connector_is_straight_and_preserves_both_endpoint_diameters (test_topology.TopologyTests.test_connector_is_straight_and_preserves_both_endpoint_diameters) ... ok
+test_invalid_topology_is_non_mutating_and_limits_are_enforced (test_topology.TopologyTests.test_invalid_topology_is_non_mutating_and_limits_are_enforced) ... ok
+test_join_all_endpoint_orientations_retains_both_curves_and_active_style (test_topology.TopologyTests.test_join_all_endpoint_orientations_retains_both_curves_and_active_style) ... ok
+test_join_rejects_diameter_overflow_in_active_base_without_changing_sources (test_topology.TopologyTests.test_join_rejects_diameter_overflow_in_active_base_without_changing_sources) ... ok
+test_line_to_curve_join_keeps_linear_segments_and_scalar_channels (test_topology.TopologyTests.test_line_to_curve_join_keeps_linear_segments_and_scalar_channels) ... ok
+test_merge_consecutive_at_center_or_active_preserves_other_segments (test_topology.TopologyTests.test_merge_consecutive_at_center_or_active_preserves_other_segments) ... ok
+test_new_topology_roundtrips_and_one_step_history_restores_sources (test_topology.TopologyTests.test_new_topology_roundtrips_and_one_step_history_restores_sources) ... ok
+test_reverse_preserves_geometry_pressure_and_width_controls (test_topology.TopologyTests.test_reverse_preserves_geometry_pressure_and_width_controls) ... ok
+test_selection_distinguishes_merge_join_close_and_rejects_branches (test_topology.TopologyTests.test_selection_distinguishes_merge_join_close_and_rejects_branches) ... ok
+test_weld_two_endpoints_uses_active_position_or_average (test_topology.TopologyTests.test_weld_two_endpoints_uses_active_position_or_average) ... ok
 test_cancellation_and_empty_image (test_vectorize.VectorizeTests.test_cancellation_and_empty_image) ... ok
 test_cycle_stays_closed_and_editable (test_vectorize.VectorizeTests.test_cycle_stays_closed_and_editable) ... ok
 test_junction_keeps_all_three_arms (test_vectorize.VectorizeTests.test_junction_keeps_all_three_arms) ... ok
@@ -56,10 +70,10 @@ test_varying_width_survives_as_pressure (test_vectorize.VectorizeTests.test_vary
 test_white_background_and_alpha_keep_color (test_vectorize.VectorizeTests.test_white_background_and_alpha_keep_color) ... ok
 
 ----------------------------------------------------------------------
-Ran 56 tests in 13.213s
+Ran 70 tests in 43.306s
 
 OK
-Installed in: /tmp/tmp_wko0a29/roaming/krita/pykrita
+Installed in: /tmp/tmpe4y1cyot/roaming/krita/pykrita
 Restart Krita to load the native bridge.
 Manual activation: Settings > Configure Krita > Python Plugin Manager > Linework.
 Select Linework Brush in the toolbox; controls appear in Tool Options.

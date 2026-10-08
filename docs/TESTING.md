@@ -13,7 +13,7 @@ python3 -m unittest discover -s tests -v
 
 The first command requires a C++17 `g++` compiler and rebuilds only the vectorizer. The suite also compiles a reference library from the original OpenToonz sources. Neither the OpenToonz application nor a running Krita is required.
 
-**56 tests passed**, including 16 synthetic fixtures compared against the original core: quadratic position and radius controls match exactly. [Published run log](validation/cpu-tests.txt) · [Reference scope](validation/opentoonz-reference.json).
+**70 tests passed**, including 16 synthetic fixtures compared against the original core: quadratic position and radius controls match exactly. [Published run log](validation/cpu-tests.txt) · [Reference scope](validation/opentoonz-reference.json).
 
 ## Krita GUI regressions
 
@@ -25,6 +25,7 @@ python3 tests/gui/run.py multi_point
 python3 tests/gui/run.py smoothing
 python3 tests/gui/run.py color
 python3 tests/gui/run.py stroke_lifecycle
+python3 tests/gui/run.py eraser_topology
 ```
 
 Each run creates a **separate configuration, resources, test plugin, temporary directory and Krita instance**. It does not use the user's open documents or Krita configuration. Results go to `work/gui-results/<probe>/`, ignored by Git; `--output /path` chooses another destination.
@@ -35,6 +36,7 @@ Each run creates a **separate configuration, resources, test plugin, temporary d
 | `multi_point` | Inherited native selection, Shift, mixed fields, thickness across different base widths, hidden originals while dragging, Esc, rectangle, deletion, Ctrl+A and save/reopen. |
 | `smoothing` | Qt tablet events through four native filters, compaction and sampled error, pressure, handles, history, Esc, delay, finishing, saving during drawing and tool switching. |
 | `color` | Foreground recoloring of native brushes and smooth lines, selected/whole-layer scope, debounce, rendered pixels, grouped undo/redo, locked layers and save/reopen. |
+| `eraser_topology` | 21 checks: native point thinning, zero recovery, pressure, saving, swept line deletion, cancellation, locks, active style and retained diameters, merging/welding/closing, expanded point/handle targets, point/stroke selection, active-point lock and save/reopen. |
 | `stroke_lifecycle` | Rapid mouse/tablet input in four modes, double click, another gesture during native rendering, queued mouse/tablet/shortcuts, missed release, separate undo steps, continued drawing, native pixels and save/reopen. |
 
 Published reports: [lineart](validation/cc-lineart.json), [multiple selection](validation/multi-point.json), [fresh smoothing run](validation/smoothing.json), and [earlier reduction with reopening in another process](validation/point-reduction.json).
@@ -62,6 +64,7 @@ python3 tests/gui/run_windows_wine.py multi_point --krita-bin /path/krita-x64-5.
 python3 tests/gui/run_windows_wine.py smoothing --krita-bin /path/krita-x64-5.2.14/bin
 python3 tests/gui/run_windows_wine.py color --krita-bin /path/krita-x64-5.2.14/bin
 python3 tests/gui/run_windows_wine.py stroke_lifecycle --krita-bin /path/krita-x64-5.2.14/bin
+python3 tests/gui/run_windows_wine.py eraser_topology --krita-bin /path/krita-x64-5.2.14/bin
 python3 tests/gui/run_windows_wine.py cc_lineart --krita-bin /path/krita-x64-5.2.14/bin
 ```
 
@@ -72,3 +75,5 @@ The Windows multiple-selection and smoothing regressions passed. [Multiple selec
 The 0.1.1 [Windows color regression](validation/windows-color.json) also passed all ten checks, with Krita exiting normally. That run reused an initialized project-owned Wine prefix and isolated test resources after fresh-prefix initialization timed out before Krita started. It did not use the default Wine prefix or the user's Krita configuration. [Linux color regression](validation/color.json).
 
 The complete 743-stroke Windows `cc_lineart` probe did not finish. Diagnostic traces reached native scratch-image waits during brush redo. Root cause and physical Windows behavior are unconfirmed. [Incomplete probe and release status](validation/windows-status.json). The Windows package is an experimental preview; Linux lineart results do not establish Windows bulk replay/history stability.
+
+The 0.1.2 [Linux eraser/topology regression](validation/eraser-topology.json) and [Windows/Wine regression](validation/windows-eraser-topology.json) passed all 21 checks with normal exits. These probes use synthetic paths, real Qt mouse/tablet events, Tool Options actions, native projection pixels and saved metadata. Windows testing reused the initialized project-owned Wine prefix described above. Reports record hashes of the tested editor, tool integration, eraser, topology and probe sources.

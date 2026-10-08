@@ -1,5 +1,5 @@
 LINEWORK NATIVE BRIDGE — KRITA 5.2.14
-Public release: 0.1.1 (development reports retain their original version labels)
+Public release: 0.1.2 (development reports retain their original version labels)
 
 Linux build: KDE Neon x86_64, Qt 5.15.17, Python 3.12.
 Windows build: official Krita 5.2.14 x64, Qt 5.15.7, LLVM-MinGW 18.1.8 UCRT,

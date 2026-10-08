@@ -10,5 +10,13 @@
   "delete_multiple_points_and_undo": "pass",
   "ctrl_a_sets_same_diameter_above_native_base": "pass",
   "kra_roundtrip_and_raster_source_unchanged": "pass",
-  "result": "pass"
+  "result": "pass",
+  "version": "0.1.2",
+  "date": "2026-10-08",
+  "krita_process_exit_code": 0,
+  "environment": "Linux x86_64 / Krita 5.2.14 / Qt 5.15.17 / Python 3.12",
+  "source_sha256": {
+    "linework/editor.py": "55ba1372d6b092032d9785b6596ca114bb309a936ae92a17ed183b189904e6f9",
+    "linework/tool_options.py": "6c433ab6487f4b94305e0854bee76fe0e1f00f132c3740eae1891fe08b6eb961"
+  }
 }

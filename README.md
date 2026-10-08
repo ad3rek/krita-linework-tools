@@ -6,7 +6,7 @@ Draw directly on the canvas with Krita brush presets, then edit the centerline, 
 
 Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2** to investigate its linework features and guide the reproduction of their behavior. The [implementation and scope](#codex-ghidra-and-reverse-engineering) are documented below.
 
-> **Version 0.1.1 · experimental desktop build for Krita 5.2.14.** The native bridge uses Krita's internal ABI. Each platform package needs the matching application and compatible libraries; other Krita builds require recompilation and validation. Android remains outside the current release.
+> **Version 0.1.2 · experimental desktop build for Krita 5.2.14.** The native bridge uses Krita's internal ABI. Each platform package needs the matching application and compatible libraries; other Krita builds require recompilation and validation. Android remains outside the current release.
 
 ![Pepper lineart converted into a Linework layer in the real Krita interface](docs/images/pepper-vectorized.png)
 
@@ -14,16 +14,14 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 ## Download and install
 
-Download a platform package from [version 0.1.1](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.1). Save your work and close Krita before installing.
+Download a platform package from [version 0.1.2](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.2). Save your work and close Krita before installing.
 
-Version **0.1.1** includes the color-editing fix in both platform packages: Krita's foreground recolors selected strokes in Edit/Thickness, and Apply current color supports selected strokes or the whole layer. Existing geometry and brush settings are preserved.
-
-**Unreleased fix on `main`:** brush input received while Krita finishes rendering or saving a stroke is queued and replayed in order. This fixes disappearing strokes and the editor stopping after release. A new press also preserves an unfinished stroke if its release event was missed. The published 0.1.1 ZIPs do not yet include this additional fix.
+Version **0.1.2** adds two eraser modes, point merging and endpoint joining, larger click targets, point/stroke selection modes and an active-point lock. It also includes the fix for strokes disappearing when released: input received during native rendering or saving is queued and replayed in order, keeping the editor usable. The color-editing fix from 0.1.1 is included.
 
 | Package | Required application | Validation environment |
 | --- | --- | --- |
-| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.1/Krita-Linework-Tools-0.1.1-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
-| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.1/Krita-Linework-Tools-0.1.1-windows-x86_64.zip) | Official Krita 5.2.14 x64, Qt 5.15.7 | Experimental preview; selection/smoothing tested under Wine 11.0 |
+| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.2/Krita-Linework-Tools-0.1.2-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
+| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.2/Krita-Linework-Tools-0.1.2-windows-x86_64.zip) | Official Krita 5.2.14 x64, Qt 5.15.7 | Experimental preview; canvas regressions tested under Wine 11.0 |
 
 On Linux, extract the archive, open a terminal in its folder and run:
 
@@ -51,7 +49,7 @@ Choose **Linework Brush**, pick a preset in Krita's brush panel and draw on the 
 | Linework Curve / Line | Place points by clicking; Enter or right click finishes. |
 | Linework Edit | Move points or groups, edit handles, insert points and delete the selection. |
 | Linework Thickness | Edit the nominal diameter in pixels, with guides and multiple point selection. |
-| Linework Erase | Remove an entire stroke. |
+| Linework Erase | Remove whole strokes or reduce thickness at existing points. |
 
 The toolbox icons follow Krita's theme and the group has a separator. Controls use the native Tool Options docker. The first stroke creates a Linework layer when the active layer is not already Linework; **Tools → Scripts → New Linework Layer** starts another one.
 
@@ -79,7 +77,7 @@ The vectorizer extracts centerlines and radii. It does not reconstruct filled re
 
 ## Points, thickness and changing brushes
 
-In **Linework Edit**, drag a point or a selected group. The active point shows square handles; Alt-drag moves one handle without aligning the opposite one. Double click a stroke or Alt-click to insert a point through subdivision without changing the curve. Delete removes the selection.
+In **Linework Edit**, drag a point or a selected group. **Tool Options → Selection** offers automatic point/stroke picking, **Points** or **Strokes**. Stroke mode selects the whole path even when you click an anchor; dragging moves all its points. **Lock active point** keeps one anchor selected while you edit it or its handles, and ignores clicks elsewhere until you unlock it. These options also apply to Thickness. The click radius defaults to **16 screen pixels**, is adjustable from 4–40 px and stays constant while zooming; the closest point or handle wins. The active point shows square handles; Alt-drag moves one handle without aligning the opposite one. Double click a stroke or Alt-click to insert a point through subdivision without changing the curve. Delete removes the selection.
 
 Shift-click adds or removes items, dragging on empty canvas makes a point selection rectangle, and Ctrl+A selects all. A selection made with Krita's native **Select Shapes** is inherited by Edit and Thickness. This lets you adjust points across several strokes together.
 
@@ -98,6 +96,22 @@ During point, handle or thickness dragging, affected strokes' original appearanc
 *Synthetic test curves: selection across strokes, independent diameters and controls in native Tool Options.*
 
 Moving, scaling, rotating or mirroring with native shape tools updates the points and handles and rerenders the preset. Uniform scaling scales thickness; nonuniform scaling uses the geometric mean of the two scale factors. Resizing the whole document does not currently update the stored centerline metadata.
+
+## Erasing, merging and joining
+
+**Linework Erase → Mode** offers **Erase line** (`Apagar linha`) and **Erase points** (`Apagar pontos`). Line mode removes every stroke crossed by the circular cursor, including fast movements. Point mode reduces the diameter of existing anchors inside the circle; it retains their position, handles and recorded stylus pressure. Size follows Krita's brush size, while strength and tablet pressure control thinning. Repeated stationary samples do not accumulate within the same gesture; another gesture can thin further. A point can reach zero thickness and remain editable. The cursor highlights anchors in range. Each gesture is one undo step; Esc restores the original appearance.
+
+![Point eraser thinning a native brush stroke inside Krita](docs/images/eraser-points.png)
+
+*Synthetic native brush test, showing the eraser footprint and an affected anchor. Confirmed strokes are hidden and cached during editing, so the preview does not duplicate them. Saving during an eraser gesture finishes it once.*
+
+In **Linework Edit → Points and connections**, Shift-click the anchors you want to use. **Merge points** (`Mesclar pontos`) collapses two or more consecutive points on one path, or welds one endpoint from each of two paths. Choose **At center** or **At active point**; the merged point takes the average position/diameter or the active point's values. **Join endpoints** (`Unir pontas`) keeps both anchors and connects them with a segment. Selecting both endpoints of the same path closes it.
+
+The last selected point is active. When joining different paths, the result uses the **active stroke's brush, color and other appearance settings**, while preserving the original points' independent diameters and recorded pressure. Exterior handles are retained; internal endpoint tapers cease to be tips. These operations support linear paths; arbitrary branching networks and nonconsecutive point merges are not supported. Preparation can be canceled and each completed operation is one undo step.
+
+![Selection modes, active-point lock and merging controls in native Tool Options](docs/images/merge-join-tools.png)
+
+*Real Krita screenshot with synthetic paths: joined and welded native strokes, a merged path, and a closed curve. [Linux regression](docs/validation/eraser-topology.json) · [Windows/Wine regression](docs/validation/windows-eraser-topology.json).*
 
 ## Native smoothing with fewer points
 
@@ -124,7 +138,7 @@ These values describe one drawing and run. Stabilizer timing changes its sample 
 
 ## Functional tests
 
-**56 CPU tests passed** in the published checkout. They cover the model, selection, insertion, serialization, fingerprints, affine transforms, compaction and vectorization. A differential test compiles the original OpenToonz sources and checks **exact equality of quadratic position and radius controls in 16 synthetic fixtures**.
+**70 CPU tests passed** in the published checkout. They cover the model, selection, insertion, serialization, fingerprints, affine transforms, compaction, vectorization, swept erasing and point/endpoint topology. A differential test compiles the original OpenToonz sources and checks **exact equality of quadratic position and radius controls in 16 synthetic fixtures**.
 
 | Operation in Krita | Verified behavior |
 | --- | --- |
@@ -137,6 +151,8 @@ These values describe one drawing and run. Stabilizer timing changes its sample 
 | Another plugin querying shapes | Observer timer runs during preparation; no reads occur during protected scene mutation. |
 | Group selection and editing | Select Shapes inheritance, Shift, rectangle, dragging, indicators, deletion and history. |
 | Recolor existing strokes | Native brushes and smooth lines, selected/whole-layer scope, one undo step and preserved `.kra` data. Linux and Windows/Wine color probes passed. |
+| Erase, merge and join | Native pixels, zero-width recovery, tablet strength, whole-line sweeps, history, cancellation, locked layers, active style and preserved diameters. |
+| Point/stroke selection and locking | Enlarged point/handle targets, clicks from anchors selecting a whole path, pinned selection across Edit/Thickness and canceled dragging. |
 | Brush and smoothing | Four native filters, pressure, handles, reduction, Esc, delay, tool switching and saving during drawing. |
 | Release and continued drawing | Rapid mouse/tablet strokes in all four modes, input during native waits, queued undo/redo, missed release, rendered pixels and save/reopen. Linux and Windows/Wine probes passed. |
 
@@ -152,7 +168,7 @@ An outer native busy wait protects shape mutations while Krita drains its worker
 
 ## Windows build and validation
 
-The **0.1.1 color regression passed** in the official Windows application under Wine 11.0: native brush and smooth-line recoloring, selected/whole-layer scope, rendered pixels, debounce, undo/redo, locked layers and save/reopen. [Color regression report](docs/validation/windows-color.json). The native DLLs are unchanged from 0.1; this update changes the Python tool integration and metadata.
+The **0.1.1 color regression passed** in the official Windows application under Wine 11.0: native brush and smooth-line recoloring, selected/whole-layer scope, rendered pixels, debounce, undo/redo, locked layers and save/reopen. [Color regression report](docs/validation/windows-color.json). The 0.1.2 eraser/topology and selection regression also passed, including all 21 checks and a normal application exit. [New regression report](docs/validation/windows-eraser-topology.json). The native DLLs are unchanged from 0.1; this update changes the Python tool integration and metadata.
 
 The Windows package contains native **PE x86-64 DLLs**, built with **LLVM-MinGW Clang 18.1.8 UCRT**, matching the official Krita 5.2.14 toolchain. It uses Krita's existing runtime libraries. [Build provenance and binary hashes](docs/validation/windows-build.json).
 
@@ -180,6 +196,6 @@ This evidence supports feature investigation and behavioral inspiration. It does
 
 ## Limitations and licenses
 
-Each stroke renders onto transparency; presets depending on pigment from other layers do not preserve that interaction. Physical stylus tilt, rotation and velocity are not recorded. Linework has its own session history. There is no `.sai2` import, curve cutting/joining, wraparound canvas or OpenToonz filled-region reconstruction. Full document resizing does not update stored centerline metadata. Physical tablet compatibility needs validation on each device.
+Each stroke renders onto transparency; presets depending on pigment from other layers do not preserve that interaction. Physical stylus tilt, rotation and velocity are not recorded. Linework has its own session history. There is no `.sai2` import, curve cutting, arbitrary branching networks, wraparound canvas or OpenToonz filled-region reconstruction. Full document resizing does not update stored centerline metadata. Physical tablet compatibility needs validation on each device.
 
 The integration is **GPL-3.0-or-later** ([LICENSE](LICENSE)). The OpenToonz core retains **BSD-3-Clause** notices ([THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)). Pepper artwork and its derivatives are **CC BY 4.0**, credited to **David Revoy** with the changes described in [ARTWORK.md](docs/ARTWORK.md). This independent project does not imply endorsement by Krita, Paint Tool SAI, OpenToonz or the artwork's author.
