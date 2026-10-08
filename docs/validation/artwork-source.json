@@ -1,0 +1,35 @@
+{
+  "title": "Characters lineart \u2014 Pepper excerpt",
+  "author": "David Revoy",
+  "license": "CC-BY-4.0",
+  "source_page": "https://www.peppercarrot.com/kr/viewer/misc-src__2016-02-25_characters-lineart_by-David-Revoy.html",
+  "source_download": "https://www.peppercarrot.com/0_sources/0ther/misc/hi-res/2016-02-25_characters-lineart_by-David-Revoy.jpg",
+  "original_dimensions": [
+    5259,
+    2400
+  ],
+  "original_sha256": "14ceb99ee61442197323c975954f410ca2267779db89c5e02f8f0fb7fa708953",
+  "changes": {
+    "crop_xyxy": [
+      3860,
+      0,
+      5259,
+      2150
+    ],
+    "resample": "Pillow LANCZOS",
+    "dimensions": [
+      833,
+      1280
+    ],
+    "grayscale": "Pillow RGB to L: ITU-R 601 luma (0.299 R + 0.587 G + 0.114 B), 8-bit",
+    "levels": {
+      "input_black": 128,
+      "input_white": 220,
+      "gamma": 1.0,
+      "output_black": 0,
+      "output_white": 255,
+      "formula": "round(255 * clamp((gray - 128) / 92, 0, 1))"
+    }
+  },
+  "fixture_sha256": "b60eb27771968a655456e006112d34353972e519ed95ee0708603764adc3e13f"
+}

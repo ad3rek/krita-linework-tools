@@ -1,0 +1,24 @@
+{
+  "revision": "8c5345182b1c3d2ff011a1cf08dad067b6700f08",
+  "repository": "https://github.com/opentoonz/opentoonz",
+  "files": {
+    "toonz/sources/toonzlib/tcenterlinepolygonizer.cpp": "cf64c7f3b6c6db7a4255618c8e5116f16c9017c5fad6997b8fca05c1d549b7aa",
+    "toonz/sources/toonzlib/tcenterlineskeletonizer.cpp": "1aede8eb223af62d86ea00a51fa7963ef040b3e900097c1ce1841e1970039c51",
+    "toonz/sources/toonzlib/tcenterlineadjustments.cpp": "704090386eb9eec0b90bac6fb117147f97dc63ff2cb231b1535954962e32186e",
+    "toonz/sources/toonzlib/tcenterlinetostrokes.cpp": "70d5c751289529a4fb8efd0037f04a8c96bb862d94328874c7de3b9b5a44c5a8",
+    "toonz/sources/toonzlib/tcenterlinecolors.cpp": "03165dd453baebab75e7759f7bc7dc1ff4b9b24907fd272693e63eaa6a4348f7",
+    "toonz/sources/toonzlib/tcenterlinevectP.h": "5f34d255b39b40f57113edca4fc7cbc6fbf00b230711e25e2dbd79932c24fe8b",
+    "toonz/sources/toonzlib/tcenterlinevectorizer.cpp": "6af8254c184ccaa8bc22645c93d2a8f59531fcf64e6d1ef80c026060f3a6539b",
+    "toonz/sources/include/tgeometry.h": "1bbbffd7ae4963960d76b00ea3c1acc6402dd7a6db82628336639ff3083bf77c",
+    "toonz/sources/include/tutil.h": "89dfd6c2148c80279da8c84f0b0c0febc4c83fe886f418c6a63154bc565f95f2",
+    "toonz/sources/include/tcommon.h": "7ee498b729435b5d427666ffab7afcff27c883973e270bfee28cc9ba518bad99",
+    "toonz/sources/include/tnztypes.h": "fbf2be3c2d49b590624ee03b47e2dbf402dbb3152c0304cbd7e9f00dd019f2d3",
+    "toonz/sources/include/toonz/tcenterlinevectorizer.h": "c3ad8d627efd2b8ededc334d1e3e62e4fb7aadd5b41e5eb924e4b9a2f1fcb6ba",
+    "toonz/sources/include/toonz/vectorizerparameters.h": "6e6731b56551206c64f11a989b3b440017f2c93718deca55de31320b1f3e82e6",
+    "toonz/sources/include/tcg/tcg_numeric_ops.h": "51f00e3059af14028f037ece4682cfecba8623778f594fdb9e3405f8d011b324",
+    "toonz/sources/include/tcg/numeric_ops.h": "829efc5e9ae2149e2a9d9607f2fa39622de589fe040a378bf4618a3ec80aeb5f",
+    "toonz/sources/include/tcg/traits.h": "39ae412bd49880eb8b6f59754efe8132b2025431105df06bdca0d3b7ed3ec7ff",
+    "toonz/sources/include/tcg/macros.h": "22f14df5bbccb27b63cf8e7b74b42b08cf13586b692c2d3dd9852a36e5b6fe79",
+    "toonz/sources/common/tgeometry/tgeometry.cpp": "4d501d501965d9bae041c7097efb964317bae1a34a12dc81da95f27832419f3c"
+  }
+}

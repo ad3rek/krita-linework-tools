@@ -1,0 +1,140 @@
+PONTE NATIVA LINEWORK — KRITA 5.2.14
+
+O binário fornecido foi compilado e validado no Linux x86_64, Krita 5.2.14 do KDE
+Neon, com Qt 5.15.17. Não carrega em outra versão do Krita. Para recompilar são
+necessários g++, os fontes oficiais v5.2.14 e os headers de desenvolvimento
+Qt 5, Boost e KF5 (I18n, CoreAddons, Config, WidgetsAddons, Completion, GuiAddons,
+ItemModels). As bibliotecas compartilhadas do Krita precisam estar instaladas.
+
+Fontes oficiais:
+https://github.com/KDE/krita/tree/v5.2.14
+Revisão: 31056c6b76a164069752fc9d5f655f9479aca246
+
+Na pasta deste arquivo:
+python3 build.py --krita-source /caminho/krita-5.2.14
+
+Para headers extraídos em um prefixo separado, sem instalar pacotes no sistema:
+python3 build.py --krita-source /caminho/krita-5.2.14 --sdk-prefix /caminho/sdk/usr
+
+O resultado substitui liblinework_native.so nesta pasta. Reinstale o plugin e
+reabra o Krita. Verifique a compilação em uma instância com recursos isolados.
+
+Arquitetura
+A API Python do Krita 5.2.14 não oferece reprodução contínua de uma sequência
+completa de amostras através dos presets. A ponte recebe objetos libkis via SIP,
+obtém sua imagem/nó e o provedor de recursos da visualização, e usa o mesmo
+FreehandStrokeStrategy dos motores de pintura do Krita. Um único stroke contém
+todas as linhas interpoladas, mantendo o espaçamento contínuo do pincel.
+
+São usados os headers oficiais e as funções exportadas Node::image/Node::node,
+View::view, Resource::resource, Shape::shape e KisShapeLayer::canvas. O acesso a esses membros privados utiliza
+instanciação explícita de ponteiros de membro; nenhuma definição/layout de classe
+é alterada. A ponte depende da ABI exata do Krita 5.2.14.
+
+A renderização ocorre em uma imagem interna sem visualização/aba adicional.
+Um preset clonado, provedor de recursos local e seleção vazia evitam modificar o
+preset original, as cores, os recursos ou a seleção da visualização do usuário.
+A imagem interna é reaproveitada. Na prévia incremental, jobs de barreira copiam
+a aparência no worker; a interface lê imagens prontas sem bloquear um stroke
+aberto. O PNG é produzido ao gravar um traço. Sair/fechar o canvas libera a imagem.
+A chamada é aceita somente na thread principal do aplicativo.
+
+O código é GPL-3.0-or-later. Não contém código ou recursos do Paint Tool SAI.
+
+Ferramentas
+A ponte registra KoToolFactoryBase/KisToolPaint no KoToolRegistry e atualiza a
+lista de ações do KoToolManager antes da criação dos primeiros canvases. Cada
+ferramenta fornece um QWidget às opções nativas. Os headers oficiais definem
+o acesso à lista do manager; seu modelo/índices de camadas são preservados.
+
+Edição
+A forma salva permanece visível como filha da camada. Durante o arraste ela é
+excluída apenas do KoShapeManager de renderização; a prévia substitui sua imagem
+na tela. SVG e fingerprints permanecem intactos. Uma sessão de stroke coordena
+o arraste com as solicitações nativas de salvar/encerrar: restaurar a aparência
+confirmada antecede a leitura da projeção. O cache Python copia o PNG já embutido,
+inclusive de arquivos reabertos, sem repetir o motor aleatório ao selecionar.
+
+Transformações nativas
+A ponte lê a matriz absoluta e o tamanho normalizado da forma, e serializa um
+clone sem a transformação para validar que houve somente uma operação afim.
+Ao adotar uma transformação, preserva o KoShape superior e sua matriz, atualiza
+apenas o conteúdo local do ImageShape/KoPathShape e compensa a transformação
+para que a nova aparência represente as coordenadas já aplicadas no documento.
+Isso mantém as referências dos comandos nativos de seleção, mover e escala.
+A sincronização espera mouse/caneta liberados e duas leituras estáveis da matriz;
+não substitui objetos durante um arraste. O esquema 6 guarda os perfis independentes, matriz, assinatura,
+alças e controles de espessura; documentos dos esquemas anteriores continuam legíveis.
+
+Vetorização
+linework_layer_snapshot cria uma QImage RGBA em cópia com conversão de cor, sem
+alterar a camada original. A reimplementação/portabilidade do mesmo algoritmo
+Centerline do OpenToonz compila com python3 build_vectorize.py e produz
+liblinework_vectorize.so, sem SDK Qt/Krita/OpenToonz nem dependências externas
+além de g++ C++17 e a biblioteca padrão. Os fontes BSD-3-Clause e headers
+matemáticos originais estão em opentoonz/upstream; as cópias compiladas em
+opentoonz/core só têm os patches de integração descritos em VECTORIZATION.txt.
+Roda em worker por ctypes.CDLL; progresso e cancelamento são atomics. Um mutex
+protege os globais do núcleo original contra workers concorrentes. A API nova
+tem nome próprio; chamadas da ABI antiga pedem para reabrir o Krita.
+Para comparar com o núcleo original sem patches:
+python3 -m unittest discover -s ../../tests -v
+
+Gravação das formas — 0.7.1
+As APIs libkis VectorLayer::addShapesFromSvg e Shape::remove executam comandos
+em workers da imagem. KisImage::waitForDone abre uma espera com feedback que
+processa eventos Qt, permitindo a timers de outros plugins consultar KoShapes
+enquanto os comandos alteram as formas. A corrida foi confirmada no core do
+usuário (AI Diffusion PoseLayers.update) e reproduzida com um timer observador.
+
+linework_shape_write_begin/end mantêm uma espera externa por imagem no
+KisBusyWaitBroker, usando sua API pública notifyWaitOnImageStarted/Ended.
+Entram com a lista estável, após drenar jobs anteriores. As esperas internas
+não reabrem o feedback; os workers terminam antes de liberar a espera externa.
+O escopo Python usa finally para liberar também em erro, e engloba importação,
+remoções, metadados e projeção. Renderização/PNG são preparados antes do escopo.
+Os timers de outros plugins continuam ativos e não são modificados.
+
+Espessura independente (0.8.0)
+linework_pressure_to_size usa KisCubicCurve e sua tabela/interpolação de 256
+valores para converter o sensor pressão/tamanho salvo no preset. O perfil
+editado usa um sensor Size linear no canal Perspective da informação de
+pintura; o canal Pressure permanece com a entrada capturada. São cinco
+valores por amostra nesse modo, contra quatro no modo legado. O diâmetro
+nominal máximo é 2000 px. A reprodução valida Pixel/Color Smudge antes de
+preparar SVG. A API recebeu o nome linework_paint_with_thickness para que
+uma ponte antiga não receba silenciosamente a nova estrutura de argumentos.
+
+Suavização nativa (0.8.0)
+smoothing.h usa diretamente KisToolFreehandHelper, KisPaintingInformationBuilder
+e KisSmoothingOptions das bibliotecas compartilhadas do Krita. Uma implementação
+de KisStrokesFacade recebe os jobs FreehandStrokeStrategy::Data sem pintá-los
+no documento. Linhas e controles cúbicos são copiados pela API de 11 doubles
+por segmento e materializados como alças relativas em native_smoothing.py.
+Os filtros, timers, curvas de pressão da mesa e finalização são nativos.
+Linhas de comprimento zero e pressão constante são descartadas para evitar
+âncoras duplicadas; cúbicas fechadas e alterações estacionárias de pressão
+continuam registradas. O preview raster amostra somente os novos segmentos.
+
+KisSmoothingOptions lê/grava a configuração compartilhada; a ferramenta lê
+novamente ao ser ativada. O helper recebe recursos privados da view; não pinta
+nem muda presets na imagem do usuário. Cancelar chama cancelPaint e interrompe
+os timers nativos. Um stroke sem pintura no documento coordena salvar/clonar:
+o sinal de fim de stroke conclui a geometria e libera a sessão antes de gravar.
+Os timers Python e a pintura da sobreposição consultam KisBusyWaitBroker antes
+de acessar o canvas, inclusive durante a destruição nativa de uma view.
+
+Compactação de curvas (0.8.1)
+Após endPaint/take, native_smoothing.py chama curve_fit.compact_stroke apenas
+para o novo Brush. A ponte e os motores nativos continuam iguais aos de 0.8.0.
+O ajuste cúbico em Python usa tangentes nas extremidades e mínimos quadrados;
+pressão e diâmetro independente usam controles próprios no mesmo parâmetro.
+Subdivisão de De Casteljau limita o erro da aproximação por cordas. O ajuste
+valida o polígono de controle de cada intervalo completo, incluindo os sensores,
+para evitar desvios entre as amostras. Curvas e mudanças estacionárias de
+pressão não são reduzidas a pontos pela coincidência das coordenadas XY.
+Cantos acima de 60 graus são fronteiras; limites de amostras/trabalho preservam
+o original sem alterar parcialmente o traço. A lista _live_points não muda na
+compactação, evitando saltos no cursor e no render incremental. O documento
+guarda as novas cúbicas com os mesmos campos do esquema 6 e o mesmo preset/ID.
+Não é necessário recompilar liblinework_native.so para esta alteração.

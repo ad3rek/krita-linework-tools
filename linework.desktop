@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=linework
+X-Python-2-Compatible=false
+X-Krita-Manual=Manual.html
+Name=Krita Linework Tools
+Comment=Ferramentas Linework na barra do Krita, troca de presets nativos, suavização nativa, seleção múltipla de pontos, alças de curva e espessura por ponto.

@@ -1,0 +1,35 @@
+{
+  "fixture": "examples/pepper-lineart.png",
+  "version": "0.8.1",
+  "source_size": [
+    833,
+    1280
+  ],
+  "source_color_model": "GRAYA",
+  "source_pixels_sha256": "fae3c3be89a4f10aec7ec9bd3b70e9a349c244abe702ccabc47f995d9f6cdfe7",
+  "preview": {
+    "strokes": 743,
+    "anchors": 2206,
+    "status": "743 traços · 2206 pontos · 0.25 s",
+    "mode": 0,
+    "threshold": 170,
+    "despeckle": 12,
+    "accuracy": 9.5,
+    "maximum_width": 200.0,
+    "elapsed_with_poll_seconds": 0.4897336589929182
+  },
+  "preview_preserves_source_pixels": "pass",
+  "preview_zoom_and_fit": "pass",
+  "new_native_linework_layer_and_preserved_raster": "pass",
+  "whole_layer_brush_seconds": 36.06376915497822,
+  "all_strokes_native_preset_geometry_preserved_one_undo_redo": "pass",
+  "whole_layer_thickness_seconds": 81.82210602797568,
+  "all_point_diameters_raw_pressure_and_handles_preserved_one_undo_redo": "pass",
+  "point_edit_rerenders_and_undo_redo_restores_data": "pass",
+  "vector_observer_during_bulk_operations": "pass",
+  "kra_roundtrip_and_source_pixels_unchanged": "pass",
+  "result": "pass",
+  "observer_reads": 5307,
+  "observer_reads_during_preparation": 1934,
+  "observer_reads_during_scene_mutation": 0
+}

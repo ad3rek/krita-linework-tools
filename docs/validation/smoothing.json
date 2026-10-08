@@ -1,0 +1,78 @@
+{
+  "0": {
+    "reduction": {
+      "before": 101,
+      "after": 11,
+      "milliseconds": 22.059754002839327,
+      "max_position_error": 0.11945469674913889,
+      "max_pressure_error": 6.0407130789030816e-05
+    },
+    "anchors": 11,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      419.99999999999994,
+      99.99999999999997
+    ],
+    "manual_handles": 11
+  },
+  "1": {
+    "reduction": {
+      "before": 101,
+      "after": 5,
+      "milliseconds": 75.92152402503416,
+      "max_position_error": 0.12016702835075138,
+      "max_pressure_error": 0.0006554343678550345
+    },
+    "anchors": 5,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      419.99999999999994,
+      210.0
+    ],
+    "manual_handles": 5
+  },
+  "2": {
+    "reduction": {
+      "before": 101,
+      "after": 12,
+      "milliseconds": 54.07313001342118,
+      "max_position_error": 0.19572442907952833,
+      "max_pressure_error": 0.0007201280539681498
+    },
+    "anchors": 12,
+    "first_pressure": 0.2,
+    "last_pressure": 0.7850984582797925,
+    "endpoint": [
+      412.5492291398962,
+      314.82541713183053
+    ],
+    "manual_handles": 12
+  },
+  "3": {
+    "reduction": {
+      "before": 1233,
+      "after": 6,
+      "milliseconds": 167.6634520117659,
+      "max_position_error": 0.27744875380537626,
+      "max_pressure_error": 0.000256626921445291
+    },
+    "anchors": 6,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      419.99999999999994,
+      430.0
+    ],
+    "manual_handles": 6
+  },
+  "escape_cancels_native_timers_and_preserves_layer": "pass",
+  "delay_blocks_short_move_and_dot_keeps_nonzero_pressure": "pass",
+  "finish_line_disabled_preserves_native_endpoint": "pass",
+  "save_during_stroke_flushes_native_geometry": "pass",
+  "tool_switch_flushes_and_shared_native_settings_reload": "pass",
+  "delay_indicator_tracks_native_canvas_hover": "pass",
+  "tablet_events_native_four_modes_pressure_handles_history_roundtrip_and_bitmap": "pass",
+  "result": "pass"
+}

@@ -1,0 +1,238 @@
+{
+  "plugin": "0.6.0",
+  "algorithm": "OpenToonz Centerline",
+  "revision": "8c5345182b1c3d2ff011a1cf08dad067b6700f08",
+  "implementation": "Original BSD-3-Clause algorithm port with Krita host adapters",
+  "scope": "Centerline geometry for RGB and GR8 input; excludes TLV/NAA, fills/regions and OpenToonz renderer",
+  "environment": {
+    "krita": "5.2.14",
+    "qt": "5.15.17",
+    "python": "3.12",
+    "platform": "Linux x86_64",
+    "gui": "isolated Xvfb, software canvas"
+  },
+  "source_integrity": {
+    "original_files": 18,
+    "sha256": "pass",
+    "only_declared_host_patches": "pass"
+  },
+  "cpu_tests": {
+    "count": 33,
+    "result": "pass",
+    "differential_cases": [
+      {
+        "name": "capsule",
+        "size": [
+          180,
+          90
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "hole",
+        "size": [
+          150,
+          150
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "junction",
+        "size": [
+          170,
+          150
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "cross",
+        "size": [
+          180,
+          180
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "width-ramp",
+        "size": [
+          200,
+          100
+        ],
+        "mode": 1,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "corners",
+        "size": [
+          160,
+          150
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "diagonal-ambiguities",
+        "size": [
+          110,
+          110
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "touching-frame",
+        "size": [
+          160,
+          110
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "noise-and-hole",
+        "size": [
+          140,
+          110
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 12,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "thickness-cutoff",
+        "size": [
+          150,
+          120
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 12,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "hsv-value-at-threshold",
+        "size": [
+          100,
+          60
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "hsv-value-below-threshold",
+        "size": [
+          100,
+          60
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "penalty-0",
+        "size": [
+          160,
+          150
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 0,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "penalty-3",
+        "size": [
+          160,
+          150
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 3,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "penalty-9",
+        "size": [
+          160,
+          150
+        ],
+        "mode": 0,
+        "threshold": 170,
+        "noise": 0,
+        "penalty": 9,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      },
+      {
+        "name": "alpha-white-threshold",
+        "size": [
+          180,
+          100
+        ],
+        "mode": 1,
+        "threshold": 128,
+        "noise": 0,
+        "penalty": 0.5,
+        "maximum_width": 200,
+        "quadratic_controls_equal_to_unmodified_upstream": true
+      }
+    ],
+    "reference": "Unmodified vendored upstream algorithm files and original math, compiled with shared host containers; not a full OpenToonz app comparison",
+    "exact_degree_elevation_position_and_radius": "pass",
+    "thickness_split_serialization_and_affine": "pass",
+    "concurrent_workers": "pass",
+    "old_abi_restart_guard": "pass"
+  }
+}

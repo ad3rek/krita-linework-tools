@@ -1,0 +1,119 @@
+{
+  "version": "0.8.1",
+  "platform": "Krita 5.2.14 / Linux x86_64 / Qt 5.15.17 / Python 3.12",
+  "scope": "Redução após motores nativos em novos traços do Linework Brush.",
+  "cpu_tests": {
+    "count": 51,
+    "result": "pass",
+    "log": "cpu-tests.txt"
+  },
+  "native_canvas_tablet_events": {
+    "0": {
+      "reduction": {
+        "before": 101,
+        "after": 10,
+        "milliseconds": 35.687863011844456,
+        "max_position_error": 0.13176855219678826,
+        "max_pressure_error": 0.00011384094451166726
+      },
+      "anchors": 10,
+      "first_pressure": 0.2,
+      "last_pressure": 0.8,
+      "endpoint": [
+        419.99999999999994,
+        99.99999999999997
+      ],
+      "manual_handles": 10
+    },
+    "1": {
+      "reduction": {
+        "before": 101,
+        "after": 6,
+        "milliseconds": 41.11337900394574,
+        "max_position_error": 0.1025290584499609,
+        "max_pressure_error": 0.0012610273550137663
+      },
+      "anchors": 6,
+      "first_pressure": 0.2,
+      "last_pressure": 0.8,
+      "endpoint": [
+        419.99999999999994,
+        209.99999999999997
+      ],
+      "manual_handles": 6
+    },
+    "2": {
+      "reduction": {
+        "before": 101,
+        "after": 12,
+        "milliseconds": 57.309407013235614,
+        "max_position_error": 0.2024513645135941,
+        "max_pressure_error": 0.0008731381810744843
+      },
+      "anchors": 12,
+      "first_pressure": 0.2,
+      "last_pressure": 0.7816920467789193,
+      "endpoint": [
+        410.8460233894596,
+        313.789550576446
+      ],
+      "manual_handles": 12
+    },
+    "3": {
+      "reduction": {
+        "before": 1268,
+        "after": 5,
+        "milliseconds": 131.28499701269902,
+        "max_position_error": 0.21330410876566552,
+        "max_pressure_error": 0.00017709082453665204
+      },
+      "anchors": 5,
+      "first_pressure": 0.2,
+      "last_pressure": 0.8,
+      "endpoint": [
+        419.99999999999994,
+        430.0
+      ],
+      "manual_handles": 5
+    },
+    "escape_cancels_native_timers_and_preserves_layer": "pass",
+    "delay_blocks_short_move_and_dot_keeps_nonzero_pressure": "pass",
+    "finish_line_disabled_preserves_native_endpoint": "pass",
+    "save_during_stroke_flushes_native_geometry": "pass",
+    "tool_switch_flushes_and_shared_native_settings_reload": "pass",
+    "delay_indicator_tracks_native_canvas_hover": "pass",
+    "tablet_events_native_four_modes_pressure_handles_history_roundtrip_and_bitmap": "pass",
+    "result": "pass",
+    "process_exit": 0
+  },
+  "separate_process_document_reload": {
+    "native_smoothing_settings_survive_process_restart": "pass",
+    "reopened_reduced_anchor_counts": [
+      10,
+      6,
+      12,
+      5
+    ],
+    "existing_curves_are_unchanged_on_editor_switch": "pass",
+    "reopened_eight_editable_strokes_and_native_options": "pass",
+    "result": "pass",
+    "process_exit": 0
+  },
+  "physical_stylus": "Não foi usado stylus físico: eventos Qt de caneta, canvas e motores reais do Krita.",
+  "native_bridge": {
+    "unchanged_from": "0.8.0",
+    "sha256": "61800bdbef002170d6cba3d16f7d56990be1806eaaffa68933e410bbf17096b6"
+  },
+  "limits": {
+    "position_document_pixels": [
+      0.18,
+      0.25,
+      0.4,
+      0.55
+    ],
+    "thin_tip_cap": "max(0.03, base width * 0.08)",
+    "pressure": "min(0.003, 0.1 / max(1, base width))",
+    "independent_diameter_pixels": 0.1,
+    "fallback": "Mantém o original quando não reduz a quantidade ou excede limites de trabalho."
+  }
+}

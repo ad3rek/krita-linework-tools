@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ActionCollection version="2" name="Linework">
+  <Actions category="Tools">
+    <text>Linework</text>
+    <Action name="linework_vectorize">
+      <icon />
+      <text>Vetorizar camada em Linework…</text>
+      <toolTip>Converter uma camada raster em traços Linework editáveis</toolTip>
+      <iconText>Vetorizar camada</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+    <Action name="LineworkBrush">
+      <icon />
+      <text>Linework Brush — pincel</text>
+      <toolTip>Linework Brush — pincel</toolTip>
+      <iconText>Linework Brush — pincel</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+    <Action name="LineworkCurve">
+      <icon />
+      <text>Linework Curve — curva</text>
+      <toolTip>Linework Curve — curva</toolTip>
+      <iconText>Linework Curve — curva</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+    <Action name="LineworkLine">
+      <icon />
+      <text>Linework Line — linha</text>
+      <toolTip>Linework Line — linha</toolTip>
+      <iconText>Linework Line — linha</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+    <Action name="LineworkEdit">
+      <icon />
+      <text>Linework Edit — pontos</text>
+      <toolTip>Linework Edit — pontos</toolTip>
+      <iconText>Linework Edit — pontos</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+    <Action name="LineworkPressure">
+      <icon />
+      <text>Linework Thickness — espessura</text>
+      <toolTip>Linework Thickness — espessura</toolTip>
+      <iconText>Linework Thickness — espessura</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+    <Action name="LineworkErase">
+      <icon />
+      <text>Linework Erase — apagar traço</text>
+      <toolTip>Linework Erase — apagar traço</toolTip>
+      <iconText>Linework Erase — apagar traço</iconText>
+      <whatsThis />
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+      <statusTip />
+    </Action>
+  </Actions>
+</ActionCollection>

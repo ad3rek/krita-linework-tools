@@ -1,0 +1,14 @@
+{
+  "native_shape_selection_inherited_two_curves_six_anchors": "pass",
+  "bulk_width_only_selected_curves_one_undo_redo": "pass",
+  "mixed_value_accepts_typing_same_as_primary": "pass",
+  "shift_add_toggle_individual_anchors_across_curves": "pass",
+  "same_pixel_width_across_bases_preserves_pressure_and_handles": "pass",
+  "multi_point_drag_hides_both_originals_and_escape_restores": "pass",
+  "group_thickness_drag_adds_same_pixel_delta": "pass",
+  "rectangle_selects_four_anchors_without_history": "pass",
+  "delete_multiple_points_and_undo": "pass",
+  "ctrl_a_sets_same_diameter_above_native_base": "pass",
+  "kra_roundtrip_and_raster_source_unchanged": "pass",
+  "result": "pass"
+}
