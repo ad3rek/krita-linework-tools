@@ -16,6 +16,8 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 Download a platform package from [version 0.1](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1). Save your work and close Krita before installing.
 
+The color-editing fix documented below is available in the current `main` source. To install it, download the [main source ZIP](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip), extract it and use `install.py` as described below. The existing v0.1 release archives predate this fix.
+
 | Package | Required application | Validation environment |
 | --- | --- | --- |
 | [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1/Krita-Linework-Tools-0.1-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
@@ -52,6 +54,12 @@ Choose **Linework Brush**, pick a preset in Krita's brush panel and draw on the 
 The toolbox icons follow Krita's theme and the group has a separator. Controls use the native Tool Options docker. The first stroke creates a Linework layer when the active layer is not already Linework; **Tools → Scripts → New Linework Layer** starts another one.
 
 Krita presets produce raster textures. The editable geometry and the rendered appearance are both embedded in the vector layer and saved in `.kra`. The saved appearance remains visible without the plugin; rerendering requires the original preset and its resources.
+
+In **Linework Edit** or **Linework Thickness**, changing Krita's foreground color recolors the selected strokes, including native brush textures and smooth lines. Color picker changes are collected before rendering and committed as one undo step. Selecting a stroke alone keeps its saved color. **Tool Options → Brush → Apply current color** applies the foreground to **Selected strokes** or **All strokes in the layer**, using the scope above the button. Geometry, pressure, thickness and brush settings are preserved. Presets that use their own multicolor tip or color dynamics can still produce colors beyond the foreground, as in native Krita painting.
+
+![Two red strokes and a selected green stroke recolored using Krita's foreground](docs/images/color-editing.png)
+
+*Synthetic native brush and smooth line test: foreground recoloring, selected/whole-layer scope, grouped undo/redo, rendered pixels, locked layers and `.kra` round trips passed in Krita 5.2.14 on Linux. [Color regression report](docs/validation/color.json).*
 
 ## Convert a lineart into editable strokes
 

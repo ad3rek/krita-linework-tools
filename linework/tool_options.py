@@ -5,7 +5,7 @@ import math
 import time
 from PyQt5.QtCore import Qt, QEvent, QPointF, QTimer, QRectF, QEventLoop, pyqtSignal
 from PyQt5 import sip
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen
+from PyQt5.QtGui import QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout, QGroupBox,
     QLabel, QPushButton, QDoubleSpinBox, QFileDialog, QComboBox, QProgressBar, QHBoxLayout)
 from krita import Krita
@@ -490,6 +490,11 @@ class LineworkToolOptions(QWidget):
         self._last_selected = None
         self._last_managed = False
         self._brush_change = None
+        self._foreground_color = None
+        self._pending_color = None
+        self.color_timer = QTimer(self)
+        self.color_timer.setSingleShot(True)
+        self.color_timer.timeout.connect(self.apply_pending_color)
         self.brush_timer = QTimer(self)
         self.brush_timer.setSingleShot(True)
         self.brush_timer.timeout.connect(self.paint_brush_change)
@@ -517,6 +522,11 @@ class LineworkToolOptions(QWidget):
         self.apply_brush_button.setEnabled(False)
         self.apply_brush_button.clicked.connect(self.apply_current_brush)
         brush_layout.addWidget(self.apply_brush_button)
+        self.apply_color_button = QPushButton("Aplicar cor atual")
+        self.apply_color_button.setToolTip("Aplica a cor de primeiro plano do Krita ao escopo acima. Nas ferramentas de edição, mudar a cor do Krita também recolore os traços selecionados.")
+        self.apply_color_button.setEnabled(False)
+        self.apply_color_button.clicked.connect(self.use_foreground)
+        brush_layout.addWidget(self.apply_color_button)
         self.brush_progress_row = QWidget()
         progress_layout = QHBoxLayout(self.brush_progress_row)
         progress_layout.setContentsMargins(0, 0, 0, 0)
@@ -590,6 +600,8 @@ class LineworkToolOptions(QWidget):
         self.timer.start()
 
     def set_tool(self, mode):
+        self.cancel_color_update()
+        self._foreground_color = None
         self.cancel_brush_change()
         labels = ("Linework Brush", "Linework Curve", "Linework Line", "Linework Edit", "Linework Thickness", "Linework Erase")
         modes = ("pen", "curve", "line", "edit", "pressure", "erase")
@@ -611,6 +623,7 @@ class LineworkToolOptions(QWidget):
         self.stroke_brush_label.setVisible(mode in (3, 4))
         self.brush_scope.setVisible(mode in (3, 4))
         self.apply_brush_button.setVisible(mode in (3, 4))
+        self.apply_color_button.setVisible(mode in (3, 4))
         if self.overlay:
             self.overlay.set_mode(self.mode)
             self.overlay.smoothing_options = list(self.smoothing.values)
@@ -623,6 +636,7 @@ class LineworkToolOptions(QWidget):
             self.overlay.smoothing_options = list(self.smoothing.values)
 
     def pause_tool(self):
+        self.cancel_color_update()
         self.cancel_brush_change()
         self.active = False
         overlay = self.overlay
@@ -654,6 +668,8 @@ class LineworkToolOptions(QWidget):
         if self._clearing:
             return
         self._clearing = True
+        self.cancel_color_update()
+        self._foreground_color = None
         self.cancel_brush_change()
         overlay = self.overlay
         self.overlay = self.native_widget = self.document = self.layer = self.binding = None
@@ -774,6 +790,17 @@ class LineworkToolOptions(QWidget):
             else:
                 self.overlay.setGeometry(native.rect())
                 self.overlay.sync_transform()
+            color = view.foregroundColor().colorForCanvas(view.canvas()).name()
+            previous_color, self._foreground_color = self._foreground_color, color
+            self._defaults["color"] = self.overlay.defaults["color"] = color
+            if previous_color != color:
+                # A binding/tool change establishes a baseline; selecting an
+                # existing curve must never silently overwrite its saved color.
+                ids = self.overlay.selection.ids()
+                if previous_color is not None and self.mode in ("edit", "pressure") and self.layer and ids:
+                    self._pending_color = (self.binding, frozenset(ids))
+                    self.color_timer.start(300)
+                self.update_controls()
             if self.mode in ("pen", "curve", "line"):
                 self.overlay.defaults.update(width=view.brushSize(), opacity=view.paintingOpacity())
                 self.update_controls()
@@ -832,6 +859,10 @@ class LineworkToolOptions(QWidget):
         changing = self._brush_change is not None
         targets = bool(self.overlay and self.overlay.strokes) if self.brush_scope.currentIndex() else stroke is not None
         self.apply_brush_button.setEnabled(bool(targets and self.layer and not self.layer.locked() and not changing))
+        self.apply_color_button.setEnabled(self.apply_brush_button.isEnabled())
+        if self._foreground_color:
+            swatch = QPixmap(16, 16); swatch.fill(QColor(self._foreground_color))
+            self.apply_color_button.setIcon(QIcon(swatch))
         self.brush_scope.setEnabled(not changing)
         self.stroke_brush_label.setText("Do traço: "+(stroke.brush['name'] if stroke and stroke.brush else
                                                      "Linha lisa" if stroke else "selecione um traço"))
@@ -988,17 +1019,65 @@ class LineworkToolOptions(QWidget):
             except Exception as exc:
                 self.show_error(str(exc)); self.update_controls()
 
+    def cancel_color_update(self):
+        # Canvas destruction can dispose a controller after Qt has already
+        # deleted its child timers. Keep shutdown safe in that order as well.
+        if not sip.isdeleted(self.color_timer):
+            self.color_timer.stop()
+        self._pending_color = None
+
+    def apply_pending_color(self):
+        pending = self._pending_color
+        if not pending:
+            return
+        binding, ids = pending
+        if not self.active or self.binding != binding or self.mode not in ("edit", "pressure") or not self.overlay:
+            self.cancel_color_update(); return
+        # Wait until the picker/drag and native rendering finish. Reading the
+        # final foreground avoids repainting for every intermediate slider value.
+        if (self._writing or self._brush_change or native_busy() or self.overlay.drag or
+                self.overlay._edit_original or QApplication.activeModalWidget() or
+                QApplication.mouseButtons() != Qt.NoButton):
+            self.color_timer.start(150); return
+        self.cancel_color_update()
+        view = self.current_view()
+        if view and view.document() == self.document:
+            color = view.foregroundColor().colorForCanvas(view.canvas()).name()
+            self.apply_color(color, ids)
+
     def use_foreground(self):
+        self.cancel_color_update()
         view = self.current_view()
         if view:
             color = view.foregroundColor().colorForCanvas(view.canvas()).name()
-            self._defaults["color"] = color
-            if self.overlay:
-                self.overlay.defaults["color"] = color
-                stroke = self.selected_stroke()
-                if stroke:
-                    stroke.color = color
-                    self.overlay.commit()
+            self.apply_color(color)
+
+    def apply_color(self, color, ids=None):
+        if self._updating or self._writing or self._brush_change or not self.active:
+            return
+        self._defaults["color"] = color
+        if not self.overlay:
+            return
+        self.overlay.defaults["color"] = color
+        if not self.layer or self.mode not in ("edit", "pressure"):
+            return
+        try:
+            if self.layer.locked():
+                raise ValueError("Desbloqueie a camada para trocar a cor.")
+            if self.overlay.drag or self.overlay._edit_original:
+                return
+            if ids is None:
+                ids = ({s.uid for s in self.overlay.strokes} if self.brush_scope.currentIndex()
+                       else self.overlay.selection.ids())
+            updated = copy.deepcopy(self.overlay.strokes)
+            changed = []
+            for stroke in updated:
+                if stroke.uid in ids and stroke.color != color:
+                    stroke.color = color; changed.append(stroke)
+            self.start_model_update(updated, changed, "Cor {} aplicada a {} {}.".format(
+                color, len(changed), "traço" if len(changed) == 1 else "traços"))
+        except Exception as exc:
+            self.show_error(str(exc))
 
     def export_svg(self):
         if not self.overlay:

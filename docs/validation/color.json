@@ -1,0 +1,16 @@
+{
+  "foreground_recolors_native_and_smooth_selected_strokes_only": "pass",
+  "slider_changes_debounced_into_one_undo_preserve_geometry_pressure_and_brush": "pass",
+  "grouped_color_undo_redo": "pass",
+  "explicit_button_applies_to_entire_layer": "pass",
+  "thickness_tool_recolors_selected_native_stroke": "pass",
+  "locked_layer_preserved": "pass",
+  "kra_roundtrip_and_original_raster_preserved": "pass",
+  "drawing_foreground_does_not_recolor_existing_selection": "pass",
+  "activating_editor_and_selecting_stroke_preserve_saved_color": "pass",
+  "explicit_button_selected_scope_with_unchanged_foreground": "pass",
+  "result": "pass",
+  "platform": "Linux x86_64; Krita 5.2.14; Qt 5.15.17",
+  "process_exit_code": 0,
+  "source_sha256": "ee475038ab1d5c169b07c725bcb1f7af551f7aa9111f82812c8c1c41bdf8504f"
+}

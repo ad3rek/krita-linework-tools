@@ -22,7 +22,7 @@ def blank_png(path, size=900):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing'])
+    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color'])
     parser.add_argument('--output', type=Path, help='Directory for reports, captures and test documents')
     args = parser.parse_args()
     checkout = Path(__file__).resolve().parents[2]
@@ -33,7 +33,7 @@ def main():
         if not shutil.which(command):
             parser.error(command+' is required (Linux / Krita 5.2.14 / compatible Qt 5 ABI).')
     report = output/'docs/validation'/({'cc_lineart': 'cc-lineart.json',
-        'multi_point': 'multi-point.json', 'smoothing': 'smoothing.json'}[args.probe])
+        'multi_point': 'multi-point.json', 'smoothing': 'smoothing.json', 'color': 'color.json'}[args.probe])
     report.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory(prefix='linework-gui-') as tmp:
         base = Path(tmp)
