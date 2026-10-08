@@ -6,7 +6,7 @@ Draw directly on the canvas with Krita brush presets, then edit the centerline, 
 
 Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2** to investigate its linework features and guide the reproduction of their behavior. The [implementation and scope](#codex-ghidra-and-reverse-engineering) are documented below.
 
-> **Version 0.1 · experimental desktop build for Krita 5.2.14.** The native bridge uses Krita's internal ABI. Each platform package needs the matching application and compatible libraries; other Krita builds require recompilation and validation. Android remains outside the current release.
+> **Version 0.1.1 · experimental desktop build for Krita 5.2.14.** The native bridge uses Krita's internal ABI. Each platform package needs the matching application and compatible libraries; other Krita builds require recompilation and validation. Android remains outside the current release.
 
 ![Pepper lineart converted into a Linework layer in the real Krita interface](docs/images/pepper-vectorized.png)
 
@@ -14,14 +14,14 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 ## Download and install
 
-Download a platform package from [version 0.1](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1). Save your work and close Krita before installing.
+Download a platform package from [version 0.1.1](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.1). Save your work and close Krita before installing.
 
-The color-editing fix documented below is available in the current `main` source. To install it, download the [main source ZIP](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip), extract it and use `install.py` as described below. The existing v0.1 release archives predate this fix.
+Version **0.1.1** includes the color-editing fix in both platform packages: Krita's foreground recolors selected strokes in Edit/Thickness, and Apply current color supports selected strokes or the whole layer. Existing geometry and brush settings are preserved.
 
 | Package | Required application | Validation environment |
 | --- | --- | --- |
-| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1/Krita-Linework-Tools-0.1-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
-| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1/Krita-Linework-Tools-0.1-windows-x86_64.zip) | Official Krita 5.2.14 x64, Qt 5.15.7 | Experimental preview; selection/smoothing tested under Wine 11.0 |
+| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.1/Krita-Linework-Tools-0.1.1-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
+| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.1/Krita-Linework-Tools-0.1.1-windows-x86_64.zip) | Official Krita 5.2.14 x64, Qt 5.15.7 | Experimental preview; selection/smoothing tested under Wine 11.0 |
 
 On Linux, extract the archive, open a terminal in its folder and run:
 
@@ -134,6 +134,7 @@ These values describe one drawing and run. Stabilizer timing changes its sample 
 | Save and reopen | Editable data match and the original raster bytes remain unchanged. |
 | Another plugin querying shapes | Observer timer runs during preparation; no reads occur during protected scene mutation. |
 | Group selection and editing | Select Shapes inheritance, Shift, rectangle, dragging, indicators, deletion and history. |
+| Recolor existing strokes | Native brushes and smooth lines, selected/whole-layer scope, one undo step and preserved `.kra` data. Linux and Windows/Wine color probes passed. |
 | Brush and smoothing | Four native filters, pressure, handles, reduction, Esc, delay, tool switching and saving during drawing. |
 
 On the grayscale Pepper fixture, changing the whole layer's preset took **36.1 s** and setting all diameters took **81.8 s**, including rendering and layer writes. These are single local measurements with other processes active, not controlled benchmarks. Large layers and expensive presets can still take time; progress and cancellation are available during preparation.
@@ -143,6 +144,8 @@ An outer native busy wait protects shape mutations while Krita drains its worker
 [Testing instructions](docs/TESTING.md), [JSON reports](docs/validation/) and runnable probes are included. Screenshots show the real application. Try the [prepared lineart](examples/pepper-lineart.png), [editable result](examples/pepper-linework.kra) and [smoothing example](examples/smoothing-and-points.kra).
 
 ## Windows build and validation
+
+The **0.1.1 color regression passed** in the official Windows application under Wine 11.0: native brush and smooth-line recoloring, selected/whole-layer scope, rendered pixels, debounce, undo/redo, locked layers and save/reopen. [Color regression report](docs/validation/windows-color.json). The native DLLs are unchanged from 0.1; this update changes the Python tool integration and metadata.
 
 The Windows package contains native **PE x86-64 DLLs**, built with **LLVM-MinGW Clang 18.1.8 UCRT**, matching the official Krita 5.2.14 toolchain. It uses Krita's existing runtime libraries. [Build provenance and binary hashes](docs/validation/windows-build.json).
 

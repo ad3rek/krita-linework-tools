@@ -1,0 +1,18 @@
+{
+  "foreground_recolors_native_and_smooth_selected_strokes_only": "pass",
+  "slider_changes_debounced_into_one_undo_preserve_geometry_pressure_and_brush": "pass",
+  "grouped_color_undo_redo": "pass",
+  "explicit_button_applies_to_entire_layer": "pass",
+  "thickness_tool_recolors_selected_native_stroke": "pass",
+  "locked_layer_preserved": "pass",
+  "kra_roundtrip_and_original_raster_preserved": "pass",
+  "drawing_foreground_does_not_recolor_existing_selection": "pass",
+  "activating_editor_and_selecting_stroke_preserve_saved_color": "pass",
+  "explicit_button_selected_scope_with_unchanged_foreground": "pass",
+  "result": "pass",
+  "release": "0.1.1",
+  "platform": "Official Windows Krita 5.2.14 x64 / Qt 5.15.7 / Python 3.10 under Wine 11.0",
+  "process_exit_code": 0,
+  "source_sha256": "ee475038ab1d5c169b07c725bcb1f7af551f7aa9111f82812c8c1c41bdf8504f",
+  "harness": "Reused an initialized project-owned Wine prefix with isolated test resources. Fresh-prefix initialization timed out before Krita started. No default Wine prefix or user Krita configuration was used."
+}
