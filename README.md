@@ -6,7 +6,7 @@ Draw directly on the canvas with Krita brush presets, then edit the centerline, 
 
 Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2** to investigate its linework features and guide the reproduction of their behavior. The [implementation and scope](#codex-ghidra-and-reverse-engineering) are documented below.
 
-> **Version 0.1.2 · experimental desktop build for Krita 5.2.14.** The native bridge uses Krita's internal ABI. Each platform package needs the matching application and compatible libraries; other Krita builds require recompilation and validation. Android remains outside the current release.
+> **Version 0.1.3 · experimental desktop build for Krita 5.2.14.** The native bridge uses Krita's internal ABI. Each platform package needs the matching application and compatible libraries; other Krita builds require recompilation and validation. Android remains outside the current release.
 
 ![Pepper lineart converted into a Linework layer in the real Krita interface](docs/images/pepper-vectorized.png)
 
@@ -14,16 +14,16 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 ## Download and install
 
-Download a platform package from [version 0.1.2](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.2). Save your work and close Krita before installing.
+Download a platform package from [version 0.1.3](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.3). Save your work and close Krita before installing.
 
-Version **0.1.2** adds two eraser modes, point merging and endpoint joining, larger click targets, point/stroke selection modes and an active-point lock. It also includes the fix for strokes disappearing when released: input received during native rendering or saving is queued and replayed in order, keeping the editor usable. The color-editing fix from 0.1.1 is included.
+Version **0.1.3** packages the refined Tool Options interface and performance improvements for point picking, erasing, native preset parsing and history. It includes all 0.1.2 features and fixes: two eraser modes, point merging and endpoint joining, larger click targets, point/stroke selection, active-point locking, color editing and ordered input replay to prevent strokes disappearing on release. [Changelog](CHANGELOG.md).
 
-To try the latest interface and performance improvements, download the [development source from `main`](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip) and follow the same installation steps below. It includes the matching Linux and Windows native bridges. These changes are not included in the published 0.1.2 archives; see [development performance work](#development-performance-work) for tests and measurements.
+The [development source from `main`](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip) can also be installed with the steps below. Version 0.1.3 includes the interface and performance changes described in [performance and Tool Options](#performance-and-tool-options). The previous 0.1.2 archives remain available unchanged.
 
 | Package | Required application | Validation environment |
 | --- | --- | --- |
-| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.2/Krita-Linework-Tools-0.1.2-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
-| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.2/Krita-Linework-Tools-0.1.2-windows-x86_64.zip) | Official Krita 5.2.14 x64, Qt 5.15.7 | Experimental preview; canvas regressions tested under Wine 11.0 |
+| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.3/Krita-Linework-Tools-0.1.3-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
+| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.3/Krita-Linework-Tools-0.1.3-windows-x86_64.zip) | Official Krita 5.2.14 x64, Qt 5.15.7 | Experimental preview; canvas regressions tested under Wine 11.0 |
 
 On Linux, extract the archive, open a terminal in its folder and run:
 
@@ -138,9 +138,9 @@ A fresh automated canvas run with Qt tablet events and 100 moves per stroke prod
 
 These values describe one drawing and run. Stabilizer timing changes its sample count; different curves need different numbers of anchors. The earlier saved `smoothing-and-points.kra` example produced 10/6/12/5 anchors. Both reports are included. Automated tests used Qt tablet events rather than a physical stylus.
 
-## Development performance work
+## Performance and Tool Options
 
-The following changes are **unreleased**; the published 0.1.2 archives are unchanged. The development source uses a conservative spatial grid for anchor picking, rectangle selection and swept erasing. Exact distance, outline and diameter calculations still decide the result. Only changed paths are reindexed after an edit; large paths and very large selections use bounded fallbacks.
+The following changes are included in **0.1.3**. The editor uses a conservative spatial grid for anchor picking, rectangle selection and swept erasing. Exact distance, outline and diameter calculations still decide the result. Only changed paths are reindexed after an edit; large paths and very large selections use bounded fallbacks.
 
 The native renderer retains up to eight private parsed preset prototypes (at most 8 MiB of XML). Every paint operation clones private settings before applying its own size, opacity, flow and diameter sensors. Cache keys include the source preset, XML, resource version and checksum. Closing the renderer releases the prototypes; older bridges use the original entry points. History shares unchanged stroke snapshots between steps, while undo/redo return independent editable copies.
 
@@ -163,7 +163,7 @@ The development Tool Options layout places selection and point thickness first w
 
 ## Functional tests
 
-**70 CPU tests passed** in the published checkout. They cover the model, selection, insertion, serialization, fingerprints, affine transforms, compaction, vectorization, swept erasing and point/endpoint topology. A differential test compiles the original OpenToonz sources and checks **exact equality of quadratic position and radius controls in 16 synthetic fixtures**.
+**83 CPU tests passed** for the implementation included in 0.1.3 (70 in the previous 0.1.2 checkout). They cover the model, selection, insertion, serialization, fingerprints, affine transforms, compaction, vectorization, swept erasing, spatial indexing, shared history and point/endpoint topology. A differential test compiles the original OpenToonz sources and checks **exact equality of quadratic position and radius controls in 16 synthetic fixtures**.
 
 | Operation in Krita | Verified behavior |
 | --- | --- |
@@ -185,7 +185,7 @@ The development Tool Options layout places selection and point thickness first w
 
 *Stroke lifecycle regression in the real Linux application, after reopening the `.kra`. The test deliberately delivers another gesture inside a native render boundary to reproduce nested Qt input delivery. The original implementation failed with a missing stroke ID and cleared the editor; the fix retains both gestures and allows subsequent drawing. This is a controlled Qt event regression, not physical tablet validation. [Before](docs/validation/stroke-lifecycle-before.json), [Linux](docs/validation/stroke-lifecycle.json), [Windows/Wine](docs/validation/windows-stroke-lifecycle.json).*
 
-On the grayscale Pepper fixture, changing the whole layer's preset took **36.1 s** and setting all diameters took **81.8 s**, including rendering and layer writes. These are single local measurements with other processes active, not controlled benchmarks. Large layers and expensive presets can still take time; progress and cancellation are available during preparation.
+On the grayscale Pepper fixture, an earlier release run took **36.1 s** to change the whole layer's preset and **81.8 s** to set all diameters, including rendering and layer writes. The development stress run for 0.1.3 completed both operations, with a deliberately heavy shape observer, in **77.7 s** and **157.1 s** respectively, excluding subsequent history checks. These different runs do not establish a speed improvement for whole-layer rendering. Large layers and expensive presets can still take time; progress and cancellation are available during preparation.
 
 An outer native busy wait protects shape mutations while Krita drains its workers. Nested waits cannot run timers that read shapes being replaced. The observer test reproduces that access pattern; it does not certify every version of every third-party plugin.
 
@@ -193,7 +193,7 @@ An outer native busy wait protects shape mutations while Krita drains its worker
 
 ## Windows build and validation
 
-The **0.1.1 color regression passed** in the official Windows application under Wine 11.0: native brush and smooth-line recoloring, selected/whole-layer scope, rendered pixels, debounce, undo/redo, locked layers and save/reopen. [Color regression report](docs/validation/windows-color.json). The 0.1.2 eraser/topology and selection regression also passed, including all 21 checks and a normal application exit. [New regression report](docs/validation/windows-eraser-topology.json). The native DLLs are unchanged from 0.1; this update changes the Python tool integration and metadata.
+The **0.1.1 color regression passed** in the official Windows application under Wine 11.0: native brush and smooth-line recoloring, selected/whole-layer scope, rendered pixels, debounce, undo/redo, locked layers and save/reopen. [Color regression report](docs/validation/windows-color.json). The 0.1.2 eraser/topology and selection regression also passed, including all 21 checks and a normal application exit. [Regression report](docs/validation/windows-eraser-topology.json). Version 0.1.3 rebuilds the native rendering bridge for preset caching; its eraser/topology, stroke lifecycle, interface and paired cache probes passed under Wine. The native vectorizer is unchanged. [Current bridge hashes and regression scope](docs/validation/performance.json).
 
 The Windows package contains native **PE x86-64 DLLs**, built with **LLVM-MinGW Clang 18.1.8 UCRT**, matching the official Krita 5.2.14 toolchain. It uses Krita's existing runtime libraries. [Build provenance and binary hashes](docs/validation/windows-build.json).
 

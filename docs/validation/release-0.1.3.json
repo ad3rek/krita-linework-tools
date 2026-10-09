@@ -1,0 +1,28 @@
+{
+  "version": "0.1.3",
+  "date": "2026-10-09",
+  "implementation_commit": "00df99bdf704b9b62d7dc0f63e71cb212895212e",
+  "release_only_runtime_changes": [
+    "linework/Manual.html",
+    "linework/__init__.py"
+  ],
+  "cpu_tests": {
+    "result": "pass",
+    "count": 83,
+    "log": "release-0.1.3-cpu-tests.txt",
+    "sha256": "257dabd1e075886d06912f7d5ec14faf6b9e0b5ca1ff55eee98a598a53ccd448"
+  },
+  "native_sha256": {
+    "liblinework_native.so": "c42e001c71736ba89d8d3951941b12a25fa0abe73fae906023023bfd06ca85b6",
+    "linework_native.dll": "6cb839d2d7f8bd06f46c5c960bd994add02b0ee61ab246848c6f40c05525865f",
+    "liblinework_vectorize.so": "0a69e1da8606d4757283d9044cd47242348c4160c08959c049aeaa0fe3ba868f",
+    "linework_vectorize.dll": "04b0e1284c0bcee56cb8b0b897e0c01e0bcb72bd86ed9007320a3b99be270d4a"
+  },
+  "gui_and_performance_report": "performance.json",
+  "gui_scope": "The 11 GUI regressions and paired Linux/Windows-Wine probes apply to the identical implementation and native binaries. This release only changes the version string and manual title in runtime files.",
+  "known_limits": [
+    "Krita 5.2.14 internal ABI and matching libraries required.",
+    "Windows physical hardware/tablets untested; full 743-stroke Windows bulk replay/history probe remains incomplete.",
+    "Animation is not included."
+  ]
+}
