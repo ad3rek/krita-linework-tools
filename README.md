@@ -18,6 +18,8 @@ Download a platform package from [version 0.1.2](https://github.com/ad3rek/krita
 
 Version **0.1.2** adds two eraser modes, point merging and endpoint joining, larger click targets, point/stroke selection modes and an active-point lock. It also includes the fix for strokes disappearing when released: input received during native rendering or saving is queued and replayed in order, keeping the editor usable. The color-editing fix from 0.1.1 is included.
 
+To try the latest interface and performance improvements, download the [development source from `main`](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip) and follow the same installation steps below. It includes the matching Linux and Windows native bridges. These changes are not included in the published 0.1.2 archives; see [development performance work](#development-performance-work) for tests and measurements.
+
 | Package | Required application | Validation environment |
 | --- | --- | --- |
 | [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.2/Krita-Linework-Tools-0.1.2-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
@@ -135,6 +137,29 @@ A fresh automated canvas run with Qt tablet events and 100 moves per stroke prod
 | Stabilizer | 1,233 → 6 | 0.278 px | 167.7 ms |
 
 These values describe one drawing and run. Stabilizer timing changes its sample count; different curves need different numbers of anchors. The earlier saved `smoothing-and-points.kra` example produced 10/6/12/5 anchors. Both reports are included. Automated tests used Qt tablet events rather than a physical stylus.
+
+## Development performance work
+
+The following changes are **unreleased**; the published 0.1.2 archives are unchanged. The development source uses a conservative spatial grid for anchor picking, rectangle selection and swept erasing. Exact distance, outline and diameter calculations still decide the result. Only changed paths are reindexed after an edit; large paths and very large selections use bounded fallbacks.
+
+The native renderer retains up to eight private parsed preset prototypes (at most 8 MiB of XML). Every paint operation clones private settings before applying its own size, opacity, flow and diameter sensors. Cache keys include the source preset, XML, resource version and checksum. Closing the renderer releases the prototypes; older bridges use the original entry points. History shares unchanged stroke snapshots between steps, while undo/redo return independent editable copies.
+
+Measurements and regression scope are recorded in [the development performance report](docs/validation/performance.json). Point/eraser query timings measure hot searches on the 743-stroke, 2,206-anchor CC fixture, not an entire eraser gesture or a document write. Initial indexing has a separate cost. Native preview timing uses paired cached/uncached Pixel Art renders in one process; unchanged pixels are checked across style and independent-diameter changes. History timing changes one anchor per step; memory figures cover Python allocations, excluding Qt/native images. These local measurements are not performance guarantees for other presets or documents.
+
+The development checkout passed **83 CPU tests**, **11 real-application GUI regressions** and paired Linux/Windows-Wine performance probes. The Linux full 743-stroke conversion, brush/thickness edits and save/reopen check completed with a normal application exit. Windows remains an experimental preview: Wine tests do not establish physical Windows or tablet compatibility, and the earlier full-layer Windows bulk replay/history check remains incomplete.
+
+| Linux measurement | Reference (ms) | Optimized (ms) |
+| --- | ---: | ---: |
+| Point pick: linear search → indexed search | 2.749 | 0.042 |
+| Point eraser weights: all anchors → nearby anchors | 2.676 | 0.032 |
+| Native Pixel Art preview: uncached → cached preset | 79.92 | 78.30 |
+| History commit: previous source → shared snapshots | 173.45 | 31.19 |
+
+The initial index took 38.54 ms; updating one moved point and picking again averaged 0.60 ms. Point and eraser comparisons use equivalent linear searches in the same process and require identical results. The history benchmark uses 20 edits and three timing repetitions; its separate Python allocation peak fell from 25.35 to 4.65 MiB. Windows/Wine results are included separately in the report.
+
+The development Tool Options layout places selection and point thickness first when editing. Sections can be collapsed without changing their values; brush/color actions share one row, and less frequent taper/connection controls start collapsed. It uses Qt's native style and theme palette, within Krita's existing Tool Options docker. The six tool modes were checked at a 290 px dock width, plus dark/light palettes and multiple-point editing.
+
+![Development Tool Options inside Krita](docs/images/options-in-krita-development.png)
 
 ## Functional tests
 

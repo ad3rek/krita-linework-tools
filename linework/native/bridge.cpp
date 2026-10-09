@@ -14,6 +14,8 @@
 #include <SvgSavingContext.h>
 #include <QBuffer>
 #include <memory>
+#include <vector>
+#include <stdexcept>
 #include <KisView.h>
 #include <kis_canvas2.h>
 #include <kis_image.h>
@@ -445,9 +447,69 @@ static void useEditableThickness(KisPaintOpSettingsSP settings) {
     settings->setProperty("SizecurveMode", 0);
 }
 
-extern "C" LINEWORK_EXPORT int linework_paint_with_thickness(void *nodeHandle, void *viewHandle, void *resourceHandle,
+struct LineworkPresetCache {
+    struct Entry {
+        KisPaintOpPresetSP source, prototype;
+        QByteArray xml;
+        QString checksum;
+        int version;
+    };
+    std::vector<Entry> entries;
+    long long hits=0, misses=0;
+    int xmlBytes=0;
+};
+
+extern "C" LINEWORK_EXPORT void *linework_preset_cache_new(){return new LineworkPresetCache;}
+extern "C" LINEWORK_EXPORT void linework_preset_cache_delete(void *handle){delete static_cast<LineworkPresetCache*>(handle);}
+extern "C" LINEWORK_EXPORT void linework_preset_cache_stats(void *handle,long long *out){
+    auto cache=static_cast<LineworkPresetCache*>(handle);
+    if(!cache||!out)return;
+    out[0]=cache->hits;out[1]=cache->misses;out[2]=cache->entries.size();out[3]=cache->xmlBytes;
+}
+
+static KisPaintOpPresetSP preparedPreset(Resource *resource,const char *xml,LineworkPresetCache *cache){
+    auto original=(resource->*member(ResourceResource{}))().dynamicCast<KisPaintOpPreset>();
+    if(!original)throw std::runtime_error("O preset nativo não foi encontrado.");
+    const QByteArray encoded(xml?xml:"");
+    // Empty XML uses live preset settings, so do not cache that mutable case.
+    if(cache && !encoded.isEmpty()){
+        const QString checksum=original->md5Sum(false);
+        const int version=original->version();
+        for(size_t i=0;i<cache->entries.size();i++){
+            const auto &entry=cache->entries[i];
+            if(entry.source==original && entry.xml==encoded && entry.checksum==checksum && entry.version==version){
+                auto prototype=entry.prototype;
+                std::rotate(cache->entries.begin()+i,cache->entries.begin()+i+1,cache->entries.end());
+                cache->hits++;
+                return prototype->clone().dynamicCast<KisPaintOpPreset>();
+            }
+        }
+        cache->misses++;
+    }
+    auto brush=original->clone().dynamicCast<KisPaintOpPreset>();
+    if(!encoded.isEmpty()){
+        QDomDocument doc;
+        if(!doc.setContent(QString::fromUtf8(encoded)))throw std::runtime_error("XML do preset inválido.");
+        brush->fromXML(doc.documentElement(),KisGlobalResourcesInterface::instance());
+    }
+    if(!brush->settings())throw std::runtime_error("O motor deste preset não está disponível.");
+    if(brush->settings()->eraserMode())throw std::runtime_error("Use a ferramenta Linework Erase para apagar linhas.");
+    if(cache && !encoded.isEmpty() && encoded.size()<=8*1024*1024){
+        while(!cache->entries.empty() && (cache->entries.size()>=8 || cache->xmlBytes+encoded.size()>8*1024*1024)){
+            cache->xmlBytes-=cache->entries.front().xml.size();cache->entries.erase(cache->entries.begin());
+        }
+        cache->entries.push_back({original,brush,encoded,original->md5Sum(false),original->version()});
+        cache->xmlBytes+=encoded.size();
+        // Only immutable prototypes are retained. Every stroke gets private
+        // settings, including its size/flow and independent diameter sensors.
+        return brush->clone().dynamicCast<KisPaintOpPreset>();
+    }
+    return brush;
+}
+
+static int paintWithThickness(void *nodeHandle, void *viewHandle, void *resourceHandle,
     const char *xml, const char *color, double size, double opacity, double flow,
-    const double *input, int count, int explicitThickness, char *error, int capacity)
+    const double *input, int count, int explicitThickness, char *error, int capacity,LineworkPresetCache *cache)
 {
     auto fail=[&](const char *message){ if(capacity>0){std::strncpy(error,message,capacity-1);error[capacity-1]=0;}return 0;};
     try {
@@ -463,17 +525,7 @@ extern "C" LINEWORK_EXPORT int linework_paint_with_thickness(void *nodeHandle, v
         auto sourceView=(view->*member(ViewView{}))();
         if(!image||!target||!target->paintDevice()||!sourceView||!sourceView->canvasBase())
             return fail("O destino nativo não é uma camada de pintura válida.");
-        auto original=(resource->*member(ResourceResource{}))().dynamicCast<KisPaintOpPreset>();
-        if(!original)return fail("O preset nativo não foi encontrado.");
-        auto brush=original->clone().dynamicCast<KisPaintOpPreset>();
-        if(xml&&*xml){
-            QDomDocument doc;
-            if(!doc.setContent(QString::fromUtf8(xml)))return fail("XML do preset inválido.");
-            brush->fromXML(doc.documentElement(),KisGlobalResourcesInterface::instance());
-        }
-        if(!brush->settings())return fail("O motor deste preset não está disponível.");
-        if(brush->settings()->eraserMode())
-            return fail("Use a ferramenta Linework Erase para apagar linhas.");
+        auto brush=preparedPreset(resource,xml,cache);
         brush->settings()->setPaintOpSize(size);
         brush->settings()->setPaintOpOpacity(opacity);
         brush->settings()->setPaintOpFlow(flow);
@@ -521,6 +573,17 @@ extern "C" LINEWORK_EXPORT int linework_paint_with_thickness(void *nodeHandle, v
         return 1;
     }catch(const std::exception &e){return fail(e.what());}
     catch(...){return fail("Falha no motor nativo do Krita.");}
+}
+
+extern "C" LINEWORK_EXPORT int linework_paint_with_thickness(void *node,void *view,void *resource,
+    const char *xml,const char *color,double size,double opacity,double flow,
+    const double *input,int count,int explicitThickness,char *error,int capacity){
+    return paintWithThickness(node,view,resource,xml,color,size,opacity,flow,input,count,explicitThickness,error,capacity,nullptr);
+}
+extern "C" LINEWORK_EXPORT int linework_paint_cached(void *node,void *view,void *resource,
+    const char *xml,const char *color,double size,double opacity,double flow,
+    const double *input,int count,int explicitThickness,char *error,int capacity,void *cache){
+    return paintWithThickness(node,view,resource,xml,color,size,opacity,flow,input,count,explicitThickness,error,capacity,static_cast<LineworkPresetCache*>(cache));
 }
 
 
@@ -617,8 +680,8 @@ extern "C" LINEWORK_EXPORT void linework_clear_scratch(void *nodeHandle){
     target->paintDevice()->clear();
 }
 
-extern "C" LINEWORK_EXPORT void *linework_stream_begin(void *nodeHandle,void *viewHandle,void *resourceHandle,
-    const char *xml,const char *color,double size,double opacity,double flow,char *error,int capacity){
+static void *streamBegin(void *nodeHandle,void *viewHandle,void *resourceHandle,
+    const char *xml,const char *color,double size,double opacity,double flow,char *error,int capacity,LineworkPresetCache *cache){
     auto fail=[&](const char *message)->void*{if(capacity>0){std::strncpy(error,message,capacity-1);error[capacity-1]=0;}return nullptr;};
     auto stream=std::make_unique<LineworkStream>();
     try{
@@ -634,17 +697,7 @@ extern "C" LINEWORK_EXPORT void *linework_stream_begin(void *nodeHandle,void *vi
         auto sourceView=(view->*member(ViewView{}))();
         if(!image||!target||!target->paintDevice()||!sourceView||!sourceView->canvasBase())
             return fail("O destino nativo não é uma camada de pintura válida.");
-        auto original=(resource->*member(ResourceResource{}))().dynamicCast<KisPaintOpPreset>();
-        if(!original)return fail("O preset nativo não foi encontrado.");
-        auto brush=original->clone().dynamicCast<KisPaintOpPreset>();
-        if(xml&&*xml){
-            QDomDocument doc;
-            if(!doc.setContent(QString::fromUtf8(xml)))return fail("XML do preset inválido.");
-            brush->fromXML(doc.documentElement(),KisGlobalResourcesInterface::instance());
-        }
-        if(!brush->settings())return fail("O motor deste preset não está disponível.");
-        if(brush->settings()->eraserMode())
-            return fail("Use a ferramenta Linework Erase para apagar linhas.");
+        auto brush=preparedPreset(resource,xml,cache);
         brush->settings()->setPaintOpSize(size);
         brush->settings()->setPaintOpOpacity(opacity);
         brush->settings()->setPaintOpFlow(flow);
@@ -685,6 +738,15 @@ extern "C" LINEWORK_EXPORT void *linework_stream_begin(void *nodeHandle,void *vi
         return stream.release();
     }catch(const std::exception &e){return fail(e.what());}
     catch(...){return fail("Falha ao iniciar a prévia nativa.");}
+}
+
+extern "C" LINEWORK_EXPORT void *linework_stream_begin(void *node,void *view,void *resource,
+    const char *xml,const char *color,double size,double opacity,double flow,char *error,int capacity){
+    return streamBegin(node,view,resource,xml,color,size,opacity,flow,error,capacity,nullptr);
+}
+extern "C" LINEWORK_EXPORT void *linework_stream_begin_cached(void *node,void *view,void *resource,
+    const char *xml,const char *color,double size,double opacity,double flow,char *error,int capacity,void *cache){
+    return streamBegin(node,view,resource,xml,color,size,opacity,flow,error,capacity,static_cast<LineworkPresetCache*>(cache));
 }
 
 extern "C" LINEWORK_EXPORT void linework_stream_append(void *handle,const double *input,int count){

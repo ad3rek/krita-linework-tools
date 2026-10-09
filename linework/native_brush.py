@@ -224,18 +224,22 @@ class NativeBrushRenderer:
         self.stream = None
         self.live_count = 0
         self.live_length = 0
+        self.preset_cache = None
+        self.use_preset_cache = True
+        self._cached_paint = self._cached_stream = None
 
     def load_bridge(self):
         if self._paint is not None:
             return
         self.library = load_library()
         try:
-            self._paint = self.library.linework_paint_with_thickness
+            self._uncached_paint = self.library.linework_paint_with_thickness
         except AttributeError as exc:
             raise ValueError('Reabra o Krita para carregar o controle de espessura atualizado.') from exc
-        self._paint.argtypes = ([ctypes.c_void_p]*3+[ctypes.c_char_p]*2+
+        self._uncached_paint.argtypes = ([ctypes.c_void_p]*3+[ctypes.c_char_p]*2+
             [ctypes.c_double]*3+[ctypes.POINTER(ctypes.c_double), ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_int])
-        self._paint.restype = ctypes.c_int
+        self._uncached_paint.restype = ctypes.c_int
+        self._paint = self.paint_native
         for name in ("linework_prepare_scratch", "linework_clear_scratch", "linework_stream_end", "linework_preview_delete"):
             function = getattr(self.library, name)
             function.argtypes = [ctypes.c_void_p]
@@ -249,12 +253,39 @@ class NativeBrushRenderer:
         self.library.linework_stream_snapshot.restype = ctypes.c_void_p
         self.library.linework_preview_pixels.argtypes = [ctypes.c_void_p]
         self.library.linework_preview_pixels.restype = ctypes.c_void_p
+        # Older native bridges remain usable through the original entry points.
+        if hasattr(self.library,'linework_paint_cached'):
+            self._cached_paint = self.library.linework_paint_cached
+            self._cached_paint.argtypes = self._uncached_paint.argtypes+[ctypes.c_void_p]
+            self._cached_paint.restype = ctypes.c_int
+            self._cached_stream = self.library.linework_stream_begin_cached
+            self._cached_stream.argtypes = self.library.linework_stream_begin.argtypes+[ctypes.c_void_p]
+            self._cached_stream.restype = ctypes.c_void_p
+            self.library.linework_preset_cache_new.argtypes=[]
+            self.library.linework_preset_cache_new.restype=ctypes.c_void_p
+            self.library.linework_preset_cache_delete.argtypes=[ctypes.c_void_p]
+            self.library.linework_preset_cache_delete.restype=None
+            self.library.linework_preset_cache_stats.argtypes=[ctypes.c_void_p,ctypes.POINTER(ctypes.c_longlong)]
+            self.library.linework_preset_cache_stats.restype=None
+
+    def paint_native(self, *args):
+        if self.use_preset_cache and self.preset_cache:
+            return self._cached_paint(*args,self.preset_cache)
+        return self._uncached_paint(*args)
+
+    def preset_cache_stats(self):
+        if not self.preset_cache: return None
+        values=(ctypes.c_longlong*4)()
+        self.library.linework_preset_cache_stats(self.preset_cache,values)
+        return dict(zip(('hits','misses','entries','xml_bytes'),values))
 
     def ensure_scratch(self):
         self.load_bridge()
         document = self.view.document()
         if self.scratch and (self.scratch.width(), self.scratch.height()) != (document.width(), document.height()):
             self.close()
+        if self._cached_paint is not None and self.preset_cache is None:
+            self.preset_cache = self.library.linework_preset_cache_new()
         if self.scratch is None:
             self.scratch = Krita.instance().createDocument(document.width(), document.height(),
                 "Linework render", "RGBA", "U8", "sRGB-elle-V2-srgbtrc.icc", 72)
@@ -269,6 +300,9 @@ class NativeBrushRenderer:
             self.scratch.setModified(False)
             self.scratch.close()
             self.scratch = self.node = None
+        if self.preset_cache:
+            cache,self.preset_cache=self.preset_cache,None
+            self.library.linework_preset_cache_delete(cache)
 
     def image_snapshot(self):
         bounds = self.node.bounds().intersected(QRect(0, 0, self.scratch.width(), self.scratch.height()))
@@ -284,9 +318,11 @@ class NativeBrushRenderer:
         self.library.linework_clear_scratch(sip.unwrapinstance(self.node))
         resource = self.preset_resource(stroke.brush)
         error = ctypes.create_string_buffer(1024)
-        self.stream = self.library.linework_stream_begin(sip.unwrapinstance(self.node), sip.unwrapinstance(self.view),
+        function = self._cached_stream if self.use_preset_cache and self.preset_cache else self.library.linework_stream_begin
+        extra = (self.preset_cache,) if function is self._cached_stream else ()
+        self.stream = function(sip.unwrapinstance(self.node), sip.unwrapinstance(self.view),
             sip.unwrapinstance(resource), stroke.brush["xml"].encode(), stroke.color.encode(),
-            stroke.width, stroke.opacity, stroke.brush.get("flow", 1), error, len(error))
+            stroke.width, stroke.opacity, stroke.brush.get("flow", 1), error, len(error),*extra)
         if not self.stream:
             raise ValueError(error.value.decode("utf-8", "replace"))
         self.live_count = 0

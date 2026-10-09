@@ -468,23 +468,33 @@ class History:
         self.undo_stack = []
         self.redo_stack = []
         self.current = copy.deepcopy(strokes)
+        self._current_data = [s.data() for s in self.current]
 
     def commit(self, strokes):
-        if [s.data() for s in strokes] == [s.data() for s in self.current]:
+        values = [s.data() for s in strokes]
+        if values == self._current_data:
             return
+        previous = {s.uid:(s,record) for s,record in zip(self.current,self._current_data)}
+        # History owns immutable snapshots. Reuse untouched strokes between
+        # steps; callers always receive independent copies from undo/redo.
+        current = [previous[s.uid][0] if s.uid in previous and previous[s.uid][1] == value
+                   else copy.deepcopy(s) for s,value in zip(strokes,values)]
         self.undo_stack.append(self.current)
         self.undo_stack = self.undo_stack[-self.limit:]
-        self.current = copy.deepcopy(strokes)
+        self.current = current
+        self._current_data = values
         self.redo_stack.clear()
 
     def undo(self):
         if self.undo_stack:
             self.redo_stack.append(self.current)
             self.current = self.undo_stack.pop()
+            self._current_data = [s.data() for s in self.current]
         return copy.deepcopy(self.current)
 
     def redo(self):
         if self.redo_stack:
             self.undo_stack.append(self.current)
             self.current = self.redo_stack.pop()
+            self._current_data = [s.data() for s in self.current]
         return copy.deepcopy(self.current)

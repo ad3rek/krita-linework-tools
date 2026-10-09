@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt, QEvent, QPointF, QTimer, QRectF, QEventLoop, pyqtSi
 from PyQt5 import sip
 from PyQt5.QtGui import (QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen,
                         QMouseEvent, QTabletEvent, QKeyEvent)
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout, QGroupBox,
+from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout,
     QLabel, QPushButton, QDoubleSpinBox, QFileDialog, QComboBox, QProgressBar, QHBoxLayout, QCheckBox)
 from krita import Krita
 from .editor import LineworkCanvas, painter_path
@@ -18,6 +18,7 @@ from .native_brush import (NativeBrushRenderer, capture_brush, set_preview_hidde
                           begin_edit_session, end_edit_session, point_thickness, ensure_thickness, native_busy)
 from .native_smoothing import NativeSmoother, SmoothingOptions
 from .preview import SavedAppearanceCache
+from .options_ui import OptionsSection
 from .eraser import hit_center, point_weights, reduce_points
 from .topology import (bake_minimum, merge_points, join_strokes, close_stroke,
                        selection_kind)
@@ -204,12 +205,20 @@ class NativeCanvasOverlay(LineworkCanvas):
         changed = False
         try:
             targets = []
-            for stroke in list(self.strokes):
+            spatial = self.spatial_index()
+            box = min(start.x,end.x)-radius, min(start.y,end.y)-radius, max(start.x,end.x)+radius, max(start.y,end.y)+radius
+            point_groups = {}
+            if self.eraser_mode == 'points':
+                for uid,index in spatial.anchors_in(box): point_groups.setdefault(uid,[]).append(index)
+                candidates = point_groups
+            else: candidates = spatial.strokes_in(box)
+            for uid in sorted(candidates,key=spatial.order.get):
+                stroke = spatial.strokes[uid]
                 if self.eraser_mode == 'line':
                     if not hit_center(self.cached_center(stroke), start, end, radius): continue
                     targets.append((stroke, None))
                 else:
-                    weights = point_weights(stroke, start, end, radius, self.eraser_strength*pressure)
+                    weights = point_weights(stroke, start, end, radius, self.eraser_strength*pressure, point_groups[uid])
                     if not any(weights.values()): continue
                     targets.append((stroke, weights))
                     if stroke.uid not in self._erase_baselines:
@@ -233,7 +242,7 @@ class NativeCanvasOverlay(LineworkCanvas):
                     self._edit_mutating = False
             for stroke, weights in targets:
                 if self.eraser_mode == 'line':
-                    self.strokes.remove(stroke); changed = True
+                    self.strokes.remove(stroke); spatial.remove(stroke.uid); changed = True
                 else:
                     if not self._erase_coverage[stroke.uid]:
                         baseline = self._erase_baselines[stroke.uid]
@@ -278,6 +287,7 @@ class NativeCanvasOverlay(LineworkCanvas):
             else:
                 for i, stroke in enumerate(self.strokes):
                     if stroke.uid in original: self.strokes[i] = original[stroke.uid]
+            self.invalidate_spatial(original)
         self._edit_order = self._edit_selection = None
         self._erase_baselines = {}; self._erase_coverage = {}
         if self.source_layer:
@@ -287,6 +297,7 @@ class NativeCanvasOverlay(LineworkCanvas):
 
     def commit(self):
         original = self._edit_original
+        if original: self.invalidate_spatial(original)
         current = {s.uid: s for s in self.strokes}
         if original and all(uid in current and current[uid].data() == saved.data() for uid, saved in original.items()):
             self.restore_edit_preview(cancel=True)
@@ -592,10 +603,11 @@ class NativeCanvasOverlay(LineworkCanvas):
             if self.eraser_mode == 'points':
                 color = self.palette().highlight().color()
                 painter.setPen(QPen(color, 1/self.zoom)); painter.setBrush(color)
-                for stroke in self.strokes:
-                    for anchor in stroke.points:
-                        if math.hypot(anchor.x-point.x(), anchor.y-point.y()) < radius:
-                            painter.drawEllipse(QPointF(anchor.x, anchor.y), 3.5/self.zoom, 3.5/self.zoom)
+                spatial = self.spatial_index()
+                for uid,i in spatial.anchors_in((point.x()-radius,point.y()-radius,point.x()+radius,point.y()+radius)):
+                    anchor = spatial.strokes[uid].points[i]
+                    if math.hypot(anchor.x-point.x(), anchor.y-point.y()) < radius:
+                        painter.drawEllipse(QPointF(anchor.x, anchor.y), 3.5/self.zoom, 3.5/self.zoom)
         options = self.smoothing_options
         if self.mode == 'pen' and options and int(options[0]) == 3 and options[6] and self.hover_pos is not None:
             center = (QPointF(self.draft.points[-1].x, self.draft.points[-1].y)
@@ -647,12 +659,14 @@ class LineworkToolOptions(QWidget):
         self._defaults = dict(width=8, color="#202020", opacity=1, minimum=0, taper_start=0, taper_end=0)
         body = QWidget()
         layout = QVBoxLayout(body)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(10)
+        layout.setContentsMargins(6, 4, 6, 6)
+        layout.setSpacing(6)
+        self.options_layout = layout
         self.tool_label = QLabel("Linework Brush", self)
         self.tool_label.hide()  # The native tool docker already provides its title.
-        self.brush_group = QGroupBox("Pincel")
-        brush_layout = QVBoxLayout(self.brush_group)
+        self.brush_group = OptionsSection("Pincel e cor")
+        brush_layout = QVBoxLayout(self.brush_group.content)
+        brush_layout.setContentsMargins(6, 2, 0, 4); brush_layout.setSpacing(4)
         self.brush_label = QLabel("Escolha um preset no painel Pincéis do Krita.")
         self.brush_label.setWordWrap(True)
         brush_layout.addWidget(self.brush_label)
@@ -663,16 +677,17 @@ class LineworkToolOptions(QWidget):
         self.brush_scope.addItems(["Traços selecionados", "Todos os traços da camada"])
         self.brush_scope.currentIndexChanged.connect(self.update_controls)
         brush_layout.addWidget(self.brush_scope)
-        self.apply_brush_button = QPushButton("Trocar pincel")
+        self.apply_brush_button = QPushButton("Aplicar pincel")
         self.apply_brush_button.setToolTip("Escolha um preset no Krita e aplique à curva existente, preservando cor e perfil de espessura")
         self.apply_brush_button.setEnabled(False)
         self.apply_brush_button.clicked.connect(self.apply_current_brush)
-        brush_layout.addWidget(self.apply_brush_button)
-        self.apply_color_button = QPushButton("Aplicar cor atual")
+        self.apply_color_button = QPushButton("Aplicar cor")
         self.apply_color_button.setToolTip("Aplica a cor de primeiro plano do Krita ao escopo acima. Nas ferramentas de edição, mudar a cor do Krita também recolore os traços selecionados.")
         self.apply_color_button.setEnabled(False)
         self.apply_color_button.clicked.connect(self.use_foreground)
-        brush_layout.addWidget(self.apply_color_button)
+        appearance_actions = QHBoxLayout(); appearance_actions.setSpacing(4)
+        appearance_actions.addWidget(self.apply_brush_button); appearance_actions.addWidget(self.apply_color_button)
+        brush_layout.addLayout(appearance_actions)
         self.brush_progress_row = QWidget()
         progress_layout = QHBoxLayout(self.brush_progress_row)
         progress_layout.setContentsMargins(0, 0, 0, 0)
@@ -689,11 +704,12 @@ class LineworkToolOptions(QWidget):
         forms = {}
         self.field_labels = {}
         for key, title in (("curve", "Suavização"), ("stroke", "Traço"),
-                           ("pressure", "Espessura dos pontos"), ("tips", "Pontas")):
-            group = QGroupBox(title)
-            form = QFormLayout(group)
-            form.setContentsMargins(10, 12, 10, 10)
-            form.setVerticalSpacing(7)
+                           ("pressure", "Espessura"), ("tips", "Afinar pontas")):
+            group = OptionsSection(title, expanded=key != 'tips')
+            form = QFormLayout(group.content)
+            form.setContentsMargins(6, 2, 0, 4)
+            form.setVerticalSpacing(4)
+            form.setRowWrapPolicy(QFormLayout.WrapLongRows)
             form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
             self.groups[key], forms[key] = group, form
             layout.addWidget(group)
@@ -725,13 +741,16 @@ class LineworkToolOptions(QWidget):
         self.thickness.setKeyboardTracking(False)
         self.thickness.valueChanged.connect(self.thickness_change)
         self.thickness.sameValueCommitted.connect(self.thickness_change)
-        forms["pressure"].addRow("Espessura", self.thickness)
+        forms["pressure"].insertRow(0, "Espessura", self.thickness)
         self.field_labels[self.thickness] = forms["pressure"].labelForField(self.thickness)
         self.smoothing = SmoothingOptions()
         self.smoothing.changed.connect(self.smoothing_changed)
         forms['curve'].addRow(self.smoothing)
-        self.eraser_group = QGroupBox('Borracha')
-        eraser_form = QFormLayout(self.eraser_group)
+        self.eraser_group = OptionsSection('Borracha')
+        eraser_form = QFormLayout(self.eraser_group.content)
+        eraser_form.setContentsMargins(6, 2, 0, 4); eraser_form.setVerticalSpacing(4)
+        eraser_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        eraser_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.eraser_mode = QComboBox()
         self.eraser_mode.addItems(['Apagar linha', 'Apagar pontos'])
         self.eraser_mode.setToolTip('Linha remove o traço inteiro. Pontos reduz o diâmetro dos pontos atingidos, sem excluir sua geometria nem alterar a pressão capturada.')
@@ -742,12 +761,14 @@ class LineworkToolOptions(QWidget):
         self.eraser_strength.setValue(100); self.eraser_strength.setSuffix(' %'); self.eraser_strength.setKeyboardTracking(False)
         eraser_form.addRow('Modo', self.eraser_mode); eraser_form.addRow('Tamanho', self.eraser_size)
         eraser_form.addRow('Força', self.eraser_strength)
+        self.eraser_strength_label = eraser_form.labelForField(self.eraser_strength)
         self.eraser_mode.currentIndexChanged.connect(self.eraser_changed)
         self.eraser_strength.valueChanged.connect(self.eraser_changed)
         self.eraser_size.valueChanged.connect(self.eraser_size_changed)
         layout.addWidget(self.eraser_group); self.eraser_group.hide()
-        self.topology_group = QGroupBox('Pontos e conexões')
-        topology_layout = QVBoxLayout(self.topology_group)
+        self.topology_group = OptionsSection('Pontos e conexões', expanded=False)
+        topology_layout = QVBoxLayout(self.topology_group.content)
+        topology_layout.setContentsMargins(6, 2, 0, 4); topology_layout.setSpacing(4)
         self.merge_position = QComboBox(); self.merge_position.addItems(['No centro', 'No ponto ativo'])
         self.merge_position.setToolTip('Posição e espessura do ponto mesclado: média dos selecionados ou valores do ponto ativo.')
         topology_layout.addWidget(self.merge_position)
@@ -761,10 +782,12 @@ class LineworkToolOptions(QWidget):
         topology_buttons.addWidget(self.merge_button); topology_buttons.addWidget(self.join_button)
         topology_layout.addLayout(topology_buttons)
         layout.removeWidget(self.selection_label)
-        layout.insertWidget(0, self.selection_label)
         layout.insertWidget(1, self.topology_group); self.topology_group.hide()
-        self.selection_group = QGroupBox('Seleção')
-        selection_form = QFormLayout(self.selection_group)
+        self.selection_group = OptionsSection('Seleção')
+        selection_form = QFormLayout(self.selection_group.content)
+        selection_form.setContentsMargins(6, 2, 0, 4); selection_form.setVerticalSpacing(4)
+        selection_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        selection_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.selection_mode = QComboBox(); self.selection_mode.addItems(['Pontos e traços', 'Pontos', 'Traços'])
         self.selection_mode.setToolTip('Pontos seleciona apenas âncoras; Traços seleciona a curva inteira, inclusive ao clicar numa ponta. Shift adiciona à seleção.')
         self.pick_radius = QDoubleSpinBox(); self.pick_radius.setRange(4,40); self.pick_radius.setValue(16)
@@ -772,6 +795,7 @@ class LineworkToolOptions(QWidget):
         self.pick_radius.setToolTip('Raio de clique dos pontos e alças em pixels de tela, independente do zoom. O alvo mais próximo ganha.')
         self.lock_point = QCheckBox('Travar ponto ativo')
         self.lock_point.setToolTip('Mantém apenas o ponto ativo selecionado. Cliques fora não mudam a seleção; arraste o ponto ou suas alças para editar. Desmarque para escolher outro.')
+        selection_form.addRow(self.selection_label)
         selection_form.addRow('Modo', self.selection_mode)
         selection_form.addRow(self.lock_point); selection_form.addRow('Raio de clique', self.pick_radius)
         self.selection_mode.currentIndexChanged.connect(self.selection_options_changed)
@@ -817,6 +841,14 @@ class LineworkToolOptions(QWidget):
         self.thickness.setVisible(mode in (3, 4))
         self.field_labels[self.thickness].setVisible(mode in (3, 4))
         self.brush_group.setVisible(mode != 5)
+        if mode in (3, 4):
+            order = [self.selection_group, self.groups['pressure'], self.groups['stroke'],
+                     self.brush_group, self.topology_group, self.groups['tips'], self.groups['curve'], self.eraser_group]
+        else:
+            order = [self.groups['stroke'], self.groups['curve'], self.groups['pressure'],
+                     self.groups['tips'], self.brush_group, self.eraser_group, self.selection_group, self.topology_group]
+        for index, group in enumerate(order):
+            self.options_layout.removeWidget(group); self.options_layout.insertWidget(index, group)
         self.stroke_brush_label.setVisible(mode in (3, 4))
         self.brush_scope.setVisible(mode in (3, 4))
         self.apply_brush_button.setVisible(mode in (3, 4))
@@ -906,7 +938,7 @@ class LineworkToolOptions(QWidget):
             if document is None:
                 return
             preset = view.currentBrushPreset()
-            self.brush_label.setText("Pincel: "+(preset.name() if preset else "nenhum"))
+            self.brush_label.setText("Atual: "+(preset.name() if preset else "nenhum"))
             layer = self.create_native_layer(document)
             layer = write_layer(document, layer, [])
             self.clear_binding()
@@ -950,7 +982,7 @@ class LineworkToolOptions(QWidget):
                 return
             document = view.document()
             preset = view.currentBrushPreset()
-            self.brush_label.setText("Atual no Krita: "+(preset.name() if preset else "nenhum"))
+            self.brush_label.setText("Atual: "+(preset.name() if preset else "nenhum"))
             active = self.layer if self._selection_pending and self.layer else document.activeNode()
             # Empty documents and transient node-manager updates can report no
             # active node. Keep the explicitly created layer while it exists.
@@ -1081,14 +1113,15 @@ class LineworkToolOptions(QWidget):
             swatch = QPixmap(16, 16); swatch.fill(QColor(self._foreground_color))
             self.apply_color_button.setIcon(QIcon(swatch))
         self.brush_scope.setEnabled(not changing)
-        self.stroke_brush_label.setText("Do traço: "+(stroke.brush['name'] if stroke and stroke.brush else
+        self.stroke_brush_label.setText("Seleção: "+(stroke.brush['name'] if stroke and stroke.brush else
                                                      "Linha lisa" if stroke else "selecione um traço"))
         names = {s.brush['name'] if s.brush else 'Linha lisa' for s in selected}
-        if len(names) > 1: self.stroke_brush_label.setText('Na seleção: vários pincéis')
+        if len(names) > 1: self.stroke_brush_label.setText('Seleção: vários pincéis')
         self.selection_label.setText('{} {} · {} {}'.format(len(selected), 'traço' if len(selected)==1 else 'traços',
-                                                          len(point_refs), 'ponto' if len(point_refs)==1 else 'pontos'))
+                                                          len(point_refs), 'ponto' if len(point_refs)==1 else 'pontos') if selected
+                                     else 'Selecione pontos ou traços no canvas.')
         for group in self.groups.values():
-            group.setEnabled(not changing and (self.mode not in ("edit", "pressure") or stroke is not None))
+            group.content.setEnabled(not changing and (self.mode not in ("edit", "pressure") or stroke is not None))
         for key, control in self.controls.items():
             control.setValue(values[key] if key == "width" else values[key]*100)
             control.set_mixed(len({getattr(s, key) for s in selected}) > 1)
@@ -1096,7 +1129,9 @@ class LineworkToolOptions(QWidget):
         self.thickness.setEnabled(bool(point_refs))
         self.thickness.setValue(widths[0] if widths else 0)
         self.thickness.set_mixed(len({round(width, 6) for width in widths}) > 1)
-        self.eraser_strength.setEnabled(bool(self.eraser_mode.currentIndex()))
+        point_eraser = bool(self.eraser_mode.currentIndex())
+        self.eraser_strength.setEnabled(point_eraser)
+        self.eraser_strength.setVisible(point_eraser); self.eraser_strength_label.setVisible(point_eraser)
         can_edit = bool(self.overlay and self.layer and not self.layer.locked() and not changing and not self._writing)
         for operation, button in (('merge', self.merge_button), ('join', self.join_button)):
             allowed = False

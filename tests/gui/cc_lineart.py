@@ -37,7 +37,8 @@ class Probe(Extension):
 
     def safe(self, function):
         try:
-            print('GUI stage:', getattr(function, '__name__', str(function)), flush=True)
+            name = getattr(function, '__name__', str(function))
+            if name != '<lambda>': print('GUI stage:', name, flush=True)
             function()
         except Exception:
             self.result.update(result='fail', traceback=traceback.format_exc())
@@ -79,6 +80,10 @@ class Probe(Extension):
 
     def wait_update(self, function):
         if self.c._brush_change:
+            state = self.c._brush_change
+            if state['index']//100 != getattr(self,'progress_bucket',-1):
+                self.progress_bucket = state['index']//100
+                print('Native preparation:',state['index'],'/',len(state['changed']),flush=True)
             self.after(lambda: self.wait_update(function))
             return
         assert not self.c._error, self.c.status.text()

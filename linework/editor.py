@@ -7,6 +7,7 @@ from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen, QImage
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QKeySequence
 from .selection import Selection
+from .spatial import SpatialIndex
 from .model import (Point, Stroke, History, clamp, distance, segment_distance,
                     samples, outline, simplify, svg, geometry_key, handle_vector,
                     closest_location, insert_point)
@@ -56,6 +57,11 @@ class LineworkCanvas(QWidget):
         self._tablet_until = 0
         self._paths = {}
         self._centers = {}
+        self._spatial = None
+        self._spatial_strokes = None
+        self._spatial_dirty = set()
+        self._spatial_sync = False
+        self.changed.connect(self.invalidate_spatial)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_TabletTracking, True)
@@ -121,26 +127,43 @@ class LineworkCanvas(QWidget):
             self._centers[stroke.uid] = cached
         return cached[1]
 
+    def invalidate_spatial(self, ids=None):
+        self._spatial_dirty.update(self.selection.ids() if ids is None else ids)
+        self._spatial_sync = True
+
+    def spatial_index(self):
+        if self._spatial is None or self._spatial_strokes is not self.strokes:
+            self._spatial = SpatialIndex(self.strokes)
+            self._spatial_strokes = self.strokes
+        elif self._spatial_sync:
+            current = {s.uid:s for s in self.strokes}
+            for uid in self._spatial.strokes.keys()-current.keys(): self._spatial.remove(uid)
+            for uid in self._spatial_dirty | (current.keys()-self._spatial.strokes.keys()):
+                if uid in current: self._spatial.update(current[uid])
+            self._spatial.order = {s.uid:i for i,s in enumerate(self.strokes)}
+        self._spatial_dirty.clear(); self._spatial_sync = False
+        return self._spatial
+
     def hit_at(self, p):
         threshold = self.pick_radius/self.zoom
         # Pick the nearest anchor; selection priority only breaks equal distances.
-        selected = self.selected_strokes()
         ids = self.selection.ids()
-        candidates = selected+[s for s in reversed(self.strokes) if s.uid not in ids]
+        spatial = self.spatial_index()
+        box = p.x-threshold, p.y-threshold, p.x+threshold, p.y+threshold
         if self.selection_mode != 'stroke':
             best_point = None; best_distance = threshold
-            for stroke in candidates:
-                if not stroke.points: continue
-                closest = min(range(len(stroke.points)), key=lambda i: distance(p, stroke.points[i]))
-                d = distance(p, stroke.points[closest])
+            candidates = sorted(spatial.anchors_in(box), key=lambda key:
+                (0 if key[0] in ids else 1, spatial.order[key[0]] if key[0] in ids else -spatial.order[key[0]], key[1]))
+            for uid, closest in candidates:
+                stroke = spatial.strokes[uid]; d = distance(p, stroke.points[closest])
                 if d <= threshold and (best_point is None or d < best_distance-1e-9):
                     best_point, best_distance = (stroke, closest), d
             if best_point is not None: return best_point
             if self.selection_mode == 'point': return None, -1
         best = threshold
         hit = None
-        for index in reversed(range(len(self.strokes))):
-            stroke = self.strokes[index]
+        for uid in sorted(spatial.strokes_in(box), key=spatial.order.get, reverse=True):
+            stroke = spatial.strokes[uid]
             center = self.cached_center(stroke)
             if len(center) == 1:
                 d = distance(p, center[0])
@@ -189,7 +212,9 @@ class LineworkCanvas(QWidget):
                 if d <= best and d < anchor_distance:
                     best, side_hit = d, side
         if side_hit is not None and self.locked_point is None:
-            if any(distance(p, point) < best for target in self.strokes for point in target.points):
+            spatial = self.spatial_index()
+            if any(distance(p, spatial.strokes[uid].points[i]) < best
+                   for uid,i in spatial.anchors_in((p.x-best,p.y-best,p.x+best,p.y+best))):
                 return None
         return side_hit
 
@@ -296,7 +321,9 @@ class LineworkCanvas(QWidget):
             self._selection_end = self.local_point(pos, pressure)
             box = QRectF(QPointF(self._selection_start.x, self._selection_start.y),
                          QPointF(self._selection_end.x, self._selection_end.y)).normalized()
-            keys = {(s.uid, i) for s in self.strokes for i, p in enumerate(s.points) if box.contains(QPointF(p.x, p.y))}
+            spatial = self.spatial_index()
+            keys = {(uid,i) for uid,i in spatial.anchors_in((box.left(),box.top(),box.right(),box.bottom()))
+                    if box.contains(QPointF(spatial.strokes[uid].points[i].x,spatial.strokes[uid].points[i].y))}
             if self._selection_add: keys.update(self._selection_before.point_keys(self.strokes))
             if self.selection_mode == 'stroke':
                 ids = {uid for uid, _ in keys}
@@ -334,6 +361,7 @@ class LineworkCanvas(QWidget):
                     for target, index in self.selected_point_refs():
                         set_point_thickness(target, index, self._initial_thicknesses[(target.uid, index)]+delta)
                     self.selectedChanged.emit()
+            self.invalidate_spatial()
         self.update()
 
     def end(self, pos, pressure):
@@ -401,6 +429,7 @@ class LineworkCanvas(QWidget):
             self.update()
         elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             if self.mode == "edit" and self.selection.points:
+                self.invalidate_spatial(self.selection.ids())
                 for stroke in self.selected_strokes():
                     indices = {i for uid, i in self.selection.points if uid == stroke.uid}
                     stroke.points = [p for i, p in enumerate(stroke.points) if i not in indices]

@@ -2,6 +2,7 @@
 """Verify release, subsequent strokes and input delivered during native waits."""
 import json
 import os
+import time
 import traceback
 from pathlib import Path
 from krita import Krita, Extension, ManagedColor
@@ -27,6 +28,20 @@ class Probe(Extension):
         except Exception:
             self.result.update(result='fail', traceback=traceback.format_exc())
             self.finish()
+
+    def after_input(self, fn, delay=100):
+        # Native waits pump timers while the captured gesture is still being
+        # replayed. A fixed delay can inspect/close the canvas inside that wait.
+        deadline = time.monotonic()+90
+        def ready():
+            busy = self.c.input_busy() or bool(self.c._pending_input)
+            if busy:
+                self.result['queued_input_check_deferrals'] = self.result.get('queued_input_check_deferrals', 0)+1
+                assert time.monotonic() < deadline, 'Queued input did not drain'
+                self.after(ready, 100)
+            else:
+                fn()
+        self.after(ready, delay)
 
     def finish(self):
         (ROOT/'docs/validation/stroke-lifecycle.json').write_text(json.dumps(self.result, indent=2))
@@ -120,7 +135,7 @@ class Probe(Extension):
             return original(*args)
         renderer._paint = paint
         self.stroke(650, tablet=True)
-        self.after(self.nested_checked, 400)
+        self.after_input(self.nested_checked, 400)
 
     def nested_checked(self):
         self.assert_saved(11, [650, 710])
@@ -135,7 +150,7 @@ class Probe(Extension):
             return original(*args)
         renderer._paint = paint
         self.stroke(800)
-        self.after(self.mouse_checked, 400)
+        self.after_input(self.mouse_checked, 400)
 
     def mouse_checked(self):
         self.assert_saved(13, [800, 850])

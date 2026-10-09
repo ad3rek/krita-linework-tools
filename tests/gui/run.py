@@ -10,6 +10,13 @@ import struct
 import subprocess
 import tempfile
 import zlib
+import zipfile
+
+
+def performance_fixture(checkout, output):
+    with zipfile.ZipFile(checkout/'examples/pepper-linework.kra') as archive:
+        data=json.loads(archive.read('Unnamed/annotations/org.felipe.linework.v1'))
+    (output/'fixture.json').write_text(json.dumps(next(iter(data['layers'].values()))['strokes']))
 
 
 def blank_png(path, size=900):
@@ -22,7 +29,7 @@ def blank_png(path, size=900):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color', 'stroke_lifecycle', 'eraser_topology'])
+    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color', 'stroke_lifecycle', 'eraser_topology', 'performance', 'interface'])
     parser.add_argument('--output', type=Path, help='Directory for reports, captures and test documents')
     args = parser.parse_args()
     checkout = Path(__file__).resolve().parents[2]
@@ -34,7 +41,7 @@ def main():
             parser.error(command+' is required (Linux / Krita 5.2.14 / compatible Qt 5 ABI).')
     report = output/'docs/validation'/({'cc_lineart': 'cc-lineart.json',
         'multi_point': 'multi-point.json', 'smoothing': 'smoothing.json', 'color': 'color.json',
-        'stroke_lifecycle': 'stroke-lifecycle.json', 'eraser_topology': 'eraser-topology.json'}[args.probe])
+        'stroke_lifecycle': 'stroke-lifecycle.json', 'eraser_topology': 'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json'}[args.probe])
     report.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory(prefix='linework-gui-') as tmp:
         base = Path(tmp)
@@ -59,9 +66,10 @@ def main():
         else:
             fixture = output/'examples/blank.png'
             blank_png(fixture)
+        if args.probe == 'performance': performance_fixture(checkout,output)
         with (output/'krita.log').open('w') as log:
             process = subprocess.run(['xvfb-run', '-a', '-s', '-screen 0 1600x1100x24',
-                'timeout', '300s', 'krita', '--nosplash', str(fixture)],
+                'timeout', '1200s' if args.probe == 'cc_lineart' else '300s', 'krita', '--nosplash', str(fixture)],
                 env=env, stdout=log, stderr=subprocess.STDOUT)
     if not report.exists():
         raise SystemExit('No test report; see '+str(output/'krita.log'))

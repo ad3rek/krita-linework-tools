@@ -18,10 +18,11 @@ def hit_center(center, start, end, radius):
     return any(segment_pair_distance(start,end,a,b) <= radius for a,b in zip(center,center[1:]))
 
 
-def point_weights(stroke, start, end, radius, strength):
+def point_weights(stroke, start, end, radius, strength, indices=None):
     if radius <= 0: return {}
     return {i: clamp(strength,0,1)*(1-(0 if distance/radius < 1e-8 else distance/radius))**2
-            for i,p in enumerate(stroke.points)
+            for i in (range(len(stroke.points)) if indices is None else indices)
+            for p in (stroke.points[i],)
             if (distance := segment_distance(p,start,end)[0]) < radius}
 
 

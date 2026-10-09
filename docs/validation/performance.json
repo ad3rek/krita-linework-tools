@@ -1,0 +1,462 @@
+{
+  "date": "2026-10-09",
+  "scope": "Unreleased development performance and Tool Options changes; published 0.1.2 archives are unchanged.",
+  "base_commit": "17504211558079f1ef5de008e6a1d2943fe81c3c",
+  "fixture": {
+    "source": "examples/pepper-linework.kra",
+    "artwork": "Pepper / David Revoy / CC BY 4.0",
+    "strokes": 743,
+    "anchors": 2206
+  },
+  "source_build": {
+    "date": "2026-10-09",
+    "base_commit": "17504211558079f1ef5de008e6a1d2943fe81c3c",
+    "scope": "Unreleased performance changes; published 0.1.2 packages are unchanged.",
+    "source_sha256": {
+      "linework/editor.py": "3e8b883eef9e621a67eb3cd890d4208edd9093398f684267af309e30ecb6b372",
+      "linework/eraser.py": "865062a4212a63c147c74d62e82c631186f0a04a630b54b1210ba8b070d31643",
+      "linework/spatial.py": "57335ff9dfb7f2b41cdaf2efffb776e37b5a7d23511490fb61358ea4b24e72d5",
+      "linework/model.py": "4e97206ea2cb5091c4aafc145dceee816b7595b1344b43e8cb297720e6cbea20",
+      "linework/native_brush.py": "a9c569ce1953ae52fe03829b6b11bf9c7a753683cf1cd850b5fec92cc98db64a",
+      "linework/tool_options.py": "3d2a4b60bb393ebcca4b26e76dbba72f2a1b916eadb0051330fd11cb0a98b5c6",
+      "linework/native/bridge.cpp": "074cb0502c0608362b9eaeaba1b79e12fe315d5a05bfd1989bab1937fa4067b3",
+      "tests/gui/performance.py": "445729d886d1ec7dec17867a9283b0f9a9b03ba29b772bc3595f944331c86bf1",
+      "linework/options_ui.py": "af2d3c16982c27ccfb15e79e29cf0b5af6e58ea6b292ddd7996f32fc2d81264d",
+      "tests/gui/interface.py": "b6ca85e195ef1d4f61a88d7abccb9579be8d1136affd03463cc7262a05e87673",
+      "tests/gui/stroke_lifecycle.py": "843349bad0a29a638e14e167ffa24a946c86c966403c5677d8cb25b7039210e5",
+      "tests/bench_history.py": "d04844557116f42600860582509adceed632554ccca4a07acb4ab8c640e03c0f",
+      "linework/Manual.html": "a7abc1a6911b6bb63e5868e91dc5b1126d0e0b506ae9600fef5e9fc781d3f7b1"
+    },
+    "native_sha256": {
+      "liblinework_native.so": "c42e001c71736ba89d8d3951941b12a25fa0abe73fae906023023bfd06ca85b6",
+      "linework_native.dll": "6cb839d2d7f8bd06f46c5c960bd994add02b0ee61ab246848c6f40c05525865f",
+      "liblinework_vectorize.so": "0a69e1da8606d4757283d9044cd47242348c4160c08959c049aeaa0fe3ba868f",
+      "linework_vectorize.dll": "04b0e1284c0bcee56cb8b0b897e0c01e0bcb72bd86ed9007320a3b99be270d4a"
+    },
+    "linux_build": "g++ / Krita 5.2.14 headers / Qt 5.15.17 / KF5 SDK from the prior release",
+    "windows_build": "LLVM-MinGW Clang 18.1.8 UCRT / official Krita 5.2.14 / Qt 5.15.7 SDK from the prior release",
+    "new_exports": [
+      "linework_preset_cache_new",
+      "linework_preset_cache_delete",
+      "linework_preset_cache_stats",
+      "linework_paint_cached",
+      "linework_stream_begin_cached"
+    ],
+    "compatibility": "Original entry points retained; Python falls back when cache exports are absent.",
+    "measured_source_sha256": {
+      "linework/editor.py": "3e8b883eef9e621a67eb3cd890d4208edd9093398f684267af309e30ecb6b372",
+      "linework/eraser.py": "865062a4212a63c147c74d62e82c631186f0a04a630b54b1210ba8b070d31643",
+      "linework/spatial.py": "57335ff9dfb7f2b41cdaf2efffb776e37b5a7d23511490fb61358ea4b24e72d5",
+      "linework/model.py": "4e97206ea2cb5091c4aafc145dceee816b7595b1344b43e8cb297720e6cbea20",
+      "linework/native_brush.py": "a9c569ce1953ae52fe03829b6b11bf9c7a753683cf1cd850b5fec92cc98db64a",
+      "linework/tool_options.py": "ac6bac1e88b581a0bfa6d83afb73c6af066f09d13d42a35cc983108e7ce0d80d",
+      "linework/native/bridge.cpp": "074cb0502c0608362b9eaeaba1b79e12fe315d5a05bfd1989bab1937fa4067b3",
+      "tests/gui/performance.py": "445729d886d1ec7dec17867a9283b0f9a9b03ba29b772bc3595f944331c86bf1"
+    },
+    "measurement_scope": "Picker, eraser, history and bridge algorithms are unchanged after measurement. The Tool Options layout and interface probe were refined afterward and validated separately."
+  },
+  "cpu": {
+    "result": "pass",
+    "tests": 83,
+    "elapsed_seconds": 63.339,
+    "command": "python3 -m unittest discover -s tests -v",
+    "log": "performance-cpu-tests.txt",
+    "log_sha256": "b43c58e8a43eaa0098532d101b94229f582b49e2ac5ff026849ea1c1d86801d8"
+  },
+  "measurements": {
+    "linux": {
+      "strokes": 743,
+      "anchors": 2206,
+      "cold_point_pick_ms": 38.54181699716719,
+      "point_pick_ms": 0.04164366999854489,
+      "linear_point_pick_ms": 2.7494959333368265,
+      "indexed_and_linear_point_picks_equal": "pass",
+      "point_eraser_query_ms": 0.03197835333897577,
+      "linear_point_eraser_query_ms": 2.676285710015994,
+      "indexed_and_linear_eraser_weights_equal": "pass",
+      "pick_after_single_point_move_ms": 0.5996686833289763,
+      "native_preview_median_ms": 78.29798950115219,
+      "native_preview_total_ms": 3194.2467939661583,
+      "native_uncached_preview_median_ms": 79.92151250437018,
+      "preset_cache": {
+        "hits": 40,
+        "misses": 1,
+        "entries": 1,
+        "xml_bytes": 14628
+      },
+      "cached_and_uncached_pixels_equal_with_alternating_explicit_diameter_style": "pass",
+      "xml_changes_invalidate_and_lru_cache_is_bounded": "pass",
+      "invalid_preset_does_not_poison_cache": "pass",
+      "cache_released_and_recreated_after_close": "pass",
+      "result": "pass",
+      "krita": "5.2.14"
+    },
+    "windows_wine": {
+      "strokes": 743,
+      "anchors": 2206,
+      "cold_point_pick_ms": 109.10819999844534,
+      "point_pick_ms": 0.0879699999980706,
+      "linear_point_pick_ms": 4.177098666671857,
+      "indexed_and_linear_point_picks_equal": "pass",
+      "point_eraser_query_ms": 0.054281666646905556,
+      "linear_point_eraser_query_ms": 5.614270333341362,
+      "indexed_and_linear_eraser_weights_equal": "pass",
+      "pick_after_single_point_move_ms": 0.9147916667037256,
+      "native_preview_median_ms": 88.00089999931515,
+      "native_preview_total_ms": 3738.3399000027566,
+      "native_uncached_preview_median_ms": 90.78655000485014,
+      "preset_cache": {
+        "hits": 40,
+        "misses": 1,
+        "entries": 1,
+        "xml_bytes": 14628
+      },
+      "cached_and_uncached_pixels_equal_with_alternating_explicit_diameter_style": "pass",
+      "xml_changes_invalidate_and_lru_cache_is_bounded": "pass",
+      "invalid_preset_does_not_poison_cache": "pass",
+      "cache_released_and_recreated_after_close": "pass",
+      "result": "pass",
+      "krita": "5.2.14 (git 31056c6)"
+    },
+    "history_python": {
+      "strokes": 743,
+      "anchors": 2206,
+      "steps": 20,
+      "scope": "One anchor changed per step in the CC Pepper fixture; 3 timing repetitions. Separate tracemalloc run, including history creation, for Python allocation peak.",
+      "before": {
+        "commit_median_ms": 173.44627560014487,
+        "peak_mib": 25.350914001464844
+      },
+      "after": {
+        "commit_median_ms": 31.194020849943627,
+        "peak_mib": 4.648284912109375
+      }
+    }
+  },
+  "regressions": {
+    "linux_multi_point": {
+      "normal_exit": true,
+      "report": {
+        "native_shape_selection_inherited_two_curves_six_anchors": "pass",
+        "bulk_width_only_selected_curves_one_undo_redo": "pass",
+        "mixed_value_accepts_typing_same_as_primary": "pass",
+        "shift_add_toggle_individual_anchors_across_curves": "pass",
+        "same_pixel_width_across_bases_preserves_pressure_and_handles": "pass",
+        "multi_point_drag_hides_both_originals_and_escape_restores": "pass",
+        "group_thickness_drag_adds_same_pixel_delta": "pass",
+        "rectangle_selects_four_anchors_without_history": "pass",
+        "delete_multiple_points_and_undo": "pass",
+        "ctrl_a_sets_same_diameter_above_native_base": "pass",
+        "kra_roundtrip_and_raster_source_unchanged": "pass",
+        "result": "pass"
+      }
+    },
+    "linux_eraser_topology": {
+      "normal_exit": true,
+      "report": {
+        "point_eraser_reduces_native_pixels_and_diameter_preserves_geometry_pressure_and_undo": "pass",
+        "zero_width_keeps_editable_anchor": "pass",
+        "point_eraser_escape_restores_originals": "pass",
+        "fully_erased_smooth_dot_remains_editable_and_can_be_restored": "pass",
+        "tablet_pressure_and_repeated_stationary_samples_control_eraser_without_buildup": "pass",
+        "saving_during_eraser_gesture_finishes_once_and_keeps_editable_data": "pass",
+        "undo_empty_eraser_gesture_does_not_undo_previous_edit": "pass",
+        "whole_line_eraser_preview_hides_originals_and_escape_restores_order": "pass",
+        "fast_swept_line_eraser_deletes_multiple_strokes_in_one_undo": "pass",
+        "locked_layer_preserved_without_disabling_editor": "pass",
+        "join_real_shift_selection_preserves_active_style_all_diameters_pressure_and_history": "pass",
+        "topology_cancellation_preserves_data": "pass",
+        "consecutive_points_merge_at_center_or_active": "pass",
+        "merge_two_endpoints_welds_at_active_point": "pass",
+        "joining_same_stroke_endpoints_closes_curve": "pass",
+        "locked_topology_operation_preserves_model": "pass",
+        "kra_roundtrip_rendered_pixels_and_original_bitmap_preserved": "pass",
+        "expanded_anchor_hit_radius_in_screen_pixels": "pass",
+        "expanded_handle_hit_radius_escape_preserves_geometry": "pass",
+        "locked_active_point_ignores_misses_shift_select_all_and_survives_tool_switch": "pass",
+        "stroke_selection_from_anchor_moves_whole_path_and_escape_restores": "pass",
+        "result": "pass",
+        "krita": "5.2.14"
+      }
+    },
+    "linux_smoothing": {
+      "normal_exit": true,
+      "report": {
+        "0": {
+          "reduction": {
+            "before": 101,
+            "after": 11,
+            "milliseconds": 55.14202099584509,
+            "max_position_error": 0.11945469674913889,
+            "max_pressure_error": 6.0407130789030816e-05
+          },
+          "anchors": 11,
+          "first_pressure": 0.2,
+          "last_pressure": 0.8,
+          "endpoint": [
+            419.99999999999994,
+            99.99999999999997
+          ],
+          "manual_handles": 11
+        },
+        "1": {
+          "reduction": {
+            "before": 101,
+            "after": 7,
+            "milliseconds": 287.421027001983,
+            "max_position_error": 0.11357194249289726,
+            "max_pressure_error": 0.0011232935549986278
+          },
+          "anchors": 7,
+          "first_pressure": 0.2,
+          "last_pressure": 0.8,
+          "endpoint": [
+            419.99999999999994,
+            210.0
+          ],
+          "manual_handles": 7
+        },
+        "2": {
+          "reduction": {
+            "before": 101,
+            "after": 13,
+            "milliseconds": 212.9990910034394,
+            "max_position_error": 0.2475902272909742,
+            "max_pressure_error": 0.0007510995581371249
+          },
+          "anchors": 13,
+          "first_pressure": 0.2,
+          "last_pressure": 0.7850984582797925,
+          "endpoint": [
+            412.5492291398962,
+            314.82541713183053
+          ],
+          "manual_handles": 13
+        },
+        "3": {
+          "reduction": {
+            "before": 2488,
+            "after": 6,
+            "milliseconds": 1113.2896560011432,
+            "max_position_error": 0.24442731873334206,
+            "max_pressure_error": 0.0002690708349484261
+          },
+          "anchors": 6,
+          "first_pressure": 0.2,
+          "last_pressure": 0.8,
+          "endpoint": [
+            419.99999999999994,
+            430.0
+          ],
+          "manual_handles": 6
+        },
+        "escape_cancels_native_timers_and_preserves_layer": "pass",
+        "delay_blocks_short_move_and_dot_keeps_nonzero_pressure": "pass",
+        "finish_line_disabled_preserves_native_endpoint": "pass",
+        "save_during_stroke_flushes_native_geometry": "pass",
+        "tool_switch_flushes_and_shared_native_settings_reload": "pass",
+        "delay_indicator_tracks_native_canvas_hover": "pass",
+        "tablet_events_native_four_modes_pressure_handles_history_roundtrip_and_bitmap": "pass",
+        "result": "pass"
+      }
+    },
+    "linux_stroke_lifecycle": {
+      "normal_exit": true,
+      "report": {
+        "rapid_mouse_and_tablet_mode_0": "pass",
+        "rapid_mouse_and_tablet_mode_1": "pass",
+        "rapid_mouse_and_tablet_mode_2": "pass",
+        "rapid_mouse_and_tablet_mode_3": "pass",
+        "double_click_starts_next_brush_stroke": "pass",
+        "input_during_native_wait_is_ordered_and_both_strokes_persist": "pass",
+        "queued_mouse_and_shortcuts_preserve_event_order": "pass",
+        "new_press_preserves_previous_path_after_missing_release": "pass",
+        "individual_strokes_keep_separate_undo_steps": "pass",
+        "subsequent_drawing_and_kra_round_trip": "pass",
+        "result": "pass",
+        "krita": "5.2.14"
+      }
+    },
+    "linux_color": {
+      "normal_exit": true,
+      "report": {
+        "foreground_recolors_native_and_smooth_selected_strokes_only": "pass",
+        "slider_changes_debounced_into_one_undo_preserve_geometry_pressure_and_brush": "pass",
+        "grouped_color_undo_redo": "pass",
+        "explicit_button_applies_to_entire_layer": "pass",
+        "thickness_tool_recolors_selected_native_stroke": "pass",
+        "locked_layer_preserved": "pass",
+        "kra_roundtrip_and_original_raster_preserved": "pass",
+        "drawing_foreground_does_not_recolor_existing_selection": "pass",
+        "activating_editor_and_selecting_stroke_preserve_saved_color": "pass",
+        "explicit_button_selected_scope_with_unchanged_foreground": "pass",
+        "result": "pass"
+      }
+    },
+    "linux_layout_multi_point": {
+      "normal_exit": true,
+      "report": {
+        "native_shape_selection_inherited_two_curves_six_anchors": "pass",
+        "bulk_width_only_selected_curves_one_undo_redo": "pass",
+        "mixed_value_accepts_typing_same_as_primary": "pass",
+        "shift_add_toggle_individual_anchors_across_curves": "pass",
+        "same_pixel_width_across_bases_preserves_pressure_and_handles": "pass",
+        "multi_point_drag_hides_both_originals_and_escape_restores": "pass",
+        "group_thickness_drag_adds_same_pixel_delta": "pass",
+        "rectangle_selects_four_anchors_without_history": "pass",
+        "delete_multiple_points_and_undo": "pass",
+        "ctrl_a_sets_same_diameter_above_native_base": "pass",
+        "kra_roundtrip_and_raster_source_unchanged": "pass",
+        "result": "pass"
+      }
+    },
+    "linux_interface": {
+      "normal_exit": true,
+      "report": {
+        "brush_narrow_native_options": "pass",
+        "curve_narrow_native_options": "pass",
+        "line_narrow_native_options": "pass",
+        "collapse_preserves_edit_values": "pass",
+        "edit_narrow_native_options": "pass",
+        "thickness_narrow_native_options": "pass",
+        "strength_shown_only_for_point_eraser": "pass",
+        "eraser_narrow_native_options": "pass",
+        "theme_palette_inherited": "pass",
+        "result": "pass",
+        "krita": "5.2.14"
+      }
+    },
+    "windows_eraser_topology": {
+      "normal_exit": true,
+      "report": {
+        "point_eraser_reduces_native_pixels_and_diameter_preserves_geometry_pressure_and_undo": "pass",
+        "zero_width_keeps_editable_anchor": "pass",
+        "point_eraser_escape_restores_originals": "pass",
+        "fully_erased_smooth_dot_remains_editable_and_can_be_restored": "pass",
+        "tablet_pressure_and_repeated_stationary_samples_control_eraser_without_buildup": "pass",
+        "saving_during_eraser_gesture_finishes_once_and_keeps_editable_data": "pass",
+        "undo_empty_eraser_gesture_does_not_undo_previous_edit": "pass",
+        "whole_line_eraser_preview_hides_originals_and_escape_restores_order": "pass",
+        "fast_swept_line_eraser_deletes_multiple_strokes_in_one_undo": "pass",
+        "locked_layer_preserved_without_disabling_editor": "pass",
+        "join_real_shift_selection_preserves_active_style_all_diameters_pressure_and_history": "pass",
+        "topology_cancellation_preserves_data": "pass",
+        "consecutive_points_merge_at_center_or_active": "pass",
+        "merge_two_endpoints_welds_at_active_point": "pass",
+        "joining_same_stroke_endpoints_closes_curve": "pass",
+        "locked_topology_operation_preserves_model": "pass",
+        "kra_roundtrip_rendered_pixels_and_original_bitmap_preserved": "pass",
+        "expanded_anchor_hit_radius_in_screen_pixels": "pass",
+        "expanded_handle_hit_radius_escape_preserves_geometry": "pass",
+        "locked_active_point_ignores_misses_shift_select_all_and_survives_tool_switch": "pass",
+        "stroke_selection_from_anchor_moves_whole_path_and_escape_restores": "pass",
+        "result": "pass",
+        "krita": "5.2.14 (git 31056c6)"
+      }
+    },
+    "windows_stroke_lifecycle": {
+      "normal_exit": true,
+      "report": {
+        "rapid_mouse_and_tablet_mode_0": "pass",
+        "rapid_mouse_and_tablet_mode_1": "pass",
+        "rapid_mouse_and_tablet_mode_2": "pass",
+        "rapid_mouse_and_tablet_mode_3": "pass",
+        "double_click_starts_next_brush_stroke": "pass",
+        "input_during_native_wait_is_ordered_and_both_strokes_persist": "pass",
+        "queued_mouse_and_shortcuts_preserve_event_order": "pass",
+        "new_press_preserves_previous_path_after_missing_release": "pass",
+        "individual_strokes_keep_separate_undo_steps": "pass",
+        "subsequent_drawing_and_kra_round_trip": "pass",
+        "result": "pass",
+        "krita": "5.2.14 (git 31056c6)"
+      }
+    },
+    "windows_interface": {
+      "normal_exit": true,
+      "report": {
+        "brush_narrow_native_options": "pass",
+        "curve_narrow_native_options": "pass",
+        "line_narrow_native_options": "pass",
+        "collapse_preserves_edit_values": "pass",
+        "edit_narrow_native_options": "pass",
+        "thickness_narrow_native_options": "pass",
+        "strength_shown_only_for_point_eraser": "pass",
+        "eraser_narrow_native_options": "pass",
+        "theme_palette_inherited": "pass",
+        "result": "pass",
+        "krita": "5.2.14 (git 31056c6)"
+      }
+    },
+    "linux_cc_lineart": {
+      "report": {
+        "fixture": "examples/pepper-lineart.png",
+        "version": "0.1.2",
+        "source_size": [
+          833,
+          1280
+        ],
+        "source_color_model": "GRAYA",
+        "source_pixels_sha256": "fae3c3be89a4f10aec7ec9bd3b70e9a349c244abe702ccabc47f995d9f6cdfe7",
+        "preview": {
+          "strokes": 743,
+          "anchors": 2206,
+          "status": "743 traços · 2206 pontos · 0.51 s",
+          "mode": 0,
+          "threshold": 170,
+          "despeckle": 12,
+          "accuracy": 9.5,
+          "maximum_width": 200.0,
+          "elapsed_with_poll_seconds": 1.1477935919974698
+        },
+        "preview_preserves_source_pixels": "pass",
+        "preview_zoom_and_fit": "pass",
+        "new_native_linework_layer_and_preserved_raster": "pass",
+        "whole_layer_brush_seconds": 77.74603885900433,
+        "all_strokes_native_preset_geometry_preserved_one_undo_redo": "pass",
+        "whole_layer_thickness_seconds": 157.1147356759975,
+        "all_point_diameters_raw_pressure_and_handles_preserved_one_undo_redo": "pass",
+        "point_edit_rerenders_and_undo_redo_restores_data": "pass",
+        "vector_observer_during_bulk_operations": "pass",
+        "kra_roundtrip_and_source_pixels_unchanged": "pass",
+        "result": "pass",
+        "observer_reads": 6101,
+        "observer_reads_during_preparation": 2358,
+        "observer_reads_during_scene_mutation": 0
+      },
+      "normal_exit": true
+    }
+  },
+  "limits": [
+    "Local timings with other processes active; not performance guarantees.",
+    "Indexed and linear picking/eraser queries are paired in one process, with identical results required. These timings exclude a complete gesture, projection and document write.",
+    "The cold index and incremental point update have separate costs.",
+    "Native Pixel Art preview renders alternate cached/uncached order and bypass the rendered-image/PNG cache. Other presets may differ.",
+    "History peak measurements use Python tracemalloc; they exclude Qt/native image memory.",
+    "Windows results use the official application under Wine. The previously documented incomplete 743-stroke Windows bulk replay/history probe was not rerun; Windows remains an experimental preview."
+  ],
+  "initial_attempts": [
+    {
+      "probe": "linux-cc_lineart",
+      "result": "timeout",
+      "limit_seconds": 300,
+      "resolution": "Rerun below with the observer stress limit increased to 1200 seconds."
+    },
+    {
+      "probe": "linux-stroke_lifecycle",
+      "result": "fail_then_aborted_during_close",
+      "observed": "Fixed-delay nested input assertion inspected 10 of 11 strokes during replay. The test then closed a window inside native processing.",
+      "resolution": "The harness now waits for pending input and native processing to drain before checking. No production input queue changes were needed; every stroke, native pixels, undo/redo and reopening still required."
+    },
+    {
+      "probe": "linux-performance",
+      "result": "interrupted_display_loss",
+      "observed": "The initial queued runner ended with SIGTERM; Xvfb disappeared, followed by XIO and a crash during Krita shutdown. No report was produced.",
+      "resolution": "A standalone rerun completed normally with a passing report."
+    }
+  ],
+  "interface_captures": {
+    "options-edit-development.png": "0d43dabff8e578ef591df221913972107cd5b9888bb92d25d8d09367ca09780b",
+    "options-light-development.png": "152f4f62efbd228c601d7455f795f3acc008b1a20bd2dd0a24bb7989218e27ed",
+    "options-in-krita-development.png": "8be28277301f93d5190991c87304a11d229cfa870857e9bc212e619308edb2a9"
+  }
+}

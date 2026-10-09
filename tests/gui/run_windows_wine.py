@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-from run import blank_png
+from run import blank_png, performance_fixture
 
 
 def windows_path(path):
@@ -17,7 +17,7 @@ def windows_path(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology'])
+    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology', 'performance', 'interface'])
     parser.add_argument('--krita-bin',required=True,type=Path,help='Official Windows Krita 5.2.14 bin directory')
     parser.add_argument('--output',type=Path)
     args = parser.parse_args()
@@ -26,7 +26,7 @@ def main():
     for directory in ('docs/validation','docs/images','examples'):
         (output/directory).mkdir(parents=True,exist_ok=True)
     name = {'cc_lineart':'cc-lineart.json','multi_point':'multi-point.json','smoothing':'smoothing.json',
-            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json'}[args.probe]
+            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json'}[args.probe]
     report = output/'docs/validation'/name
     report.unlink(missing_ok=True)
     command = ['xvfb-run','-a','-s','-screen 0 1600x1100x24']
@@ -71,6 +71,7 @@ def main():
         fixture = output/'examples'/('pepper-lineart.png' if args.probe == 'cc_lineart' else 'blank.png')
         if args.probe == 'cc_lineart':shutil.copy2(checkout/'examples/pepper-lineart.png',fixture)
         else:blank_png(fixture)
+        if args.probe=='performance':performance_fixture(checkout,output)
         try:
             with (output/'krita.log').open('w') as log:
                 result = subprocess.run(command+['timeout','1200s','wine',

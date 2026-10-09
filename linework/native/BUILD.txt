@@ -127,3 +127,11 @@ Schema 6 stores the new cubics with the same preset and stroke ID.
 
 The integration is GPL-3.0-or-later and contains no proprietary SAI resources
 or decompiled SAI code. See README.md for Codex/Ghidra disclosure and tests.
+
+Development preset reuse (unreleased)
+The bridge adds optional preset-cache lifecycle/statistics and cached paint/stream
+entry points while retaining the original ABI functions. Each renderer owns a
+bounded LRU of immutable parsed presets; every stroke clones settings before
+applying style or diameter sensors. Source resource identity/version/checksum
+and exact XML determine reuse. Close the stream/image before deleting its cache.
+Python falls back to the original entry points on an older native bridge.
