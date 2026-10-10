@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.5 — 2026-10-10
+
+- Use a single Timeline-ready Linework layer for drawing, layer creation and raster vectorization. Create its editable initial frame automatically, remove the Animate Layer action, and avoid creating a second hidden vector layer. Retain the legacy vector reader/editor for existing documents.
+- Queue canvas input until Krita delivers new-layer selection, preventing rapid consecutive strokes from creating separate layers. Preserve subsequent user layer changes.
+- Refresh geometry in the existing canvas binding after native Undo, so the next edit operates on the restored frame.
+- Capture the newly created frame in the canvas binding so subsequent drawing and edits keep the correct frame.
+- Declare native preset and size support in all six tools, enabling Krita's toolbar size/flow controls and increase/decrease brush size actions without changing layers. Rebuild all supported platform bridges.
+- Add native toolbar and real background-autosave regressions. Recovery tests reopen saved autosave files; they do not simulate a crash or assert that an unknown user file has been repaired.
+
+
 ## 0.1.4 — 2026-10-10
 
 - Select version-specific Windows x64 native bridges for Krita 5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1. Verify the compiled application target and Qt major before registering tools.

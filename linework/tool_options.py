@@ -478,7 +478,7 @@ class NativeCanvasOverlay(LineworkCanvas):
             QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
             from .tools import current_controller
             controller = current_controller(Krita.instance().activeWindow())
-            if controller: controller.poll()
+            if controller: controller.refresh_native_history()
     def set_mode(self, mode):
         self.restore_edit_preview(cancel=True)
         super().set_mode(mode)
@@ -1000,28 +1000,43 @@ class LineworkToolOptions(QWidget):
                 break
 
     def select_created_layer(self, document, layer, previous):
-        """Settle a new-layer selection without overriding subsequent input."""
+        """Queue canvas input until Krita delivers its new-node notifications."""
         document.setActiveNode(layer)
+        self._selection_pending = True
         epoch = self._input_epoch
         document_id = document.rootNode().uniqueId().toString()
         target = layer.uniqueId()
         allowed = {layer_id(layer), layer_id(previous) if previous else None}
+        def cancel():
+            self._selection_pending = False
+            self.poll()
         def settle(tries=0):
-            if sip.isdeleted(self) or not self.active or self._input_epoch != epoch:
-                return
-            if self._writing or self._polling or native_busy():
-                if tries < 100: QTimer.singleShot(10, lambda:settle(tries+1))
+            if sip.isdeleted(self): return
+            if not self.active or self._input_epoch != epoch:
+                cancel(); return
+            if (self._input_depth or self._writing or self._polling or native_busy() or
+                    (self.overlay and self.overlay._finishing)):
+                if tries < 100: QTimer.singleShot(10, lambda: settle(tries+1))
+                else: cancel()
                 return
             view = self.current_view()
             if not view or not view.document() or view.document().rootNode().uniqueId().toString()!=document_id:
-                return
+                cancel(); return
             current = active_node(view)
             if (layer_id(current) if current else None) not in allowed:
-                return
+                cancel(); return
             node = document.nodeByUniqueID(target)
-            if node:
-                document.setActiveNode(node)
-                self.poll()
+            if not node:
+                cancel(); return
+            document.setActiveNode(node)
+            current = active_node(view)
+            if not current or current.uniqueId() != target:
+                if tries < 100: QTimer.singleShot(10, lambda: settle(tries+1))
+                else: cancel()
+                return
+            self._selection_pending = False
+            self.poll()
+            if self._pending_input: self.input_timer.start(0)
         QTimer.singleShot(0, settle)
 
     def new_layer(self):
@@ -1038,6 +1053,7 @@ class LineworkToolOptions(QWidget):
                 return
             preset = view.currentBrushPreset()
             self.brush_label.setText(tr("Current: ")+(preset.name() if preset else tr("none")))
+            previous = active_node(view)
             layer = self.create_native_layer(document)
             layer = write_layer(document, layer, [])
             self.clear_binding()
@@ -1047,19 +1063,19 @@ class LineworkToolOptions(QWidget):
             # the active node. Select the newly created layer
             # once, after those operations, while rebinding is still guarded.
             QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
-            document.setActiveNode(layer)
+            self.select_created_layer(document, layer, previous)
         except Exception as exc:
             self.fail(exc)
         finally:
             self._writing = False
         self.poll()
 
-    def create_native_layer(self, document, kind='vectorlayer'):
+    def create_native_layer(self, document, kind='paintlayer'):
         # Use Krita's layer action so its layer model, node manager and selection
         # are updated together, including the native Layers docker.
         action = Krita.instance().action("add_new_shape_layer" if kind == 'vectorlayer' else 'add_new_paint_layer')
         if action is None or not action.isEnabled():
-            raise RuntimeError(tr("Krita does not allow you to create a vector layer in this document."))
+            raise RuntimeError(tr("Krita does not allow you to create a Linework layer in this document."))
         before = {layer_id(n) for n in document.rootNode().findChildNodes("", True, False, kind)}
         action.trigger()
         document.waitForDone()
@@ -1067,10 +1083,17 @@ class LineworkToolOptions(QWidget):
         created = [n for n in document.rootNode().findChildNodes("", True, False, kind)
                    if layer_id(n) not in before]
         if len(created) != 1:
-            raise RuntimeError(tr("Krita did not create a vector layer in the Layers panel."))
+            raise RuntimeError(tr("Krita did not create a Linework layer in the Layers panel."))
         layer = created[0]
         layer.setName(tr("Linework — editable strokes"))
-        if kind == 'paintlayer': layer.setPinnedToTimeline(True)
+        if kind == 'paintlayer':
+            from .animation import initialize_layer
+            try:
+                initialize_layer(document, layer)
+            except Exception:
+                layer.remove()
+                raise
+            layer.setPinnedToTimeline(True)
         document.setActiveNode(layer)
         return layer
 
@@ -1138,13 +1161,38 @@ class LineworkToolOptions(QWidget):
         return (document.rootNode().uniqueId().toString(), layer_id(layer) if layer else '',
                 id(native), frame_key(document, layer))
 
+    def refresh_native_history(self):
+        """Refresh frame data before the next input, preserving queued events."""
+        view = self.current_view()
+        active = active_node(view) if view else None
+        if (not self.overlay or not self.layer or not active or
+                view.document() != self.document or active.uniqueId() != self.layer.uniqueId()):
+            self.poll(allow_input=True)
+            return
+        from .animation import descriptor
+        strokes = read_layer(self.document, self.layer, view)
+        if strokes is None:
+            self.poll(allow_input=True)
+            return
+        overlay = self.overlay
+        overlay.strokes = strokes
+        overlay.source_frame = descriptor(self.document, self.layer)
+        overlay.selection.prune(strokes)
+        overlay.invalidate_spatial()
+        overlay.saved_appearances.clear()
+        overlay.native_preview = None
+        self.binding = self.overlay_binding()
+        self._bound_annotation = bytes(self.document.annotation(ANNOTATION))
+        self.update_controls()
+        overlay.update()
+
     def overlay_binding(self):
         frame = self.overlay.source_frame
         key = tuple(frame[name] for name in ('time', 'id', 'revision')) if frame else None
         return (self.document.rootNode().uniqueId().toString(), layer_id(self.layer), id(self.native_widget), key)
 
     def poll(self, allow_input=False):
-        if (self._polling or (self._input_depth and not allow_input) or self._writing or self._clearing or self._brush_change or not self.active or
+        if (self._selection_pending or self._polling or (self._input_depth and not allow_input) or self._writing or self._clearing or self._brush_change or not self.active or
                 (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy()):
             return
         self._polling = True
@@ -1264,12 +1312,19 @@ class LineworkToolOptions(QWidget):
             return
         self._writing = True
         try:
+            created = self.layer is None
+            previous = active_node(self.current_view()) if created else None
             if self.layer is None:
                 self.layer = self.create_native_layer(self.document)
             self.layer = write_layer(self.document, self.layer, self.overlay.strokes, self.overlay.renderer,
                                      trusted=True, frame=self.overlay.source_frame)
+            if created:
+                # Rendering the first frame pumps node-manager notifications.
+                # Settle them before selecting the new layer for the next press.
+                QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+                self.select_created_layer(self.document, self.layer, previous)
             self.overlay.source_layer = self.layer
-            if self.overlay.source_frame:
+            if self.layer.type() == 'paintlayer':
                 from .animation import descriptor
                 self.overlay.source_frame = descriptor(self.document, self.layer, self.overlay.source_frame)
             self.binding = self.overlay_binding()
@@ -1625,7 +1680,7 @@ class LineworkToolOptions(QWidget):
                 self.status.setText(str(exc))
 
     def input_busy(self):
-        return (self._input_depth or self._writing or self._clearing or
+        return (self._selection_pending or self._input_depth or self._writing or self._clearing or
                 (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy())
 
     def copy_input(self, event):
@@ -1681,7 +1736,8 @@ class LineworkToolOptions(QWidget):
             if self._window_closing:
                 return False
         if event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.TabletPress, QEvent.Type.KeyPress):
-            self._input_epoch += 1
+            if not (watched == self.native_widget and self._selection_pending):
+                self._input_epoch += 1
         input_event = event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease,
             QEvent.Type.MouseButtonDblClick, QEvent.Type.MouseMove, QEvent.Type.TabletPress, QEvent.Type.TabletMove,
             QEvent.Type.TabletRelease, QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride)

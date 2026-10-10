@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Zainstaluj ponownie natywne ustawienie wstępne „{0}”, aby edytować to pociągnięcie pędzla.",
   "{0} editable strokes · save the document in .kra": "{0} edytowalne pociągnięcia pędzla · zapisz dokument w formacie .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} pociągnięć pędzla · {1} punktów · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Bezpośrednia kontrola grubości wymaga ustawienia wstępnego pikseli, rozmazywania koloru lub szybkiego pędzla."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Bezpośrednia kontrola grubości wymaga ustawienia wstępnego pikseli, rozmazywania koloru lub szybkiego pędzla.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

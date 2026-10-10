@@ -1,0 +1,11 @@
+{
+  "smooth_vectorization": "pass",
+  "vectorized_frame_duplicates_0": "pass",
+  "native_brush_vectorization": "pass",
+  "vectorized_frame_duplicates_1": "pass",
+  "both_vectorized_layers_reopen_with_editable_frames": "pass",
+  "new_layer_menu_creates_same_editable_timeline_backend": "pass",
+  "result": "pass",
+  "krita": "5.2.14",
+  "application_exit_code": 0
+}

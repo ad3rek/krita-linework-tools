@@ -161,7 +161,7 @@ class VectorizeDialog(QDialog):
         self.source=self.document.activeNode();self.snapshot,self.offset=layer_snapshot(self.document,self.source)
         self.setMinimumWidth(640);self.worker=None;self.strokes=None;self._reject_pending=False
         self._applying=False;self._apply_index=0;self.renderer=None;self._apply_cancel=False
-        self._native_svg={}
+        self._native_images={}
         self._geometry=(self.document.width(),self.document.height(),self.document.xRes(),self.document.yRes())
         body=QVBoxLayout(self);body.addWidget(QLabel(tr("Source: ")+self.source.name()))
         body.addWidget(QLabel(tr("Engine: OpenToonz · centerline")))
@@ -171,7 +171,7 @@ class VectorizeDialog(QDialog):
             ((0,0),(self.snapshot.width()-1,0),(0,self.snapshot.height()-1),
              (self.snapshot.width()-1,self.snapshot.height()-1))]
         self.mode.setCurrentIndex(1 if sum(a<16 for a in border)>=3 else 0)
-        form.addRow('Detectar',self.mode)
+        form.addRow(tr("Mode"),self.mode)
         self.threshold=QSpinBox();self.threshold.setRange(1,254);self.threshold.setValue(128 if self.mode.currentIndex() else 170)
         form.addRow(tr("Threshold"),self.threshold)
         self.noise=QSpinBox();self.noise.setRange(0,10000);self.noise.setValue(12);self.noise.setSuffix(' px²')
@@ -279,7 +279,7 @@ class VectorizeDialog(QDialog):
             if self.native_brush.isChecked():
                 brush=capture_brush(self.view)
                 for s in self.strokes:s.brush=copy.deepcopy(brush)
-                self._native_svg={};self.renderer=NativeBrushRenderer(self.view);self._apply_index=0;self.paint_timer.start(0)
+                self._native_images={};self.renderer=NativeBrushRenderer(self.view);self._apply_index=0;self.paint_timer.start(0)
             else:self.commit_layer()
         except Exception as exc:self.apply_error(exc)
 
@@ -289,44 +289,48 @@ class VectorizeDialog(QDialog):
             if self._apply_index>=len(self.strokes):self.commit_layer();return
             self.info.setText(tr("Applying brush: {0} of {1}").format(self._apply_index+1,len(self.strokes)))
             stroke=self.strokes[self._apply_index]
-            self._native_svg[stroke.uid]=self.renderer.svg_image(stroke);self._apply_index+=1
+            self._native_images[stroke.uid]=self.renderer.render(stroke);self._apply_index+=1
             self.progress.setValue(round(self._apply_index*100/len(self.strokes)));self.paint_timer.start(0)
         except Exception as exc:self.apply_error(exc)
 
     def commit_layer(self):
         layer=None
         source_visible=self.source.visible()
+        controller=None
         try:
             self.document.setActiveNode(self.source);select_tool(3);controller=current_controller(self.window)
             if controller is None:raise ValueError(tr("Unable to activate Linework in this view."))
+            controller._writing=True
             layer=controller.create_native_layer(self.document)
             layer.setName(tr("Linework — ")+self.source.name())
             native_renderer=None
             if self.renderer:
                 class Prepared:
                     def __init__(self,images):self.images=images
-                    def svg_image(self,stroke):return self.images[stroke.uid]
-                native_renderer=Prepared(self._native_svg)
-            write_layer(self.document,layer,self.strokes,native_renderer)
+                    def render(self,stroke):return self.images[stroke.uid]
+                native_renderer=Prepared(self._native_images)
+            write_layer(self.document,layer,self.strokes,native_renderer,
+                        backup=self.source if source_visible and self.hide_source.isChecked() else None)
             if self.hide_source.isChecked():self.source.setVisible(False)
             self.document.setModified(True);self.document.refreshProjection();self.document.waitForDone()
             controller.clear_binding()
             controller.document=self.document;controller.layer=layer
-            controller._selection_pending=True;controller._selection_deadline=time.monotonic()+3
-            controller.select_native_layer()
+            controller.select_created_layer(self.document,layer,self.source)
             controller.poll()
             if controller.overlay and controller.layer and controller.layer.uniqueId()==layer.uniqueId():
                 overlay=controller.overlay
                 overlay.history=History([]);overlay.history.commit(overlay.strokes)
                 overlay.conversion_origin=(self.source,source_visible,self.hide_source.isChecked(),
                                            {s.uid for s in overlay.strokes},False)
-            self._applying=False
             if self.renderer:self.renderer.close();self.renderer=None
             super().accept()
+            self._applying=False
         except Exception:
             if layer:layer.remove()
             self.document.setActiveNode(self.source)
             raise
+        finally:
+            if controller:controller._writing=False
 
     def apply_error(self,error):
         self._applying=False

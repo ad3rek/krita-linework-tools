@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "ติดตั้งค่าที่ตั้งไว้ล่วงหน้าดั้งเดิม “{0}” อีกครั้งเพื่อแก้ไขฝีแปรงนี้",
   "{0} editable strokes · save the document in .kra": "{0} ฝีแปรงที่แก้ไขได้ · บันทึกเอกสารในรูปแบบ .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} ฝีแปรง · {1} จุด · {2:.2f} วินาที",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "การควบคุมความหนาโดยตรงต้องใช้การตั้งค่าล่วงหน้าแบบ Pixel, Color Smudge หรือ Quick Brush"
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "การควบคุมความหนาโดยตรงต้องใช้การตั้งค่าล่วงหน้าแบบ Pixel, Color Smudge หรือ Quick Brush",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

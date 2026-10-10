@@ -17,13 +17,14 @@ def windows_path(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close'])
+    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close', 'brush_size', 'autosave_recovery', 'unified_vectorize'])
     parser.add_argument('--krita-bin',required=True,type=Path,help='Official Windows Krita bin directory')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--wine-prefix',type=Path,help='Reuse a dedicated test prefix; do not use your normal Wine prefix')
     parser.add_argument('--reuse-resources',action='store_true',help='Keep the resource database in the dedicated test prefix between probes')
     parser.add_argument('--language', default='en', help='Krita interface language for this isolated run')
     args = parser.parse_args()
+    autosave_config = 'AutoSaveInterval=2\n' if args.probe == 'autosave_recovery' else ''
     if args.reuse_resources and not args.wine_prefix:
         parser.error('--reuse-resources requires a dedicated --wine-prefix')
     checkout = Path(__file__).resolve().parents[2]
@@ -31,7 +32,7 @@ def main():
     for directory in ('docs/validation','docs/images','examples'):
         (output/directory).mkdir(parents=True,exist_ok=True)
     name = {'cc_lineart':'cc-lineart.json','multi_point':'multi-point.json','smoothing':'smoothing.json',
-            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json'}[args.probe]
+            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json', 'brush_size':'brush-size.json', 'autosave_recovery':'autosave-recovery.json', 'unified_vectorize':'unified-vectorize.json'}[args.probe]
     report = output/'docs/validation'/name
     report.unlink(missing_ok=True)
     (output/'phase.json').unlink(missing_ok=True)
@@ -86,7 +87,7 @@ def main():
         shutil.copy2(Path(__file__).with_name(args.probe+'.py'),pykrita/'probe/__init__.py')
         (pykrita/'probe.desktop').write_text('[Desktop Entry]\nType=Service\nServiceTypes=Krita/PythonPlugin\n'
             'X-KDE-Library=probe\nX-Python-2-Compatible=false\nName=Isolated Windows Linework test\n')
-        (profiles[0]/'AppData/Local/kritarc').write_text('CanvasOnlyActive=false\nuseOpenGL=false\n'
+        (profiles[0]/'AppData/Local/kritarc').write_text('CanvasOnlyActive=false\nuseOpenGL=false\n'+autosave_config+
             'ResourceDirectory='+windows_path(resources).replace('\\','/')+'\n\n[python]\n'
             'enable_linework=true\nenable_probe=true\n')
         (profiles[0]/'AppData/Local/klanguageoverridesrc').write_text('[Language]\nkrita='+args.language+'\n')

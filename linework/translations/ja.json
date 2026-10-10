@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "このブラシ ストロークを編集するには、ネイティブ プリセット「{0}」を再インストールします。",
   "{0} editable strokes · save the document in .kra": "{0} 個の編集可能なブラシ ストローク · ドキュメントを .kra に保存します",
   "{0} strokes · {1} points · {2:.2f} s": "{0} ブラシ ストローク · {1} ポイント · {2:.2f} 秒",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "厚さを直接制御するには、ピクセル、カラースマッジ、またはクイックブラシのプリセットが必要です。"
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "厚さを直接制御するには、ピクセル、カラースマッジ、またはクイックブラシのプリセットが必要です。",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

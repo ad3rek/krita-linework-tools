@@ -100,7 +100,7 @@ class Probe(Extension):
                  row([120,200,280,360,440],640,[1]*5,20,'#be6e16',None),
                  Stroke([Point(550,500,.5),Point(650,580,.8),Point(750,520,.7)],width=18,color='#277d88',brush=copy.deepcopy(brush))]
         for p,w in zip(strokes[1].points,[.9,.6,1.2]): p.thickness=w
-        select_tool(3); self.c=current_controller(self.window); self.layer=self.c.create_native_layer(self.doc)
+        select_tool(3); self.c=current_controller(self.window); self.layer=self.c.create_native_layer(self.doc, 'vectorlayer')
         renderer=NativeBrushRenderer(self.view); write_layer(self.doc,self.layer,strokes,renderer); renderer.close()
         self.ids=[s.uid for s in strokes]; self.initial=[s.data() for s in strokes]
         self.after(self.partial_erase,300)

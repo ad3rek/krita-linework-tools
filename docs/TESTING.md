@@ -2,6 +2,27 @@
 
 The original validation environment is **Linux x86_64, Krita 5.2.14 / Qt 5.15.17 / Python 3.12**. The bridge requires compatible native libraries. Canvas regressions run the real application in isolation; they do not replace physical stylus validation.
 
+## 0.1.5 validation
+
+The release passed **100 CPU tests** ([log](validation/0.1.5/cpu-tests.txt)). New Linework creation uses the native frame backend directly. The application runs exercise automatic creation on the first stroke, the New Linework Layer menu, raster conversion with both smooth lines and the current preset, and saving/reopening their editable geometry.
+
+All **27 animation checks** passed on Linux 5.2.14 and official Windows 5.3.4.1/6.0.4.1 under Wine, including normal process exits. The first check now verifies a Timeline-ready layer with no conversion action or hidden vector backup. The remaining cases cover native frame duplication/movement/deletion/cloning, point/thickness/brush/color/eraser edits, Undo, Timeline UI, playback, saved files and raster export. Closing several views and returning from a cancelled close also passed on Linux.
+
+The size probe edits Krita's native toolbar through Qt keyboard events, invokes increase/decrease in all six tools, verifies unchanged existing strokes and checks that a new stroke captures 31 px on the selected Linework layer. Windows 5.3.4.1 and 6.0.4.1 both passed with the rebuilt paint-tool factory. Linux also passed toolbar and native-size controls. Synthetic mouse/tablet and queued-input tests verify rapid strokes stay on one automatically created layer; the layer lifecycle probe checks editing immediately after native Undo and switching/removing layers.
+
+The autosave probe uses Krita's real background timer with a two-second interval in isolated settings. It reads and checks the actual autosave archive, reopens it and edits points/diameters with native Undo on legacy vector and frame-backed Linework. Linux and Windows 6.0.4.1 passed. This tests saved autosave files, not an actual crash or startup recovery dialog; the reported user's recovered file was not available. Missing editable metadata cannot be inferred from pixels.
+
+[Reports and scope](validation/0.1.5/release.json) · [Native compilation matrix and hashes](validation/0.1.5/native-build.json). The version-specific bridge uses Krita's internal ABI; unknown versions remain rejected. Physical Windows/tablets and the full 743-stroke Windows bulk replay/history case remain unvalidated. Historical reports below are unchanged.
+
+```sh
+python3 tests/gui/run.py brush_size
+python3 tests/gui/run.py stroke_lifecycle
+python3 tests/gui/run.py autosave_recovery
+python3 tests/gui/run.py unified_vectorize
+python3 tests/gui/run.py animation
+python3 tests/gui/run_windows_wine.py brush_size --krita-bin /path/krita-x64-6.0.4.1/bin
+```
+
 ## 0.1.4 validation
 
 The release CPU suite passed **100 tests**: [run log](validation/0.1.4/cpu-tests.txt). The [release report](validation/0.1.4/release.json) lists the fresh application runs, and [native build provenance](validation/0.1.4/native-build.json) records the version matrix, official archives, SDK packages and SHA256 hashes. Seven Windows bridges compiled against the matching application headers and exports; the Linux bridge remains specific to 5.2.14.

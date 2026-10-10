@@ -256,5 +256,8 @@
   "select a stroke": "зарбани танланг",
   "stroke": "инсулт",
   "strokes": "зарбалар",
-  "strokes on a light background": "енгил фонда зарбалар"
+  "strokes on a light background": "енгил фонда зарбалар",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

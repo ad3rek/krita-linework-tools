@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Ynstallearje de eigen ynstelde \"{0}\" opnij om dizze penseelstreek te bewurkjen.",
   "{0} editable strokes · save the document in .kra": "{0} bewurkbere penseelstreken · bewarje it dokumint yn .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} penseelstreken · {1} punten · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Direkte diktekontrôle fereasket in foarinstelling foar Pixel, Color Smudge of Quick Brush."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Direkte diktekontrôle fereasket in foarinstelling foar Pixel, Color Smudge of Quick Brush.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

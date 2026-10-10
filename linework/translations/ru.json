@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "переустановите собственный набор настроек «{0}», чтобы редактировать этот мазок кисти.",
   "{0} editable strokes · save the document in .kra": "{0} редактируемых мазков кисти · сохраните документ в формате .kra.",
   "{0} strokes · {1} points · {2:.2f} s": "{0} мазков · {1} баллов · {2:.2f} с.",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Для прямого управления толщиной требуется набор настроек «Пиксель», «Цветное пятно» или «Быстрая кисть»."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Для прямого управления толщиной требуется набор настроек «Пиксель», «Цветное пятно» или «Быстрая кисть».",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Reinstale o preset nativo “{0}” para editar este traço.",
   "{0} editable strokes · save the document in .kra": "{0} traços editáveis · salve o documento em .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} traços · {1} pontos · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "O controle direto de espessura requer um preset Pixel, Color Smudge ou Quick Brush."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "O controle direto de espessura requer um preset Pixel, Color Smudge ou Quick Brush.",
+  "Unable to create Linework layer.": "Não foi possível criar a camada Linework.",
+  "Krita does not allow you to create a Linework layer in this document.": "O Krita não permite criar uma camada Linework neste documento.",
+  "Krita did not create a Linework layer in the Layers panel.": "O Krita não criou uma camada Linework no painel de camadas."
 }

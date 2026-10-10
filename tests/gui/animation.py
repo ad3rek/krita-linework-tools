@@ -111,9 +111,6 @@ class Probe(Extension):
         renderer=NativeBrushRenderer(self.view)
         write_layer(self.doc,self.original,strokes,renderer); renderer.close()
         self.doc.waitForDone(); self.c.poll()
-        self.after(self.convert_layer,300)
-    def convert_layer(self):
-        self.c.animate_layer()
         self.after(self.converted_layer,300)
     def converted_layer(self):
         self.c.poll()
@@ -125,12 +122,15 @@ class Probe(Extension):
             'controller_mode':self.c.mode}
         self.after(self.initialized,300)
     def initialized(self):
-        assert not self.original.visible()
+        assert self.original.visible() and self.original.uniqueId() == self.layer.uniqueId()
+        assert len(self.doc.rootNode().findChildNodes('', True, False, 'vectorlayer')) == 0
+        assert self.k.action('linework_animate') is None
+        assert self.layer.isPinnedToTimeline()
         assert self.geometry(0)==self.initial
         from linework.storage import read_layer,metadata
         assert [s.data() for s in read_layer(self.doc,self.layer)]==self.initial
         assert metadata(self.doc)['version']==7
-        self.result['conversion_preserves_geometry_and_source_backup']='pass'
+        self.result['one_linework_layer_is_editable_and_timeline_ready_without_conversion']='pass'
         self.native_action(2,0,5)
         assert self.geometry(5)==self.initial
         self.seek(5); self.edit_width(30)
@@ -310,6 +310,7 @@ class Probe(Extension):
         from linework.storage import read_layer,write_layer,layer_id
         call('frame_action',self.layer,2,24,25)
         backup=self.doc.nodeByUniqueID(self.original.uniqueId())
+        self.doc.waitForDone()
         vectors=read_layer(self.doc,backup); vectors[1].width+=1
         write_layer(self.doc,backup,vectors)
         mixed=ROOT/'examples/animation-after-vector-edit.kra'

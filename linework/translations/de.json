@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Installieren Sie die native Voreinstellung „{0}“ neu, um diesen Pinselstrich zu bearbeiten.",
   "{0} editable strokes · save the document in .kra": "{0} bearbeitbare Pinselstriche · Speichern Sie das Dokument in .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} Pinselstriche · {1} Punkte · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Für die direkte Dickensteuerung ist eine Pixel-, Farbfleck- oder Schnellpinsel-Voreinstellung erforderlich."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Für die direkte Dickensteuerung ist eine Pixel-, Farbfleck- oder Schnellpinsel-Voreinstellung erforderlich.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

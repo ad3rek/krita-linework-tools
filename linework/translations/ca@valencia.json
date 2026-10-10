@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Torneu a instal·lar el valor predefinit natiu \"{0}\" per editar aquest pinzell.",
   "{0} editable strokes · save the document in .kra": "{0} pinzellades editables · deseu el document en .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} pinzellades · {1} punts · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "El control directe del gruix requereix una configuració predeterminada de píxel, taca de color o pinzell ràpid."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "El control directe del gruix requereix una configuració predeterminada de píxel, taca de color o pinzell ràpid.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

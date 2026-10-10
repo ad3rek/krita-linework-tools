@@ -1,0 +1,20 @@
+{
+  "deleted_stroke_can_be_edited_after_canvas_undo": "pass",
+  "erased_stroke_can_be_erased_again_after_canvas_undo": "pass",
+  "native_undo_restores_geometry_and_editable_appearance_together": "pass",
+  "drawing_after_layer_switch_preserves_previous_layer": "pass",
+  "switch_debug": {
+    "pending_before": false,
+    "active_before": "{5f154909-8701-4f63-9cd5-f632057bef63}",
+    "original": "{ab6c0017-f62a-4061-a94e-b07c9397d605}",
+    "active_after_request": "{ab6c0017-f62a-4061-a94e-b07c9397d605}",
+    "pending_at_draw": false,
+    "active_at_draw": "{ab6c0017-f62a-4061-a94e-b07c9397d605}",
+    "controller_at_draw": "{ab6c0017-f62a-4061-a94e-b07c9397d605}"
+  },
+  "switching_back_edits_the_selected_linework_layer": "pass",
+  "removing_active_linework_layer_does_not_disable_drawing": "pass",
+  "result": "pass",
+  "krita": "5.2.14",
+  "application_exit_code": 0
+}

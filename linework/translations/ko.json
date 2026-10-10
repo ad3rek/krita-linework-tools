@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "이 브러시 스트로크를 편집하려면 기본 사전 설정 \"{0}\"을(를) 다시 설치하세요.",
   "{0} editable strokes · save the document in .kra": "편집 가능한 브러시 스트로크 {0}개 · 문서를 .kra에 저장",
   "{0} strokes · {1} points · {2:.2f} s": "{0} 브러시 스트로크 · {1} 포인트 · {2:.2f} 초",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "직접적인 두께 제어에는 픽셀, 색상 얼룩 또는 빠른 브러시 사전 설정이 필요합니다."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "직접적인 두께 제어에는 픽셀, 색상 얼룩 또는 빠른 브러시 사전 설정이 필요합니다.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

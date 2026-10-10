@@ -73,7 +73,11 @@ class Probe(Extension):
         from linework.storage import read_layer
         actual = [s.data() for s in self.c.overlay.strokes]
         assert actual == [s.data() for s in read_layer(self.doc, self.c.layer)]
-        assert len(self.c.layer.shapes()) == len(actual)
+        if self.c.layer.type() == 'vectorlayer':
+            assert len(self.c.layer.shapes()) == len(actual)
+        else:
+            from linework.animation import descriptor
+            assert self.c.layer.type() == 'paintlayer' and descriptor(self.doc, self.c.layer)
         return actual
 
     def start(self):

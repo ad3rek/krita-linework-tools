@@ -1,0 +1,95 @@
+{
+  "release": "0.1.5",
+  "date": "2026-10-10",
+  "cpu_tests": 100,
+  "application_reports": {
+    "linux-animation-close.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 3
+    },
+    "linux-animation.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 27
+    },
+    "linux-autosave-recovery.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 9
+    },
+    "linux-brush-size.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 14
+    },
+    "linux-layer-lifecycle.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 6
+    },
+    "linux-stroke-lifecycle.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 10
+    },
+    "linux-unified-vectorize.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.2.14",
+      "checks_passed": 6
+    },
+    "windows-5.3.4.1-animation.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.3.4.1 (git bd6e8d0)",
+      "checks_passed": 27
+    },
+    "windows-5.3.4.1-brush-size.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "5.3.4.1 (git bd6e8d0)",
+      "checks_passed": 14
+    },
+    "windows-6.0.4.1-animation.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "checks_passed": 27
+    },
+    "windows-6.0.4.1-autosave-recovery.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "checks_passed": 9
+    },
+    "windows-6.0.4.1-brush-size.json": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "checks_passed": 14
+    }
+  },
+  "native_build": "native-build.json",
+  "changes": [
+    "One native-frame Linework backend for every newly drawn, menu-created or vectorized layer",
+    "Toolbar and size actions registered through the native paint-tool factory",
+    "Queued canvas input during new-layer selection",
+    "Editable frame data refreshed in-place after native Undo"
+  ],
+  "scope": [
+    "Official Windows applications run under Wine 11.0; no physical Windows or tablet validation",
+    "Background timer-generated autosave archives reopened and edited; no actual crash or startup recovery dialog",
+    "Legacy vector files remain editable without an automatic rewrite",
+    "Select Shapes only applies to legacy vector layers; new layers use Linework Strokes selection",
+    "Native raster transforms cannot update stored paths; changed pixels are preserved and editing is rejected",
+    "Full 743-stroke Windows bulk replay/history test remains unvalidated",
+    "Android and macOS are outside this release"
+  ]
+}

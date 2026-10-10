@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "התקן מחדש את ההגדרה המקורית המקורית \"{0}\" כדי לערוך משיכת מכחול זו.",
   "{0} editable strokes · save the document in .kra": "{0} משיכות מכחול הניתנות לעריכה · שמור את המסמך ב-.kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} משיכות מכחול · {1} נקודות · {2:.2f} שניות",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "בקרת עובי ישירה דורשת הגדרה מראש של Pixel, Color Smudge או Quick Brush."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "בקרת עובי ישירה דורשת הגדרה מראש של Pixel, Color Smudge או Quick Brush.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

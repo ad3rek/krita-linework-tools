@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Athshuiteáil an réamhshocrú dúchais “{0}” chun an stróc scuab seo a chur in eagar.",
   "{0} editable strokes · save the document in .kra": "{0} strócanna scuab in eagar · sábháil an doiciméad i .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} strócanna scuab · {1} pointe · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Teastaíonn réamhshocrú Pixel, Colour Smudge nó Quick Scuab le rialú tiús díreach."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Teastaíonn réamhshocrú Pixel, Colour Smudge nó Quick Scuab le rialú tiús díreach.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

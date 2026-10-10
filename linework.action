@@ -2,15 +2,6 @@
 <ActionCollection version="2" name="Linework">
   <Actions category="Tools">
     <text>Linework</text>
-    <Action name="linework_animate">
-      <icon />
-      <text>Animate Linework layer…</text>
-      <toolTip>Animate Linework layer…</toolTip>
-      <shortcut />
-      <isCheckable>false</isCheckable>
-      <activationFlags>0</activationFlags>
-      <activationConditions>0</activationConditions>
-    </Action>
     <Action name="linework_blank_frame">
       <icon />
       <text>New Linework frame…</text>

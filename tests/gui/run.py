@@ -29,10 +29,11 @@ def blank_png(path, size=900):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color', 'stroke_lifecycle', 'eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close'])
+    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color', 'stroke_lifecycle', 'eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close', 'brush_size', 'autosave_recovery', 'unified_vectorize'])
     parser.add_argument('--output', type=Path, help='Directory for reports, captures and test documents')
     parser.add_argument('--language', default='en', help='Krita interface language for this isolated run')
     args = parser.parse_args()
+    autosave_config = 'AutoSaveInterval=2\n' if args.probe == 'autosave_recovery' else ''
     checkout = Path(__file__).resolve().parents[2]
     output = (args.output or checkout/'work/gui-results'/args.probe).resolve()
     for directory in ('docs/validation', 'docs/images', 'examples'):
@@ -42,7 +43,7 @@ def main():
             parser.error(command+' is required (Linux / Krita 5.2.14 / compatible Qt 5 ABI).')
     report = output/'docs/validation'/({'cc_lineart': 'cc-lineart.json',
         'multi_point': 'multi-point.json', 'smoothing': 'smoothing.json', 'color': 'color.json',
-        'stroke_lifecycle': 'stroke-lifecycle.json', 'eraser_topology': 'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json'}[args.probe])
+        'stroke_lifecycle': 'stroke-lifecycle.json', 'eraser_topology': 'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json', 'brush_size':'brush-size.json', 'autosave_recovery':'autosave-recovery.json', 'unified_vectorize':'unified-vectorize.json'}[args.probe])
     report.unlink(missing_ok=True)
     (output/'phase.json').unlink(missing_ok=True)
     (output/'stack.log').unlink(missing_ok=True)
@@ -53,7 +54,7 @@ def main():
         env = dict(os.environ, XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(data),
             TMPDIR=str(ipc), LINEWORK_TEST_ROOT=str(output), QT_LOGGING_RULES='*.debug=false', LINEWORK_TEST_LANGUAGE=args.language)
         env['PYTHONPATH'] = '/usr/lib/x86_64-linux-gnu/krita-python-libs'+os.pathsep+env.get('PYTHONPATH', '')
-        config.joinpath('kritarc').write_text('CanvasOnlyActive=false\nuseOpenGL=false\n\n[python]\nenable_linework=true\nenable_probe=true\n')
+        config.joinpath('kritarc').write_text('CanvasOnlyActive=false\nuseOpenGL=false\n'+autosave_config+'\n[python]\nenable_linework=true\nenable_probe=true\n')
         (config/'klanguageoverridesrc').write_text('[Language]\nkrita='+args.language+'\n')
         pykrita = data/'krita/pykrita'
         pykrita.mkdir(parents=True)

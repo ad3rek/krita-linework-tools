@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Reinstale el valor preestablecido nativo “{0}” para editar este trazo de pincel.",
   "{0} editable strokes · save the document in .kra": "{0} pinceladas editables · guardar el documento en .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} pinceladas · {1} puntos · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "El control directo del grosor requiere un ajuste preestablecido de Píxel, Difuminado de color o Pincel rápido."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "El control directo del grosor requiere un ajuste preestablecido de Píxel, Difuminado de color o Pincel rápido.",
+  "Unable to create Linework layer.": "No se pudo crear la capa Linework.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita no permite crear una capa Linework en este documento.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita no creó una capa Linework en el panel de capas."
 }

@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Adstaliañ an arventenn orin “{0}” evit kemmañ ar skritell-mañ.",
   "{0} editable strokes · save the document in .kra": "{0} taolioù-arnod a c'haller kemmañ · enrollañ an teul e .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} taolioù broust · {1} poent · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Ret eo d'ar reoliñ tevder war-eeun bezañ lakaet en a-raok gant ur Pixel, ur Color Smudge pe ur Quick Brush."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Ret eo d'ar reoliñ tevder war-eeun bezañ lakaet en a-raok gant ur Pixel, ur Color Smudge pe ur Quick Brush.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

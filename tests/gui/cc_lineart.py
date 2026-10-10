@@ -155,7 +155,7 @@ class Probe(Extension):
         assert self.c.overlay and self.c.layer
         self.layer = self.c.layer
         self.layer.setName('Linework — Pepper (CC BY 4.0)')
-        assert self.layer.type() == 'vectorlayer'
+        assert self.layer.type() == 'paintlayer' and self.layer.isPinnedToTimeline()
         assert len(self.c.overlay.strokes) == self.result['preview']['strokes']
         assert not self.source.visible()
         self.result['new_native_linework_layer_and_preserved_raster'] = 'pass'

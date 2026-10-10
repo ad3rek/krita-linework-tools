@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "перевстановіть власний стиль «{0}», щоб редагувати цей мазок пензля.",
   "{0} editable strokes · save the document in .kra": "{0} мазків пензля, які можна редагувати · зберегти документ у .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} штрихів · {1} точок · {2:.2f} с",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Пряме керування товщиною вимагає попередніх налаштувань Pixel, Color Smudge або Quick Brush."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Пряме керування товщиною вимагає попередніх налаштувань Pixel, Color Smudge або Quick Brush.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

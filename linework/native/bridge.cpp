@@ -72,6 +72,7 @@ extern "C" LINEWORK_EXPORT const char *linework_bridge_qt_version() {
 #include <kundo2command.h>
 #include <KoToolRegistry.h>
 #include <KoToolFactoryBase.h>
+#include <tool/KisToolPaintFactoryBase.h>
 #include <KoToolManager.h>
 #include <KoToolManager_p.h>
 #include <KoToolProxy.h>
@@ -194,6 +195,12 @@ public:
         // been detached. Never leave a proxy pointing at this deleted tool.
         if (proxy && proxy->priv()->activeTool == this) proxy->setActiveTool(nullptr);
     }
+    int flags() const override {
+        // The toolbar only forwards size/flow changes to the preset for tools
+        // declaring it; KisToolPaint's default flags omit preset and size.
+        return KisTool::FLAG_USES_CUSTOM_COMPOSITEOP | KisTool::FLAG_USES_CUSTOM_PRESET |
+               KisTool::FLAG_USES_CUSTOM_SIZE;
+    }
     void activate(const QSet<KoShape*> &shapes)override{
         KisToolPaint::activate(shapes);
         if(toolCallback)toolCallback(1,mode,canvas()->canvasWidget());
@@ -212,10 +219,10 @@ public:
     }
 };
 
-class LineworkToolFactory final:public KoToolFactoryBase {
+class LineworkToolFactory final:public KisToolPaintFactoryBase {
     int mode;
 public:
-    LineworkToolFactory(int mode,const QString &icons,const QStringList &labels):KoToolFactoryBase(QString::fromLatin1(toolIds[mode])),mode(mode){
+    LineworkToolFactory(int mode,const QString &icons,const QStringList &labels):KisToolPaintFactoryBase(QString::fromLatin1(toolIds[mode])),mode(mode){
         setToolTip(labels[mode]);
         setSection(QStringLiteral("1 Linework"));
         setPriority(40+mode);

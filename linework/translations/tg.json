@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Барои таҳрир кардани ин зарбаи хасу танзимоти аслии \"{0}\" -ро аз нав насб кунед.",
   "{0} editable strokes · save the document in .kra": "{0} зарбаи хасу таҳриршаванда · ҳуҷҷатро дар .kra захира кунед",
   "{0} strokes · {1} points · {2:.2f} s": "{0} зарбаи хасу · {1} нуқта · {2:.2f} с",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Назорати мустақими ғафсӣ пешакии Pixel, Color Smudge ё Quick Brush-ро талаб мекунад."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Назорати мустақими ғафсӣ пешакии Pixel, Color Smudge ё Quick Brush-ро талаб мекунад.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

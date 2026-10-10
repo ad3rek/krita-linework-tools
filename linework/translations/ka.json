@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "ხელახლა დააინსტალირეთ \"{0}\" საწყისი წინასწარი დაყენება, რათა შეცვალოთ ეს ფუნჯი.",
   "{0} editable strokes · save the document in .kra": "{0} რედაქტირებადი ფუნჯის შტრიხები · შეინახეთ დოკუმენტი .kra-ში",
   "{0} strokes · {1} points · {2:.2f} s": "{0} ფუნჯის მოძრაობა · {1} ქულა · {2:.2f} წმ",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "სისქის პირდაპირი კონტროლი მოითხოვს Pixel, Color Smudge ან Quick Brush წინასწარ დაყენებას."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "სისქის პირდაპირი კონტროლი მოითხოვს Pixel, Color Smudge ან Quick Brush წინასწარ დაყენებას.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

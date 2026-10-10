@@ -93,13 +93,11 @@ class LineworkExtension(Extension):
         new_action.triggered.connect(self.new_layer)
         vectorize_action = window.createAction('linework_vectorize', tr("Vectorize layer in Linework…"), 'tools/scripts')
         vectorize_action.triggered.connect(self.vectorize)
-        animate = window.createAction('linework_animate', tr("Animate Linework layer…"), 'tools/scripts')
-        animate.triggered.connect(self.animate_layer)
         blank = window.createAction('linework_blank_frame', tr("New Linework frame…"), 'tools/scripts')
         blank.triggered.connect(lambda: self.animation_frame(False))
         duplicate = window.createAction('linework_duplicate_frame', tr("Duplicate Linework frame…"), 'tools/scripts')
         duplicate.triggered.connect(lambda: self.animation_frame(True))
-        for created in (action, new_action, vectorize_action, animate, blank, duplicate):
+        for created in (action, new_action, vectorize_action, blank, duplicate):
             created.setToolTip(created.text()); created.setIconText(created.text())
 
     def initialize_animation(self):
@@ -111,13 +109,6 @@ class LineworkExtension(Extension):
                 QTimer.singleShot(100, self.initialize_animation)
             except (RuntimeError, ValueError):
                 continue
-
-    def animate_layer(self):
-        window = Krita.instance().activeWindow()
-        if window is None: return
-        select_tool(0)
-        controller = current_controller(window)
-        if controller: controller.animate_layer()
 
     def animation_frame(self, duplicate):
         window = Krita.instance().activeWindow()

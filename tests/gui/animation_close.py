@@ -3,7 +3,7 @@
 import json,os,traceback
 from pathlib import Path
 from krita import Krita,Extension
-from linework.qt import QApplication,QTimer,QCloseEvent,QEventLoop,QKeyEvent,QEvent,Qt
+from linework.qt import QApplication,QTimer,QCloseEvent,QEventLoop,QKeyEvent,QEvent,Qt,QDialog
 ROOT=Path(os.environ['LINEWORK_TEST_ROOT'])
 class Probe(Extension):
     def setup(self):self.result={};self.tries=0;self.after(self.start,2000)
@@ -18,11 +18,12 @@ class Probe(Extension):
     def start(self):
         QApplication.instance().setQuitOnLastWindowClosed(False)
         self.k=Krita.instance()
-        for window in self.k.windows():
-            QApplication.setActiveWindow(window.qwindow());window.activate()
-        if not self.k.activeDocument():
-            self.tries+=1;assert self.tries<40;self.after(self.start);return
-        self.window=self.k.activeWindow()
+        for widget in QApplication.topLevelWidgets():
+            if widget.metaObject().className() == 'KisAutoSaveRecoveryDialog': QDialog.reject(widget)
+        windows = [window for window in self.k.windows() if window.activeView() and window.activeView().document()]
+        if not windows:
+            self.tries+=1;assert self.tries<300;self.after(self.start);return
+        self.window=windows[0]
         self.window.activate();QApplication.setActiveWindow(self.window.qwindow())
         self.doc=self.window.activeView().document()
         self.after(self.ready)
@@ -32,10 +33,10 @@ class Probe(Extension):
         from linework.storage import write_layer
         select_tool(3);self.c=current_controller(self.window)
         if self.c is None:
-            self.tries+=1;assert self.tries<40;self.after(self.ready);return
+            self.tries+=1;assert self.tries<300;self.after(self.ready);return
         self.layer=self.c.create_native_layer(self.doc)
         write_layer(self.doc,self.layer,[Stroke([Point(100,100),Point(250,200)],width=12)])
-        self.doc.waitForDone();self.c.poll();self.c.animate_layer()
+        self.doc.waitForDone();self.c.poll()
         self.after(self.converted)
     def converted(self):
         self.c.poll();assert self.c.layer.type()=='paintlayer',self.c.status.text()

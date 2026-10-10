@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Herinstalleer die oorspronklike voorafinstelling \"{0}\" om hierdie kwasstrek te wysig.",
   "{0} editable strokes · save the document in .kra": "{0} redigeerbare kwashale · stoor die dokument in .kra",
   "{0} strokes · {1} points · {2:.2f} s": "{0} kwashale · {1} punte · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Direkte diktebeheer vereis 'n Pixel-, Color Smudge- of Quick Brush-voorinstelling."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Direkte diktebeheer vereis 'n Pixel-, Color Smudge- of Quick Brush-voorinstelling.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

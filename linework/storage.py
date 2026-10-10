@@ -86,20 +86,29 @@ def read_layer(document, layer, view=None):
     return load_strokes(record.get("strokes", []))
 
 
-def write_layer(document, layer, strokes, native_renderer=None, trusted=False, frame=None):
+def write_layer(document, layer, strokes, native_renderer=None, trusted=False, frame=None, backup=None):
+    if layer is None:
+        # All newly created Linework layers share the native Timeline backend.
+        # The vector branch below remains a reader/editor for older documents.
+        from .animation import initialize_layer
+        layer = document.createNode(tr("Linework — editable strokes"), "paintlayer")
+        active = document.activeNode()
+        parent = (active.parentNode() if active else None) or document.rootNode()
+        if not parent.addChildNode(layer, active):
+            raise RuntimeError(tr("Unable to create Linework layer."))
+        try:
+            initialize_layer(document, layer)
+            layer.setPinnedToTimeline(True)
+            write_layer(document, layer, strokes, native_renderer, trusted, frame, backup)
+        except Exception:
+            layer.remove()
+            raise
+        document.setActiveNode(layer)
+        return layer
     if layer is not None and layer.type() == "paintlayer":
         from .animation import write_frame
-        return write_frame(document, layer, strokes, native_renderer, frame)
+        return write_frame(document, layer, strokes, native_renderer, frame, backup)
     data = metadata(document)
-    new_layer = layer is None
-    if new_layer:
-        layer = document.createVectorLayer(tr("Linework — editable strokes"))
-        active = document.activeNode()
-        parent = active.parentNode() if active else document.rootNode()
-        if parent is None:
-            parent = document.rootNode()
-        if not parent.addChildNode(layer, active):
-            raise RuntimeError(tr("Unable to create vector layer."))
     if layer.locked():
         raise ValueError(tr("Unlock the layer before applying."))
     key = layer_id(layer)
@@ -120,13 +129,8 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False, f
     # Painting/PNG preparation may yield to Qt while the old shapes are stable.
     # Only the import, replacements and final metadata/projection commit enter
     # the native outer wait; other plugins never observe partially changed lists.
-    try:
-        markup = svg(changed, document.width(), document.height(), document.xRes(),
-                     document.yRes(), native_renderer) if changed else None
-    except Exception:
-        if new_layer:
-            layer.remove()
-        raise
+    markup = svg(changed, document.width(), document.height(), document.xRes(),
+                 document.yRes(), native_renderer) if changed else None
     with shape_write(layer):
         added = []
         try:
@@ -145,8 +149,6 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False, f
         except Exception:
             for shape in added:
                 shape.remove()
-            if new_layer:
-                layer.remove()
             raise
         document.waitForDone()
         owned = {name: current[name] for name in retained}
@@ -170,8 +172,6 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False, f
         if data['version'] >= 7:
             from .animation import protect_save
             protect_save(document, data)
-        if new_layer:
-            document.setActiveNode(layer)
         document.setModified(True)
         document.refreshProjection()
         refresh_layer(layer)

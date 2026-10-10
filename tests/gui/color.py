@@ -70,7 +70,7 @@ class Probe(Extension):
         from linework.native_brush import capture_brush, NativeBrushRenderer
         from linework.storage import write_layer
         select_tool(3); self.c = current_controller(self.window)
-        self.layer = self.c.create_native_layer(self.doc)
+        self.layer = self.c.create_native_layer(self.doc, 'vectorlayer')
         brush = capture_brush(self.view)
         strokes = []
         for y, color, preset in [(180, '#203040', brush), (350, '#274b72', None), (520, '#804020', brush)]:

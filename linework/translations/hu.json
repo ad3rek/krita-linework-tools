@@ -265,5 +265,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Telepítse újra a natív „{0}” előre beállított értéket az ecsetvonás szerkesztéséhez.",
   "{0} editable strokes · save the document in .kra": "{0} szerkeszthető ecsetvonás · mentse a dokumentumot .kra formátumban",
   "{0} strokes · {1} points · {2:.2f} s": "{0} ecsetvonás · {1} pont · {2:.2f} s",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "A vastagság közvetlen szabályozásához Pixel, Color Smudge vagy Quick Brush előbeállítás szükséges."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "A vastagság közvetlen szabályozásához Pixel, Color Smudge vagy Quick Brush előbeállítás szükséges.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

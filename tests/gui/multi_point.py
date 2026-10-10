@@ -56,7 +56,7 @@ class Probe(Extension):
   from linework.model import Stroke,Point
   from linework.native_brush import capture_brush,NativeBrushRenderer
   from linework.storage import write_layer
-  select_tool(3);self.c=current_controller(self.window);self.layer=self.c.create_native_layer(self.doc)
+  select_tool(3);self.c=current_controller(self.window);self.layer=self.c.create_native_layer(self.doc, 'vectorlayer')
   brush=capture_brush(self.view);strokes=[]
   for y,press,width,color,preset in [(180,[.25,.6,.9],18,'#203040',brush),(350,[.65,.45,.8],24,'#274b72',brush),(520,[.4,.4,.4],30,'#804020',None)]:
    pts=[Point(150,y,press[0],handle_out=(50,0),pressure_out=.04),

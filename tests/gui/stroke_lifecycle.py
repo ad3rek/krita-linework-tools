@@ -68,7 +68,7 @@ class Probe(Extension):
             if widget.metaObject().className() == 'KisAutoSaveRecoveryDialog': QDialog.reject(widget)
         for window in self.k.windows():
             QApplication.setActiveWindow(window.qwindow()); window.activate()
-        if not self.k.activeDocument():
+        if not self.k.activeDocument() or not self.k.activeWindow().qwindow().isVisible():
             self.tries += 1; assert self.tries < 40
             self.after(self.start); return
         self.window = self.k.activeWindow(); self.window.qwindow().resize(1450, 1020)
@@ -110,6 +110,8 @@ class Probe(Extension):
         assert self.c.overlay and not self.c._error, self.c.status.text()
         self.doc.waitForDone(); self.c.poll()
         assert len(self.c.overlay.strokes) == count, (count, len(self.c.overlay.strokes))
+        layers = self.doc.rootNode().findChildNodes('', True, False, 'paintlayer')
+        assert len(layers) == 2, [(n.name(), n.type()) for n in layers]
         assert [s.data() for s in read_layer(self.doc, self.c.layer)] == [s.data() for s in self.c.overlay.strokes]
         assert self.c.overlay.draft is None and self.c.overlay.smoother is None
         for y in ys:

@@ -266,5 +266,8 @@
   "Reinstall the native preset “{0}” to edit this stroke.": "Bu fırça darbesini düzenlemek için yerel “{0}” ön ayarını yeniden yükleyin.",
   "{0} editable strokes · save the document in .kra": "{0} düzenlenebilir fırça darbesi · belgeyi .kra'ya kaydedin",
   "{0} strokes · {1} points · {2:.2f} s": "{0} fırça darbesi · {1} nokta · {2:.2f} sn",
-  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Doğrudan kalınlık kontrolü Piksel, Renkli Leke veya Hızlı Fırça ön ayarı gerektirir."
+  "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "Doğrudan kalınlık kontrolü Piksel, Renkli Leke veya Hızlı Fırça ön ayarı gerektirir.",
+  "Unable to create Linework layer.": "Unable to create Linework layer.",
+  "Krita does not allow you to create a Linework layer in this document.": "Krita does not allow you to create a Linework layer in this document.",
+  "Krita did not create a Linework layer in the Layers panel.": "Krita did not create a Linework layer in the Layers panel."
 }

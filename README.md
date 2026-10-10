@@ -6,7 +6,9 @@ Draw directly on the canvas with Krita brush presets, then edit the centerline, 
 
 Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2** to investigate its linework features and guide the reproduction of their behavior. The [implementation and scope](#codex-ghidra-and-reverse-engineering) are documented below.
 
-> **Version 0.1.4 · experimental desktop build.** Windows x64 supports Krita **5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1**, with automatic selection of a bridge compiled for each version. Linux x86_64 currently supports **5.2.14** with compatible system libraries. The bridge uses Krita's internal ABI; other builds require recompilation and validation. Android remains outside this release.
+> **Version 0.1.5 · experimental desktop build.** Windows x64 supports Krita **5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1**, with automatic selection of a bridge compiled for each version. Linux x86_64 currently supports **5.2.14** with compatible system libraries. The bridge uses Krita's internal ABI; other builds require recompilation and validation. Android remains outside this release.
+
+> **Version 0.1.5:** newly drawn and vectorized Linework uses one layer with an editable initial frame and native Timeline support. No Animate Layer script or additional animation layer is needed. Native toolbar size and increase/decrease size actions also work while a Linework tool is active.
 
 ![Pepper lineart converted into a Linework layer in the real Krita interface](docs/images/pepper-vectorized.png)
 
@@ -14,16 +16,16 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 ## Download and install
 
-Download a platform package from [version 0.1.4](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.4). Save your work and close Krita before installing.
+Download a platform package from [version 0.1.5](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.5). Save your work and close Krita before installing.
 
-Version **0.1.4** adds compatibility with the current Windows Krita branches, PyQt 6 support, modern native smoothing options and editable animation frames. It also fixes thickness editing with Basic-1, layer switching and native deletion Undo, and follows Krita's interface language. [Changelog](CHANGELOG.md).
+Version **0.1.5** unifies newly drawn and vectorized strokes into one Timeline-ready Linework layer. It fixes native brush size controls, keeps rapid consecutive strokes on their newly created layer and refreshes editable frame geometry after native Undo. [Changelog](CHANGELOG.md).
 
 The [source from `main`](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip) can also be installed with the steps below. Previous release archives remain available unchanged.
 
 | Package | Required application | Validation environment |
 | --- | --- | --- |
-| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.4/Krita-Linework-Tools-0.1.4-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
-| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.4/Krita-Linework-Tools-0.1.4-windows-x86_64.zip) | Official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64 | Experimental preview; official application runtimes tested under Wine 11.0 |
+| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.5/Krita-Linework-Tools-0.1.5-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
+| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.5/Krita-Linework-Tools-0.1.5-windows-x86_64.zip) | Official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64 | Experimental preview; official application runtimes tested under Wine 11.0 |
 
 On Linux, extract the archive, open a terminal in its folder and run:
 
@@ -61,7 +63,7 @@ The toolbox icons follow Krita's theme and the group has a separator. Controls u
 
 The interface follows Krita's selected language. Catalogs cover all 75 locales listed by the matching Krita source release, with English fallback for missing messages. Most translations are automatic and need community review; several locales have only partial coverage. See [translation coverage and contribution instructions](docs/TRANSLATIONS.md).
 
-Krita presets produce raster textures. The editable geometry and the rendered appearance are both embedded in the vector layer and saved in `.kra`. The saved appearance remains visible without the plugin; rerendering requires the original preset and its resources.
+Krita presets produce raster textures. The editable geometry and the rendered appearance are both embedded in the Linework layer and saved in `.kra`. The saved appearance remains visible without the plugin; rerendering requires the original preset and its resources.
 
 In **Linework Edit** or **Linework Thickness**, changing Krita's foreground color recolors the selected strokes, including native brush textures and smooth lines. Color picker changes are collected before rendering and committed as one undo step. Selecting a stroke alone keeps its saved color. **Tool Options → Brush → Apply current color** applies the foreground to **Selected strokes** or **All strokes in the layer**, using the scope above the button. Geometry, pressure, thickness and brush settings are preserved. Presets that use their own multicolor tip or color dynamics can still produce colors beyond the foreground, as in native Krita painting.
 
@@ -71,15 +73,17 @@ In **Linework Edit** or **Linework Thickness**, changing Krita's foreground colo
 
 ## Animation
 
-Version **0.1.4** adds **editable Linework frames in Krita's native Animation Timeline**. Earlier release archives do not include animation.
+Version **0.1.5** creates every new Linework layer with **editable frames in Krita's native Animation Timeline**. Animation first appeared in 0.1.4; 0.1.5 removes the conversion step for newly created layers.
 
-![Editable Linework frame in Krita's native Timeline, Layers and Tool Options](docs/images/animation-in-krita.png)
+![Editable Linework frame in Krita's native Timeline, Layers and Tool Options](docs/images/animation-0.1.5.png)
 
-*Real Linux Krita 5.2.14 screenshot with synthetic test strokes. The same 27 animation checks passed on Linux and in the official Windows application under Wine 11.0: [Linux report](docs/validation/animation.json), [Windows/Wine report](docs/validation/windows-animation.json). Try the [editable animation example](examples/linework-animation.kra) with this release. Physical Windows hardware and stylus devices remain untested.*
+*0.1.5 in Linux Krita 5.2.14, using synthetic test strokes. All 27 animation checks passed on Linux and in official Windows Krita under Wine 11.0: [Linux](docs/validation/0.1.5/linux-animation.json), [Windows 5.3.4.1](docs/validation/0.1.5/windows-5.3.4.1-animation.json), [Windows 6.0.4.1](docs/validation/0.1.5/windows-6.0.4.1-animation.json). Try the [editable animation example](examples/linework-animation.kra) with this release. Physical Windows hardware and stylus devices remain untested.*
 
 The earlier animation development checkout passed all **83 CPU tests** and the existing stroke-lifecycle, multiple-point and eraser/topology application regressions. These reports retain their original source and application scope. [Validation record](docs/validation/animation-regressions.json) · [CPU run log](docs/validation/animation-cpu-tests.txt).
 
-Select a vector Linework layer and choose **Tools → Scripts → Animate Linework Layer** (`Animar camada Linework…`). This creates a paint layer with an editable frame at time 0, copies the saved brush appearances and hides the original vector layer as a backup. With another layer selected, the same command creates an empty animated Linework layer. The new layer is pinned to the Timeline and retains the Linework icon in Layers.
+In **0.1.5**, drawing the first stroke, choosing **New Linework Layer**, and raster vectorization all create the same Linework layer, ready for animation with an editable frame at time 0. Open **Settings → Dockers → Animation Timeline** and create or duplicate frames there. The layer is pinned to the Timeline and retains its Linework icon in Layers. No Animate Layer action or separate backup layer is created. Older vector Linework files remain readable and editable through the compatibility backend; existing files are not automatically rewritten.
+
+The earlier **0.1.4** package used **Tools → Scripts → Animate Linework Layer** to convert an older vector Linework layer and retain its hidden backup.
 
 Use the native Timeline to create, duplicate, move, delete or clone frames. **New Linework Frame** and **Duplicate Linework Frame** in Tools → Scripts also let you enter a destination frame number. Between keyframes, drawing edits the currently held frame. Create a blank or duplicate first when you want a separate drawing. Independent duplicates retain their own geometry; native linked clones share the drawing until made unique.
 
@@ -89,7 +93,7 @@ The bridge carries geometry through Krita's native keyframe duplication, includi
 
 The regression uses real canvas input, native frame operations, a mouse click on a Timeline cell and its duplicate action. It verifies per-frame brush/color/thickness edits, both eraser modes, linked clones, full blank-frame creation/edit undo/redo, saving during a point preview, immediate save after duplication, editing after reopening, native PNG saves and playback. It also paints with Krita's ordinary brush, verifies that Linework refuses to overwrite those pixels, then confirms native undo restores editable geometry. These are automated application checks; they do not replace physical tablet testing.
 
-Animated Linework layers use paint-layer keyframes. **Select Shapes** applies to the original vector layers; edit animation with the Linework tools. Painting or transforming the animated pixels with other tools is detected before a Linework edit and preserved, but cannot be converted automatically back to its original paths. Whole-layer duplication, cross-document frame transfer, automatic in-betweening and physical tablet validation are outside the current animation regression scope.
+New Linework layers use paint-layer keyframes while preserving editable path geometry in each frame. Use **Linework Edit** and its **Strokes** selection mode to select entire paths. Krita's native **Select Shapes** and shape transforms apply only to legacy vector layers; they do not operate on the new frame backend. Painting or transforming the animated pixels with other tools is detected before a Linework edit and preserved, but cannot be converted automatically back to its original paths. Whole-layer duplication, cross-document frame transfer, automatic in-betweening and physical tablet validation are outside the current animation regression scope.
 
 ## Convert a lineart into editable strokes
 
@@ -109,7 +113,7 @@ The vectorizer extracts centerlines and radii. It does not reconstruct filled re
 
 In **Linework Edit**, drag a point or a selected group. **Tool Options → Selection** offers automatic point/stroke picking, **Points** or **Strokes**. Stroke mode selects the whole path even when you click an anchor; dragging moves all its points. **Lock active point** keeps one anchor selected while you edit it or its handles, and ignores clicks elsewhere until you unlock it. These options also apply to Thickness. The click radius defaults to **16 screen pixels**, is adjustable from 4–40 px and stays constant while zooming; the closest point or handle wins. The active point shows square handles; Alt-drag moves one handle without aligning the opposite one. Double click a stroke or Alt-click to insert a point through subdivision without changing the curve. Delete removes the selection.
 
-Shift-click adds or removes items, dragging on empty canvas makes a point selection rectangle, and Ctrl+A selects all. A selection made with Krita's native **Select Shapes** is inherited by Edit and Thickness. This lets you adjust points across several strokes together.
+Shift-click adds or removes items, dragging on empty canvas makes a point selection rectangle, and Ctrl+A selects all. On legacy vector layers, a selection made with Krita's native **Select Shapes** is inherited by Edit and Thickness. For new Linework layers, use the **Strokes** selection mode in Edit or Thickness. This lets you adjust points across several strokes together.
 
 ![Native Pixel Art preset and thickness guides on the converted Pepper strokes](docs/images/pepper-native-thickness.png)
 
@@ -196,6 +200,16 @@ The development Tool Options layout places selection and point thickness first w
 ![Development Tool Options inside Krita](docs/images/options-in-krita-development.png)
 
 ## Functional tests
+
+The **0.1.5** checkout passed **100 CPU tests** and fresh application regressions for native brush size controls, rapid input, native Undo, unified layer creation/vectorization, animation and autosave-file reloading. [Exact run scope and reports](docs/TESTING.md#015-validation).
+
+![Native brush size on the selected Linework layer in Windows Krita](docs/images/brush-size-0.1.5-windows.png)
+
+*0.1.5 in the official Windows Krita 6.0.4.1 runtime under Wine: the toolbar reads 31 px and the next stroke uses that size on the same Linework layer. The regression changes the toolbar and invokes increase/decrease in all six tools, checking the saved strokes and new rendered output. [5.3.4.1 report](docs/validation/0.1.5/windows-5.3.4.1-brush-size.json) · [6.0.4.1 report](docs/validation/0.1.5/windows-6.0.4.1-brush-size.json). The fixture is synthetic.*
+
+Background-autosave tests reopen actual timer-generated `.kra-autosave.kra` files and edit their stored points and thickness. They passed on Linux and Windows/Wine; they do **not** simulate a crash, test Krita's startup recovery dialog or repair a recovered file whose editable metadata is already absent. [Linux](docs/validation/0.1.5/linux-autosave-recovery.json) · [Windows](docs/validation/0.1.5/windows-6.0.4.1-autosave-recovery.json).
+
+The following table and older screenshots retain the historical 0.1.3 vector-layer test scope. Select Shapes inheritance applies to those legacy vector layers; new Linework layers use the Strokes selection mode described above.
 
 **83 CPU tests passed** for the implementation included in 0.1.3 (70 in the previous 0.1.2 checkout). They cover the model, selection, insertion, serialization, fingerprints, affine transforms, compaction, vectorization, swept erasing, spatial indexing, shared history and point/endpoint topology. A differential test compiles the original OpenToonz sources and checks **exact equality of quadratic position and radius controls in 16 synthetic fixtures**.
 
