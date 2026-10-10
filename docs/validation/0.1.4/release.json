@@ -1,0 +1,160 @@
+{
+  "release": "0.1.4",
+  "date": "2026-10-10",
+  "cpu_tests": 100,
+  "cpu_result": "pass",
+  "native_build": "native-build.json",
+  "gui": [
+    {
+      "platform": "linux-5.2.14",
+      "probe": "thickness-handles",
+      "report": "linux-5.2.14-thickness-handles.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "linux-5.2.14",
+      "probe": "color",
+      "report": "linux-5.2.14-color.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "linux-5.2.14",
+      "probe": "animation",
+      "report": "linux-5.2.14-animation.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "linux-5.2.14-es",
+      "probe": "localization",
+      "report": "linux-5.2.14-es-localization.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "linux-5.2.14-ar",
+      "probe": "localization",
+      "report": "linux-5.2.14-ar-localization.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-5.3.4.1",
+      "probe": "layer-lifecycle",
+      "report": "windows-5.3.4.1-layer-lifecycle.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-5.3.4.1",
+      "probe": "thickness-handles",
+      "report": "windows-5.3.4.1-thickness-handles.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-5.3.4.1",
+      "probe": "smoothing",
+      "report": "windows-5.3.4.1-smoothing.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-5.3.4.1",
+      "probe": "animation",
+      "report": "windows-5.3.4.1-animation.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-5.3.4.1",
+      "probe": "stroke-lifecycle",
+      "report": "windows-5.3.4.1-stroke-lifecycle.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-5.3.4.1",
+      "probe": "localization",
+      "report": "windows-5.3.4.1-localization.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "layer-lifecycle",
+      "report": "windows-6.0.4.1-layer-lifecycle.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "thickness-handles",
+      "report": "windows-6.0.4.1-thickness-handles.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "smoothing",
+      "report": "windows-6.0.4.1-smoothing.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "animation",
+      "report": "windows-6.0.4.1-animation.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "stroke-lifecycle",
+      "report": "windows-6.0.4.1-stroke-lifecycle.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "localization",
+      "report": "windows-6.0.4.1-localization.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    },
+    {
+      "platform": "windows-6.0.4.1",
+      "probe": "animation-close",
+      "report": "windows-6.0.4.1-animation-close.json",
+      "result": "pass",
+      "application_exit_code": 0,
+      "scope": "Isolated real Krita application, Qt input events; Windows application under Wine 11.0."
+    }
+  ],
+  "translation_locales": 75,
+  "translation_status": "Automatic drafts and partial catalogs, English fallback; see ../../TRANSLATIONS.md",
+  "limits": [
+    "Qt event probes under Xvfb/Wine, not physical stylus sessions",
+    "743-stroke Windows bulk replay/history remains unvalidated",
+    "Historical reports retain their original source/version scope"
+  ]
+}

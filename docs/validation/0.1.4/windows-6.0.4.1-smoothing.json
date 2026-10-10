@@ -1,0 +1,97 @@
+{
+  "variable_distance_and_aspect_ratio_share_native_settings": "pass",
+  "0": {
+    "reduction": {
+      "before": 101,
+      "after": 10,
+      "milliseconds": 35.95009999116883,
+      "max_position_error": 0.13176855219675238,
+      "max_pressure_error": 0.00011384094451166726
+    },
+    "anchors": 10,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      420.0000000000001,
+      99.99999999999999
+    ],
+    "manual_handles": 10
+  },
+  "1": {
+    "reduction": {
+      "before": 101,
+      "after": 8,
+      "milliseconds": 113.63179999170825,
+      "max_position_error": 0.1899883435251515,
+      "max_pressure_error": 0.0013627560645131376
+    },
+    "anchors": 8,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      420.0000000000001,
+      210.0
+    ],
+    "manual_handles": 8
+  },
+  "2": {
+    "reduction": {
+      "before": 101,
+      "after": 13,
+      "milliseconds": 109.1562000074191,
+      "max_position_error": 0.17912919240240807,
+      "max_pressure_error": 0.0016087702798107673
+    },
+    "anchors": 13,
+    "first_pressure": 0.2,
+    "last_pressure": 0.78568413752161,
+    "endpoint": [
+      412.84206876080503,
+      315.01182102393113
+    ],
+    "manual_handles": 13
+  },
+  "3": {
+    "reduction": {
+      "before": 2501,
+      "after": 5,
+      "milliseconds": 764.1843000019435,
+      "max_position_error": 0.26631148691526013,
+      "max_pressure_error": 0.00029264193433198304
+    },
+    "anchors": 5,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      420.0000000000001,
+      430.0
+    ],
+    "manual_handles": 5
+  },
+  "4": {
+    "reduction": {
+      "before": 101,
+      "after": 56,
+      "milliseconds": 48.58600000443403
+    },
+    "anchors": 56,
+    "first_pressure": 0.2,
+    "last_pressure": 0.8,
+    "endpoint": [
+      420.5,
+      540.5
+    ],
+    "manual_handles": 56
+  },
+  "escape_cancels_native_timers_and_preserves_layer": "pass",
+  "delay_blocks_short_move_and_dot_keeps_nonzero_pressure": "pass",
+  "finish_line_disabled_preserves_native_endpoint": "pass",
+  "save_during_stroke_flushes_native_geometry": "pass",
+  "tool_switch_flushes_and_shared_native_settings_reload": "pass",
+  "delay_indicator_tracks_native_canvas_hover": "pass",
+  "tablet_events_native_modes_pressure_handles_history_roundtrip_and_bitmap": "pass",
+  "modes_tested": 5,
+  "result": "pass",
+  "application_exit_code": 0,
+  "exit_verification": "Runner process exit observed; retained original test scope."
+}

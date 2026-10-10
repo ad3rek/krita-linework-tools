@@ -1,27 +1,29 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Native tool options and editable input on Krita's actual canvas widget."""
+from .i18n import tr
 import copy
 import math
 import time
 from collections import deque
-from PyQt5.QtCore import Qt, QEvent, QPointF, QTimer, QRectF, QEventLoop, pyqtSignal
-from PyQt5 import sip
-from PyQt5.QtGui import (QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen,
+from .qt import event_position, Qt, QEvent, QPointF, QTimer, QRectF, QEventLoop, pyqtSignal
+from .qt import sip, copy_tablet_event, copy_mouse_event
+from .qt import (QColor, QIcon, QPixmap, QPainter, QPainterPath, QPen,
                         QMouseEvent, QTabletEvent, QKeyEvent)
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout,
+from .qt import (QApplication, QWidget, QVBoxLayout, QFormLayout,
     QLabel, QPushButton, QDoubleSpinBox, QFileDialog, QComboBox, QProgressBar, QHBoxLayout, QCheckBox)
 from krita import Krita
 from .editor import LineworkCanvas, painter_path
 from .model import Point, samples, svg, handle_vector, geometry_key, set_point_thickness
-from .storage import read_layer, write_layer, layer_id
+from .storage import read_layer, write_layer, layer_id, metadata, ANNOTATION
 from .native_brush import (NativeBrushRenderer, capture_brush, set_preview_hidden,
-                          begin_edit_session, end_edit_session, point_thickness, ensure_thickness, native_busy)
+                          begin_edit_session, end_edit_session, point_thickness, ensure_thickness, native_busy, active_node)
 from .native_smoothing import NativeSmoother, SmoothingOptions
 from .preview import SavedAppearanceCache
 from .options_ui import OptionsSection
 from .eraser import hit_center, point_weights, reduce_points
 from .topology import (bake_minimum, merge_points, join_strokes, close_stroke,
                        selection_kind)
+from .animation import AnimationBusy
 
 
 class MixedSpinBox(QDoubleSpinBox):
@@ -29,7 +31,7 @@ class MixedSpinBox(QDoubleSpinBox):
 
     def __init__(self):
         super().__init__(); self.mixed = False; self._edited = False; self._typed = ''; self._suffix = ''
-        self.lineEdit().setPlaceholderText('Vários')
+        self.lineEdit().setPlaceholderText(tr("Mixed"))
         self.lineEdit().textEdited.connect(self.text_edited)
         self.valueChanged.connect(self.value_changed)
         self.editingFinished.connect(self.edit_finished)
@@ -76,6 +78,9 @@ class NativeCanvasOverlay(LineworkCanvas):
         self.smoothing_timer.setInterval(16)
         self.smoothing_timer.timeout.connect(self.drain_smoothing)
         self.source_layer = source_layer
+        from .animation import descriptor
+        self.source_frame = descriptor(doc, source_layer)
+        self._raster_preview = None
         self.saved_appearances = SavedAppearanceCache()
         self._edit_original = None
         self._edit_order = None
@@ -96,10 +101,10 @@ class NativeCanvasOverlay(LineworkCanvas):
         self.preview_timer.setSingleShot(True)
         self.preview_timer.setInterval(16)
         self.preview_timer.timeout.connect(self.refresh_native_preview)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setAttribute(Qt.WA_NoSystemBackground)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFocusPolicy(Qt.NoFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setGeometry(native_widget.rect())
         self.sync_transform()
         self.show()
@@ -108,11 +113,11 @@ class NativeCanvasOverlay(LineworkCanvas):
     def sync_transform(self):
         inverse, ok = self.view.flakeToImageTransform().inverted()
         if not ok:
-            raise ValueError("Transformação do canvas inválida.")
+            raise ValueError(tr("Invalid canvas transformation."))
         self.image_to_widget = inverse * self.view.flakeToCanvasTransform()
         self.widget_to_image, ok = self.image_to_widget.inverted()
         if not ok:
-            raise ValueError("Transformação do canvas inválida.")
+            raise ValueError(tr("Invalid canvas transformation."))
         self.zoom = math.hypot(self.image_to_widget.m11(), self.image_to_widget.m12())
 
     def local_point(self, pos, pressure=1):
@@ -120,20 +125,30 @@ class NativeCanvasOverlay(LineworkCanvas):
         point = self.widget_to_image.map(pos)
         return Point(point.x(), point.y(), pressure)
 
-    def setFocus(self, reason=Qt.MouseFocusReason):
+    def setFocus(self, reason=Qt.FocusReason.MouseFocusReason):
         # Krita identifies its active view from canvas focus. Never focus the
         # transparent child, which would detach the active node from libkis.
         self.parentWidget().setFocus(reason)
 
-    def begin(self, pos, pressure, button=Qt.LeftButton, modifiers=Qt.NoModifier):
+    def begin(self, pos, pressure, button=Qt.MouseButton.LeftButton, modifiers=Qt.KeyboardModifier.NoModifier):
         # Canvas focus remains in Krita. Pan and zoom are handled by Krita.
-        if self.mode == 'erase' and button == Qt.LeftButton:
+        if self.mode == 'erase' and button == Qt.MouseButton.LeftButton:
             self.begin_erase(pos, pressure); return
-        if self.mode == 'pen' and button == Qt.LeftButton and self.draft:
+        if self.mode == 'pen' and button == Qt.MouseButton.LeftButton and self.draft:
             # A lost release must not let the next press replace a drawn path
             # or leave its native smoothing/preview sessions running.
             self.finish_draft()
-        if button == Qt.LeftButton and self.mode in ("pen", "curve", "line") and self.draft is None:
+        if button == Qt.MouseButton.LeftButton and self.mode in ("pen", "curve", "line") and self.draft is None:
+            if self.source_frame and self.source_frame['id'] < 0:
+                from .animation import call, read_frame, descriptor
+                document = self.view.document()
+                info = call('info', self.source_layer, 0)
+                call('frame_action', self.source_layer, 1, 0, info['time'])
+                document.waitForDone(); read_frame(document, self.source_layer)
+                self.source_frame = descriptor(document, self.source_layer)
+                from .tools import current_controller
+                controller = current_controller(Krita.instance().activeWindow())
+                if controller and controller.overlay is self: controller.binding = controller.overlay_binding()
             self.renderer.load_bridge()
             self.defaults["brush"] = capture_brush(self.view)
             self.defaults["width"] = self.view.brushSize()
@@ -148,7 +163,7 @@ class NativeCanvasOverlay(LineworkCanvas):
             self.smoothing_timer.start()
             # A no-paint stroke on the document makes save/clone requests
             # finish this tool before they snapshot its projection.
-            self._draw_session = begin_edit_session(self.view.document().activeNode())
+            self._draw_session = begin_edit_session(active_node(self.view))
         if self.drag in ("point", "stroke", "pressure", "handle"):
             self.begin_edit_preview()
         else:
@@ -161,14 +176,19 @@ class NativeCanvasOverlay(LineworkCanvas):
         self._edit_original = {s.uid: copy.deepcopy(s) for s in affected}
         self.native_preview = None; self.native_previews = {}; self._preview_keys = {}
         try:
+            if self.source_frame:
+                from .animation import EditPreview
+                self._raster_preview = EditPreview(self.view.document(), self.source_layer, self.source_frame)
             for stroke in affected:
-                cached = self.saved_appearances.get(self.view.document(), self.source_layer, stroke)
+                cached = self.saved_appearances.get(self.view.document(), self.source_layer, stroke,
+                    self.source_frame, self._raster_preview.payload if self._raster_preview else None)
                 if cached:
                     self.native_previews[stroke.uid] = cached
                     self.native_preview = (stroke.uid, *cached)
                     self._preview_keys[stroke.uid] = self.preview_key(stroke)
-                if not set_preview_hidden(self.source_layer, stroke.uid, True):
-                    raise ValueError("Não foi possível ocultar a aparência original do traço.")
+                if not self.source_frame and not set_preview_hidden(self.source_layer, stroke.uid, True):
+                    raise ValueError(tr("Unable to hide the original appearance of the stroke."))
+            if self._raster_preview: self._raster_preview.hide(self._edit_original)
             self._edit_session = begin_edit_session(self.source_layer)
         except Exception:
             self.restore_edit_preview(cancel=True); raise
@@ -176,21 +196,25 @@ class NativeCanvasOverlay(LineworkCanvas):
 
     def protect_erase_stroke(self, stroke):
         if stroke.uid in self._edit_original: return
-        cached = self.saved_appearances.get(self.view.document(), self.source_layer, stroke)
+        if self.source_frame and self._raster_preview is None:
+            from .animation import EditPreview
+            self._raster_preview = EditPreview(self.view.document(), self.source_layer, self.source_frame)
+        cached = self.saved_appearances.get(self.view.document(), self.source_layer, stroke,
+            self.source_frame, self._raster_preview.payload if self._raster_preview else None)
         if cached:
             self.native_previews[stroke.uid] = cached
             self._preview_keys[stroke.uid] = self.preview_key(stroke)
         self._edit_original[stroke.uid] = copy.deepcopy(stroke)
-        if not set_preview_hidden(self.source_layer, stroke.uid, True):
-            raise ValueError('Não foi possível ocultar a aparência original do traço.')
+        if not self.source_frame and not set_preview_hidden(self.source_layer, stroke.uid, True):
+            raise ValueError(tr("Unable to hide the original appearance of the stroke."))
 
     def begin_erase(self, pos, pressure):
         if self.drag == 'erase': self.finish_erase()
         if not self.source_layer: return
         if self.source_layer.locked():
-            self.message.emit('Desbloqueie a camada para apagar.'); return
+            self.message.emit(tr("Unlock the layer to erase.")); return
         if not self.source_layer.visible():
-            self.message.emit('Exiba a camada para apagar.'); return
+            self.message.emit(tr("Display the layer to erase.")); return
         self.restore_edit_preview(cancel=True)
         self._edit_original = {}
         self._edit_order = [s.uid for s in self.strokes]
@@ -237,6 +261,7 @@ class NativeCanvasOverlay(LineworkCanvas):
                     session, self._edit_session = self._edit_session, None
                     end_edit_session(session)
                     for stroke in new_targets: self.protect_erase_stroke(stroke)
+                    if self._raster_preview: self._raster_preview.hide(self._edit_original)
                     self._edit_session = begin_edit_session(self.source_layer)
                 finally:
                     self._edit_mutating = False
@@ -279,6 +304,9 @@ class NativeCanvasOverlay(LineworkCanvas):
         self._edit_committing = False
         session, self._edit_session = self._edit_session, None
         end_edit_session(session)
+        if self._raster_preview:
+            preview, self._raster_preview = self._raster_preview, None
+            preview.close()
         if cancel:
             if self._edit_order is not None:
                 restored = {s.uid: s for s in self.strokes}; restored.update(original)
@@ -290,7 +318,7 @@ class NativeCanvasOverlay(LineworkCanvas):
             self.invalidate_spatial(original)
         self._edit_order = self._edit_selection = None
         self._erase_baselines = {}; self._erase_coverage = {}
-        if self.source_layer:
+        if self.source_layer and not self.source_frame:
             for uid in original: set_preview_hidden(self.source_layer, uid, False)
         if not sip.isdeleted(self):
             self.update()
@@ -310,6 +338,9 @@ class NativeCanvasOverlay(LineworkCanvas):
                 self._edit_committing = True
                 session, self._edit_session = self._edit_session, None
                 end_edit_session(session)
+                if self._raster_preview:
+                    preview, self._raster_preview = self._raster_preview, None
+                    preview.close()
             # Shapes and their SVG stay intact while hidden from the render
             # manager; storage can verify/replace only the edited stroke.
             super().commit()
@@ -322,7 +353,7 @@ class NativeCanvasOverlay(LineworkCanvas):
                 if stroke:
                     self.saved_appearances.forget(stroke.uid)
 
-    def move(self, pos, pressure, modifiers=Qt.NoModifier):
+    def move(self, pos, pressure, modifiers=Qt.KeyboardModifier.NoModifier):
         if self.drag == 'erase':
             self.hover_pos = pos
             point = self.local_point(pos, pressure)
@@ -391,9 +422,9 @@ class NativeCanvasOverlay(LineworkCanvas):
         end_edit_session(session)
 
     def keyPressEvent(self, event):
-        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self._edit_original:
+        if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace) and self._edit_original:
             self.restore_edit_preview(cancel=True)
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.stop_smoothing()
             editing = bool(self._edit_original)
             self.restore_edit_preview(cancel=True)
@@ -410,6 +441,9 @@ class NativeCanvasOverlay(LineworkCanvas):
             self.restore_edit_preview(cancel=True)
             self.selectedChanged.emit()
             return
+        if self.source_frame and self.draft is None:
+            self.native_undo('edit_undo')
+            return
         had_undo = bool(self.history.undo_stack) and self.draft is None
         super().undo()
         if had_undo and self.conversion_origin and not self.history.current and not self.history.undo_stack:
@@ -421,6 +455,9 @@ class NativeCanvasOverlay(LineworkCanvas):
         self.saved_appearances.clear()
 
     def redo(self):
+        if self.source_frame and self.draft is None:
+            self.native_undo('edit_redo')
+            return
         self.restore_edit_preview(cancel=True)
         super().redo()
         if self.conversion_origin:
@@ -432,6 +469,16 @@ class NativeCanvasOverlay(LineworkCanvas):
                 self.conversion_origin = (source, visible, hidden, ids, False)
         self.saved_appearances.clear()
 
+    def native_undo(self, name):
+        action = Krita.instance().action(name)
+        if action and action.isEnabled():
+            action.trigger()
+            document = self.view.document()
+            document.waitForDone()
+            QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+            from .tools import current_controller
+            controller = current_controller(Krita.instance().activeWindow())
+            if controller: controller.poll()
     def set_mode(self, mode):
         self.restore_edit_preview(cancel=True)
         super().set_mode(mode)
@@ -496,7 +543,7 @@ class NativeCanvasOverlay(LineworkCanvas):
         except RuntimeError:
             return
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setTransform(self.image_to_widget)
         painter.setClipRect(QRectF(0, 0, self.doc_width, self.doc_height))
         # Only in-progress geometry is painted here. Completed strokes are native SVG.
@@ -511,7 +558,7 @@ class NativeCanvasOverlay(LineworkCanvas):
                         bounds, image = cached
                         painter.drawImage(QRectF(bounds), image)
                     continue
-                painter.setPen(Qt.NoPen)
+                painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(QColor(s.color))
                 painter.setOpacity(s.opacity)
                 painter.drawPath(painter_path(s))
@@ -520,7 +567,7 @@ class NativeCanvasOverlay(LineworkCanvas):
         for selected in self.selected_strokes() if self.mode in ("edit", "pressure", "erase") else []:
             center = self.cached_center(selected)
             painter.setPen(QPen(QColor("#39bfff"), 1.2/self.zoom))
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             if center:
                 path = QPainterPath(QPointF(center[0].x, center[0].y))
                 for p in center[1:]:
@@ -542,14 +589,7 @@ class NativeCanvasOverlay(LineworkCanvas):
             if self.mode == "pressure":
                 for i, p in enumerate(selected.points):
                     # Diameter guides use the same editable profile as rendering.
-                    tangent = handle_vector(selected, i, "out") or handle_vector(selected, i, "in")
-                    if tangent is None or math.hypot(*tangent) < 1e-7:
-                        a, b = selected.points[max(0, i-1)], selected.points[min(len(selected.points)-1, i+1)]
-                        tangent = b.x-a.x, b.y-a.y
-                    length = math.hypot(*tangent)
-                    nx, ny = (-tangent[1]/length, tangent[0]/length) if length else (0, 1)
-                    radius = (selected.width*selected.minimum+(1-selected.minimum)*point_thickness(selected, i))/2
-                    radius = max(6/self.zoom, min(radius, 100/self.zoom))
+                    (nx, ny), radius = self.thickness_guide(selected, i)
                     chosen = (selected.uid, i) in point_keys
                     color = QColor("#ffbf45" if chosen else "#39bfff")
                     color.setAlpha(230 if chosen else 130)
@@ -570,7 +610,7 @@ class NativeCanvasOverlay(LineworkCanvas):
                 painter.save()
                 painter.resetTransform()
                 painter.setClipping(False)
-                text = "Espessura: {:.1f} px".format(point_thickness(stroke, self.point_index))
+                text = tr("Thickness: {0:.1f} px").format(point_thickness(stroke, self.point_index))
                 rect = painter.fontMetrics().boundingRect(text).adjusted(-7, -4, 7, 4)
                 rect.moveTopLeft((location+QPointF(14, -rect.height()-10)).toPoint())
                 rect.moveLeft(max(2, min(rect.left(), self.width()-rect.width()-2)))
@@ -579,13 +619,13 @@ class NativeCanvasOverlay(LineworkCanvas):
                 painter.setBrush(self.palette().window())
                 painter.drawRoundedRect(QRectF(rect), 4, 4)
                 painter.setPen(self.palette().windowText().color())
-                painter.drawText(rect, Qt.AlignCenter, text)
+                painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
                 painter.restore()
         if self.drag == 'select':
             rect = QRectF(QPointF(self._selection_start.x, self._selection_start.y),
                           QPointF(self._selection_end.x, self._selection_end.y)).normalized()
             color = self.palette().highlight().color()
-            painter.setPen(QPen(color, 1/self.zoom, Qt.DashLine))
+            painter.setPen(QPen(color, 1/self.zoom, Qt.PenStyle.DashLine))
             color.setAlpha(35); painter.setBrush(color); painter.drawRect(rect)
         if self.draft and self.mode in ("curve", "line"):
             painter.setPen(QPen(QColor("#39bfff"), 1/self.zoom))
@@ -595,7 +635,7 @@ class NativeCanvasOverlay(LineworkCanvas):
         if self.mode == 'erase' and self.hover_pos is not None:
             point = self.widget_to_image.map(self.hover_pos)
             radius = max(.05, self.view.brushSize()/2)
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(self.palette().window().color(), 3/self.zoom))
             painter.drawEllipse(point, radius, radius)
             painter.setPen(QPen(self.palette().windowText().color(), 1/self.zoom))
@@ -614,7 +654,7 @@ class NativeCanvasOverlay(LineworkCanvas):
                       if self.draft and self.draft.points else self.widget_to_image.map(self.hover_pos))
             radius = options[5]/self.zoom
             painter.setPen(QPen(self.palette().highlight().color(), 1/self.zoom))
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawEllipse(center, radius, radius)
 
 
@@ -626,14 +666,18 @@ class LineworkToolOptions(QWidget):
         self.active = False
         self._error = None
         self.mode = "pen"
-        self.setWindowTitle("Linework Brush")
+        self.setWindowTitle(tr("Linework Brush"))
         self.overlay = None
         self.native_widget = None
         self.document = None
         self.layer = None
         self.binding = None
+        self._unrecognized_annotation = None
+        self._bound_annotation = None
         self._writing = False
         self._clearing = False
+        self._window_closing = False
+        self._input_epoch = 0
         self._updating = False
         self._input_depth = 0
         self._pending_input = deque()
@@ -645,6 +689,7 @@ class LineworkToolOptions(QWidget):
         self._passing_navigation = False
         self._space = False
         self._selection_pending = False
+        self._polling = False
         self._last_selected = None
         self._last_managed = False
         self._brush_change = None
@@ -662,27 +707,27 @@ class LineworkToolOptions(QWidget):
         layout.setContentsMargins(6, 4, 6, 6)
         layout.setSpacing(6)
         self.options_layout = layout
-        self.tool_label = QLabel("Linework Brush", self)
+        self.tool_label = QLabel(tr("Linework Brush"), self)
         self.tool_label.hide()  # The native tool docker already provides its title.
-        self.brush_group = OptionsSection("Pincel e cor")
+        self.brush_group = OptionsSection(tr("Brush and color"))
         brush_layout = QVBoxLayout(self.brush_group.content)
         brush_layout.setContentsMargins(6, 2, 0, 4); brush_layout.setSpacing(4)
-        self.brush_label = QLabel("Escolha um preset no painel Pincéis do Krita.")
+        self.brush_label = QLabel(tr("Choose a preset from Krita's Brushes panel."))
         self.brush_label.setWordWrap(True)
         brush_layout.addWidget(self.brush_label)
         self.stroke_brush_label = QLabel()
         self.stroke_brush_label.setWordWrap(True)
         brush_layout.addWidget(self.stroke_brush_label)
         self.brush_scope = QComboBox()
-        self.brush_scope.addItems(["Traços selecionados", "Todos os traços da camada"])
+        self.brush_scope.addItems([tr("Selected strokes"), tr("All strokes of the layer")])
         self.brush_scope.currentIndexChanged.connect(self.update_controls)
         brush_layout.addWidget(self.brush_scope)
-        self.apply_brush_button = QPushButton("Aplicar pincel")
-        self.apply_brush_button.setToolTip("Escolha um preset no Krita e aplique à curva existente, preservando cor e perfil de espessura")
+        self.apply_brush_button = QPushButton(tr("Apply brush"))
+        self.apply_brush_button.setToolTip(tr("Choose a preset in Krita and apply it to the existing curve, preserving color and thickness profile"))
         self.apply_brush_button.setEnabled(False)
         self.apply_brush_button.clicked.connect(self.apply_current_brush)
-        self.apply_color_button = QPushButton("Aplicar cor")
-        self.apply_color_button.setToolTip("Aplica a cor de primeiro plano do Krita ao escopo acima. Nas ferramentas de edição, mudar a cor do Krita também recolore os traços selecionados.")
+        self.apply_color_button = QPushButton(tr("Apply color"))
+        self.apply_color_button.setToolTip(tr("Applies Krita's foreground color to the above scope. In the editing tools, changing the color in Krita also recolors selected strokes."))
         self.apply_color_button.setEnabled(False)
         self.apply_color_button.clicked.connect(self.use_foreground)
         appearance_actions = QHBoxLayout(); appearance_actions.setSpacing(4)
@@ -692,7 +737,7 @@ class LineworkToolOptions(QWidget):
         progress_layout = QHBoxLayout(self.brush_progress_row)
         progress_layout.setContentsMargins(0, 0, 0, 0)
         self.brush_progress = QProgressBar(); self.brush_progress.setMinimumWidth(80)
-        self.cancel_brush_button = QPushButton("Cancelar")
+        self.cancel_brush_button = QPushButton(tr("Cancel"))
         self.cancel_brush_button.clicked.connect(self.cancel_brush_change)
         progress_layout.addWidget(self.brush_progress, 1); progress_layout.addWidget(self.cancel_brush_button)
         self.brush_progress_row.hide(); brush_layout.addWidget(self.brush_progress_row)
@@ -703,23 +748,23 @@ class LineworkToolOptions(QWidget):
         self.groups = {}
         forms = {}
         self.field_labels = {}
-        for key, title in (("curve", "Suavização"), ("stroke", "Traço"),
-                           ("pressure", "Espessura"), ("tips", "Afinar pontas")):
+        for key, title in (("curve", tr("Smoothing")), ("stroke", tr("Stroke")),
+                           ("pressure", tr("Thickness")), ("tips", tr("Taper tips"))):
             group = OptionsSection(title, expanded=key != 'tips')
             form = QFormLayout(group.content)
             form.setContentsMargins(6, 2, 0, 4)
             form.setVerticalSpacing(4)
-            form.setRowWrapPolicy(QFormLayout.WrapLongRows)
-            form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+            form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
             self.groups[key], forms[key] = group, form
             layout.addWidget(group)
         self.controls = {}
         for key, label, low, high, value, suffix in (
-            ("width", "Espessura base", .1, 2000, 8, " px"),
-            ("opacity", "Opacidade", 0, 100, 100, " %"),
-            ("minimum", "Mínima", 0, 100, 0, " %"),
-            ("taper_start", "Afinar início", 0, 100, 0, " %"),
-            ("taper_end", "Afinar fim", 0, 100, 0, " %")):
+            ("width", tr("Base thickness"), .1, 2000, 8, " px"),
+            ("opacity", tr("Opacity"), 0, 100, 100, " %"),
+            ("minimum", tr("Minimum"), 0, 100, 0, " %"),
+            ("taper_start", tr("Taper start"), 0, 100, 0, " %"),
+            ("taper_end", tr("Taper end"), 0, 100, 0, " %")):
             control = MixedSpinBox()
             control.setRange(low, high)
             control.setDecimals(1)
@@ -737,67 +782,67 @@ class LineworkToolOptions(QWidget):
         self.thickness.setRange(0, 2000)
         self.thickness.setDecimals(1)
         self.thickness.setSuffix(" px")
-        self.thickness.setToolTip("Diâmetro dos pontos selecionados, antes de Mínima e Afinar pontas; a pressão capturada permanece independente")
+        self.thickness.setToolTip(tr("Diameter of selected points before Minimum and Taper tips; captured pressure stays independent"))
         self.thickness.setKeyboardTracking(False)
         self.thickness.valueChanged.connect(self.thickness_change)
         self.thickness.sameValueCommitted.connect(self.thickness_change)
-        forms["pressure"].insertRow(0, "Espessura", self.thickness)
+        forms["pressure"].insertRow(0, tr("Thickness"), self.thickness)
         self.field_labels[self.thickness] = forms["pressure"].labelForField(self.thickness)
         self.smoothing = SmoothingOptions()
         self.smoothing.changed.connect(self.smoothing_changed)
         forms['curve'].addRow(self.smoothing)
-        self.eraser_group = OptionsSection('Borracha')
+        self.eraser_group = OptionsSection(tr("Eraser"))
         eraser_form = QFormLayout(self.eraser_group.content)
         eraser_form.setContentsMargins(6, 2, 0, 4); eraser_form.setVerticalSpacing(4)
-        eraser_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        eraser_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        eraser_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        eraser_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.eraser_mode = QComboBox()
-        self.eraser_mode.addItems(['Apagar linha', 'Apagar pontos'])
-        self.eraser_mode.setToolTip('Linha remove o traço inteiro. Pontos reduz o diâmetro dos pontos atingidos, sem excluir sua geometria nem alterar a pressão capturada.')
+        self.eraser_mode.addItems([tr("Erase stroke"), tr("Erase points")])
+        self.eraser_mode.setToolTip(tr("Stroke erases the whole stroke. Points reduces the diameter of affected points, preserving their geometry and captured pressure."))
         self.eraser_size = QDoubleSpinBox(); self.eraser_size.setRange(.1, 2000)
         self.eraser_size.setDecimals(1); self.eraser_size.setSuffix(' px'); self.eraser_size.setKeyboardTracking(False)
-        self.eraser_size.setToolTip('Mesmo tamanho do pincel na barra do Krita.')
+        self.eraser_size.setToolTip(tr("Same size as the brush in the Krita bar."))
         self.eraser_strength = QDoubleSpinBox(); self.eraser_strength.setRange(0,100)
         self.eraser_strength.setValue(100); self.eraser_strength.setSuffix(' %'); self.eraser_strength.setKeyboardTracking(False)
-        eraser_form.addRow('Modo', self.eraser_mode); eraser_form.addRow('Tamanho', self.eraser_size)
-        eraser_form.addRow('Força', self.eraser_strength)
+        eraser_form.addRow(tr("Mode"), self.eraser_mode); eraser_form.addRow(tr("Size"), self.eraser_size)
+        eraser_form.addRow(tr("Strength"), self.eraser_strength)
         self.eraser_strength_label = eraser_form.labelForField(self.eraser_strength)
         self.eraser_mode.currentIndexChanged.connect(self.eraser_changed)
         self.eraser_strength.valueChanged.connect(self.eraser_changed)
         self.eraser_size.valueChanged.connect(self.eraser_size_changed)
         layout.addWidget(self.eraser_group); self.eraser_group.hide()
-        self.topology_group = OptionsSection('Pontos e conexões', expanded=False)
+        self.topology_group = OptionsSection(tr("Points and connections"), expanded=False)
         topology_layout = QVBoxLayout(self.topology_group.content)
         topology_layout.setContentsMargins(6, 2, 0, 4); topology_layout.setSpacing(4)
-        self.merge_position = QComboBox(); self.merge_position.addItems(['No centro', 'No ponto ativo'])
-        self.merge_position.setToolTip('Posição e espessura do ponto mesclado: média dos selecionados ou valores do ponto ativo.')
+        self.merge_position = QComboBox(); self.merge_position.addItems([tr("In the center"), tr("At the active point")])
+        self.merge_position.setToolTip(tr("Position and thickness of the merged point: average of selected or active point values."))
         topology_layout.addWidget(self.merge_position)
-        self.merge_button = QPushButton('Mesclar pontos')
-        self.merge_button.setToolTip('Mescla pontos consecutivos de um traço ou solda uma ponta de cada um de dois traços. Shift+clique adiciona pontos; o último ponto escolhido é o ativo.')
+        self.merge_button = QPushButton(tr("Merge points"))
+        self.merge_button.setToolTip(tr("Merges consecutive points of a stroke or welds one end of each of two strokes. Shift+click adds points; the last point chosen is the active one."))
         self.merge_button.clicked.connect(lambda: self.topology_action('merge'))
-        self.join_button = QPushButton('Unir pontas')
-        self.join_button.setToolTip('Selecione duas pontas. Conecta os traços preservando os diâmetros e usando pincel e cor do ativo. Duas pontas do mesmo traço fecham a curva.')
+        self.join_button = QPushButton(tr("Join ends"))
+        self.join_button.setToolTip(tr("Select two ends. Joins strokes preserving diameters and using the active stroke’s brush and color. Two ends of the same stroke close the curve."))
         self.join_button.clicked.connect(lambda: self.topology_action('join'))
         topology_buttons = QHBoxLayout()
         topology_buttons.addWidget(self.merge_button); topology_buttons.addWidget(self.join_button)
         topology_layout.addLayout(topology_buttons)
         layout.removeWidget(self.selection_label)
         layout.insertWidget(1, self.topology_group); self.topology_group.hide()
-        self.selection_group = OptionsSection('Seleção')
+        self.selection_group = OptionsSection(tr("Selection"))
         selection_form = QFormLayout(self.selection_group.content)
         selection_form.setContentsMargins(6, 2, 0, 4); selection_form.setVerticalSpacing(4)
-        selection_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        selection_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
-        self.selection_mode = QComboBox(); self.selection_mode.addItems(['Pontos e traços', 'Pontos', 'Traços'])
-        self.selection_mode.setToolTip('Pontos seleciona apenas âncoras; Traços seleciona a curva inteira, inclusive ao clicar numa ponta. Shift adiciona à seleção.')
+        selection_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        selection_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.selection_mode = QComboBox(); self.selection_mode.addItems([tr("Points and strokes"), tr("Points"), tr("Strokes")])
+        self.selection_mode.setToolTip(tr("Points selects anchors only; Strokes selects the entire curve, even when clicking on a tip. Shift adds to selection."))
         self.pick_radius = QDoubleSpinBox(); self.pick_radius.setRange(4,40); self.pick_radius.setValue(16)
         self.pick_radius.setDecimals(0); self.pick_radius.setSuffix(' px')
-        self.pick_radius.setToolTip('Raio de clique dos pontos e alças em pixels de tela, independente do zoom. O alvo mais próximo ganha.')
-        self.lock_point = QCheckBox('Travar ponto ativo')
-        self.lock_point.setToolTip('Mantém apenas o ponto ativo selecionado. Cliques fora não mudam a seleção; arraste o ponto ou suas alças para editar. Desmarque para escolher outro.')
+        self.pick_radius.setToolTip(tr("Click radius of points and handles in screen pixels, independent of zoom. The closest target wins."))
+        self.lock_point = QCheckBox(tr("Lock active point"))
+        self.lock_point.setToolTip(tr("Keeps only the active point selected. Clicking outside preserves the selection; drag the point or its handles to edit. Uncheck to choose another point."))
         selection_form.addRow(self.selection_label)
-        selection_form.addRow('Modo', self.selection_mode)
-        selection_form.addRow(self.lock_point); selection_form.addRow('Raio de clique', self.pick_radius)
+        selection_form.addRow(tr("Mode"), self.selection_mode)
+        selection_form.addRow(self.lock_point); selection_form.addRow(tr("Click radius"), self.pick_radius)
         self.selection_mode.currentIndexChanged.connect(self.selection_options_changed)
         self.pick_radius.valueChanged.connect(self.selection_options_changed)
         self.lock_point.toggled.connect(self.selection_options_changed)
@@ -818,10 +863,12 @@ class LineworkToolOptions(QWidget):
         self.timer.start()
 
     def set_tool(self, mode):
+        if self._window_closing:
+            return
         self.cancel_color_update()
         self._foreground_color = None
         self.cancel_brush_change()
-        labels = ("Linework Brush", "Linework Curve", "Linework Line", "Linework Edit", "Linework Thickness", "Linework Erase")
+        labels = (tr("Linework Brush"), tr("Linework Curve"), tr("Linework Line"), tr("Linework Edit"), tr("Linework Thickness"), tr("Linework Erase"))
         modes = ("pen", "curve", "line", "edit", "pressure", "erase")
         self.active = True
         self._error = None
@@ -899,6 +946,7 @@ class LineworkToolOptions(QWidget):
         if self._clearing:
             return
         self._clearing = True
+        self._selection_pending = False
         self._pending_input.clear()
         if not sip.isdeleted(self.input_timer): self.input_timer.stop()
         self.cancel_color_update()
@@ -906,6 +954,8 @@ class LineworkToolOptions(QWidget):
         self.cancel_brush_change()
         overlay = self.overlay
         self.overlay = self.native_widget = self.document = self.layer = self.binding = None
+        self._unrecognized_annotation = None
+        self._bound_annotation = None
         try:
             if overlay:
                 overlay.stop_smoothing()
@@ -918,17 +968,66 @@ class LineworkToolOptions(QWidget):
         finally:
             self._clearing = False
 
-    def dispose(self):
+    def dispose(self, remove_filter=True):
         self.active = False
         self.clear_binding()
         if not sip.isdeleted(self):
             self.timer.stop()
-            QApplication.instance().removeEventFilter(self)
+            if remove_filter:
+                QApplication.instance().removeEventFilter(self)
+
+    def resume_cancelled_close(self):
+        if sip.isdeleted(self) or sip.isdeleted(self._window):
+            return
+        if native_busy() or QApplication.activeModalWidget() is not None:
+            return
+        if self._window.isVisible():
+            self.guard_window_views(False)
+            self._window_closing = False
+            self.timer.start()
+            QApplication.instance().installEventFilter(self)
+            from .tools import active_tool
+            mode = active_tool()
+            if mode >= 0 and not sip.isdeleted(self._canvas) and self._canvas.isVisible():
+                self.set_tool(mode)
+
+    def guard_window_views(self, closing=True):
+        from .native_brush import guard_view_close
+        for window in Krita.instance().windows():
+            if window.qwindow() == self._window:
+                for view in window.views():
+                    guard_view_close(view, closing)
+                break
+
+    def select_created_layer(self, document, layer, previous):
+        """Settle a new-layer selection without overriding subsequent input."""
+        document.setActiveNode(layer)
+        epoch = self._input_epoch
+        document_id = document.rootNode().uniqueId().toString()
+        target = layer.uniqueId()
+        allowed = {layer_id(layer), layer_id(previous) if previous else None}
+        def settle(tries=0):
+            if sip.isdeleted(self) or not self.active or self._input_epoch != epoch:
+                return
+            if self._writing or self._polling or native_busy():
+                if tries < 100: QTimer.singleShot(10, lambda:settle(tries+1))
+                return
+            view = self.current_view()
+            if not view or not view.document() or view.document().rootNode().uniqueId().toString()!=document_id:
+                return
+            current = active_node(view)
+            if (layer_id(current) if current else None) not in allowed:
+                return
+            node = document.nodeByUniqueID(target)
+            if node:
+                document.setActiveNode(node)
+                self.poll()
+        QTimer.singleShot(0, settle)
 
     def new_layer(self):
         view = self.current_view()
         if not view:
-            self.status.setText("Abra ou crie uma imagem primeiro.")
+            self.status.setText(tr("Open or create an image first."))
             return
         if self.overlay:
             self.overlay.finish_draft()
@@ -938,71 +1037,168 @@ class LineworkToolOptions(QWidget):
             if document is None:
                 return
             preset = view.currentBrushPreset()
-            self.brush_label.setText("Atual: "+(preset.name() if preset else "nenhum"))
+            self.brush_label.setText(tr("Current: ")+(preset.name() if preset else tr("none")))
             layer = self.create_native_layer(document)
             layer = write_layer(document, layer, [])
             self.clear_binding()
             self.document, self.layer = document, layer
-            self._selection_pending = True
-            self._selection_deadline = time.monotonic()+3
-            QTimer.singleShot(0, self.select_native_layer)
             self.active = True
+            # Scratch-render teardown and layer-model notifications can change
+            # the active node. Select the newly created layer
+            # once, after those operations, while rebinding is still guarded.
+            QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+            document.setActiveNode(layer)
         except Exception as exc:
             self.fail(exc)
         finally:
             self._writing = False
         self.poll()
 
-    def create_native_layer(self, document):
+    def create_native_layer(self, document, kind='vectorlayer'):
         # Use Krita's layer action so its layer model, node manager and selection
         # are updated together, including the native Layers docker.
-        action = Krita.instance().action("add_new_shape_layer")
+        action = Krita.instance().action("add_new_shape_layer" if kind == 'vectorlayer' else 'add_new_paint_layer')
         if action is None or not action.isEnabled():
-            raise RuntimeError("O Krita não permite criar uma camada vetorial neste documento.")
-        before = {layer_id(n) for n in document.rootNode().findChildNodes("", True, False, "vectorlayer")}
+            raise RuntimeError(tr("Krita does not allow you to create a vector layer in this document."))
+        before = {layer_id(n) for n in document.rootNode().findChildNodes("", True, False, kind)}
         action.trigger()
         document.waitForDone()
-        QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
-        created = [n for n in document.rootNode().findChildNodes("", True, False, "vectorlayer")
+        QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+        created = [n for n in document.rootNode().findChildNodes("", True, False, kind)
                    if layer_id(n) not in before]
         if len(created) != 1:
-            raise RuntimeError("O Krita não criou uma camada vetorial no painel Camadas.")
+            raise RuntimeError(tr("Krita did not create a vector layer in the Layers panel."))
         layer = created[0]
-        layer.setName("Linework — traços editáveis")
+        layer.setName(tr("Linework — editable strokes"))
+        if kind == 'paintlayer': layer.setPinnedToTimeline(True)
         document.setActiveNode(layer)
         return layer
 
-    def poll(self):
-        if self._writing or self._clearing or self._brush_change or not self.active or native_busy():
+    def animate_layer(self):
+        view = self.current_view()
+        if not view or view.document() is None:
             return
+        if self.overlay: self.overlay.finish_draft()
+        self._writing = True
+        try:
+            from .animation import convert, initialize_layer
+            document = view.document()
+            source = document.activeNode()
+            if source and source.type() == 'paintlayer' and read_layer(document, source, view) is not None:
+                self.show_error(tr("This Linework layer already supports animation."))
+                return
+            converting = bool(source and source.type() == 'vectorlayer' and read_layer(document, source, view) is not None)
+            layer = self.create_native_layer(document, 'paintlayer')
+            try:
+                if converting: convert(document, source, layer, view)
+                else: initialize_layer(document, layer)
+            except Exception:
+                layer.remove()
+                if source: document.setActiveNode(source)
+                raise
+            self.clear_binding()
+            self.document, self.layer = document, layer
+            self.active = True
+            QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+            self.select_created_layer(document,layer,source)
+        except Exception as exc:
+            self.fail(exc)
+        finally:
+            self._writing = False
+        self.poll()
+
+    def animation_frame(self, duplicate=False):
+        view = self.current_view()
+        if not view or view.document() is None: return
+        if self.overlay:
+            self.overlay.finish_draft()
+            self.overlay.restore_edit_preview(cancel=True)
+        try:
+            from .animation import descriptor, call, record, sync_document
+            from .qt import QInputDialog
+            document = view.document(); layer = document.activeNode()
+            frame = descriptor(document, layer)
+            if frame is None or record(document, layer) is None:
+                raise ValueError(tr("Select an animated Linework layer."))
+            target, ok = QInputDialog.getInt(self._window, tr("Linework frame"), tr("Target frame:"),
+                                             document.currentTime()+1, 0, 1000000)
+            if not ok: return
+            call('frame_action', layer, 2 if duplicate else 1, frame['time'], target)
+            document.setCurrentTime(target)
+            document.waitForDone()
+            if not duplicate: read_layer(document, layer, view)
+            sync_document(document)
+            document.setModified(True)
+        except Exception as exc:
+            self.show_error(str(exc))
+        self.poll()
+
+    def binding_key(self, document, layer, native):
+        from .animation import frame_key
+        return (document.rootNode().uniqueId().toString(), layer_id(layer) if layer else '',
+                id(native), frame_key(document, layer))
+
+    def overlay_binding(self):
+        frame = self.overlay.source_frame
+        key = tuple(frame[name] for name in ('time', 'id', 'revision')) if frame else None
+        return (self.document.rootNode().uniqueId().toString(), layer_id(self.layer), id(self.native_widget), key)
+
+    def poll(self, allow_input=False):
+        if (self._polling or (self._input_depth and not allow_input) or self._writing or self._clearing or self._brush_change or not self.active or
+                (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy()):
+            return
+        self._polling = True
         try:
             view = self.current_view()
             if not view or view.document() is None or not self._canvas.isVisible():
                 self.clear_binding()
                 return
             document = view.document()
+            from .animation import playback
+            if playback(view):
+                if self.overlay:
+                    self.overlay.finish_draft()
+                    self.overlay.restore_edit_preview(cancel=True)
+                    self.overlay.hide()
+                return
             preset = view.currentBrushPreset()
-            self.brush_label.setText("Atual: "+(preset.name() if preset else "nenhum"))
-            active = self.layer if self._selection_pending and self.layer else document.activeNode()
+            self.brush_label.setText(tr("Current: ")+(preset.name() if preset else tr("none")))
+            active = active_node(view)
             # Empty documents and transient node-manager updates can report no
             # active node. Keep the explicitly created layer while it exists.
             if active is None and self.layer and self.binding and document.rootNode().uniqueId().toString() == self.binding[0]:
                 active = document.nodeByUniqueID(self.layer.uniqueId())
             native = self._canvas
-            key = (document.rootNode().uniqueId().toString(), layer_id(active) if active else "", id(native))
-            if key != self.binding:
+            key = self.binding_key(document, active, native)
+            newly_managed = False
+            annotation_changed = False
+            if active and active.type() in ('vectorlayer', 'paintlayer'):
+                annotation_changed = bytes(document.annotation(ANNOTATION)) != self._bound_annotation
+            if key == self.binding and self.layer is None and active and active.type() in ('vectorlayer', 'paintlayer'):
+                # Modern libkis can deliver the node change before SVG import
+                # and annotations finish. Rebind a formerly ordinary layer
+                # when it acquires Linework data. Parse only changed payloads.
+                annotation = bytes(document.annotation(ANNOTATION))
+                if annotation != self._unrecognized_annotation:
+                    self._unrecognized_annotation = annotation
+                    newly_managed = layer_id(active) in metadata(document)['layers']
+            if key != self.binding or newly_managed or annotation_changed:
                 if self.overlay and self.overlay.draft:
                     self.overlay.finish_draft()
                 self.clear_binding()
                 if not hasattr(view, "flakeToImageTransform"):
-                    raise ValueError("Esta versão do Krita não expõe a transformação do canvas.")
+                    raise ValueError(tr("This version of Krita does not expose the canvas transformation."))
                 if view.canvas().wrapAroundMode():
-                    raise ValueError("Desative o modo de repetição do canvas para usar Linework.")
+                    raise ValueError(tr("Disable wrap-around mode to use Linework."))
                 strokes = read_layer(document, active, view)
+                key = self.binding_key(document, active, native)
                 self.document = document
                 self.layer = active if strokes is not None else None
+                if self.layer is None:
+                    self._unrecognized_annotation = bytes(document.annotation(ANNOTATION))
                 self.native_widget = native
                 self.binding = key
+                self._bound_annotation = bytes(document.annotation(ANNOTATION))
                 self.overlay = NativeCanvasOverlay(view, native, strokes or [], self.layer)
                 self.overlay.defaults.update(self._defaults)
                 self.overlay.smoothing_options = list(self.smoothing.values)
@@ -1015,7 +1211,7 @@ class LineworkToolOptions(QWidget):
                 self.overlay.changed.connect(self.save_changes)
                 self.overlay.selectedChanged.connect(self.update_controls)
                 self.overlay.message.connect(self.show_error)
-                if self.mode in ('edit', 'pressure') and self.layer:
+                if self.mode in ('edit', 'pressure') and self.layer and self.layer.type() == 'vectorlayer':
                     ids = {s.name()[3:] for s in self.layer.shapes() if s.name().startswith('lw_') and s.isSelected()}
                     if ids: self.overlay.select_strokes(ids)
                 # Input managers are created with each Krita view. Install last
@@ -1023,11 +1219,12 @@ class LineworkToolOptions(QWidget):
                 QApplication.instance().removeEventFilter(self)
                 QApplication.instance().installEventFilter(self)
                 self.update_controls()
-                self.status.setText(self._error or "Desenhe na tela · os traços são gravados automaticamente na camada.")
+                self.status.setText(self._error or tr("Draw on canvas · Strokes are automatically written to the layer."))
                 self.status.setVisible(bool(self._error))
             else:
                 self.overlay.setGeometry(native.rect())
                 self.overlay.sync_transform()
+                self.overlay.show()
             color = view.foregroundColor().colorForCanvas(view.canvas()).name()
             previous_color, self._foreground_color = self._foreground_color, color
             self._defaults["color"] = self.overlay.defaults["color"] = color
@@ -1046,8 +1243,12 @@ class LineworkToolOptions(QWidget):
                 self._updating = True
                 self.eraser_size.setValue(view.brushSize())
                 self._updating = False
+        except AnimationBusy:
+            return
         except Exception as exc:
             self.fail(exc)
+        finally:
+            self._polling = False
 
     def fail(self, exc):
         self._error = str(exc)
@@ -1055,7 +1256,7 @@ class LineworkToolOptions(QWidget):
         self.show_error(self._error)
 
     def show_error(self, text):
-        self.status.setText(text)
+        self.status.setText(tr(text))
         self.status.show()
 
     def save_changes(self):
@@ -1063,34 +1264,23 @@ class LineworkToolOptions(QWidget):
             return
         self._writing = True
         try:
-            created = self.layer is None
             if self.layer is None:
                 self.layer = self.create_native_layer(self.document)
-            self.layer = write_layer(self.document, self.layer, self.overlay.strokes, self.overlay.renderer, trusted=True)
+            self.layer = write_layer(self.document, self.layer, self.overlay.strokes, self.overlay.renderer,
+                                     trusted=True, frame=self.overlay.source_frame)
             self.overlay.source_layer = self.layer
-            if created:
-                self._selection_pending = True
-                self._selection_deadline = time.monotonic()+3
-                QTimer.singleShot(0, self.select_native_layer)
-            self.binding = (self.document.rootNode().uniqueId().toString(), layer_id(self.layer), id(self.native_widget))
+            if self.overlay.source_frame:
+                from .animation import descriptor
+                self.overlay.source_frame = descriptor(self.document, self.layer, self.overlay.source_frame)
+            self.binding = self.overlay_binding()
+            self._bound_annotation = bytes(self.document.annotation(ANNOTATION))
             self._error = None
-            self.status.setText("{} traços editáveis · salve o documento em .kra".format(len(self.overlay.strokes)))
+            self.status.setText(tr("{0} editable strokes · save the document in .kra").format(len(self.overlay.strokes)))
             self.status.hide()
         except Exception as exc:
             self.fail(exc)
         finally:
             self._writing = False
-
-    def select_native_layer(self):
-        if self.document and self.layer:
-            self.document.setActiveNode(self.layer)
-            active = self.document.activeNode()
-            if active and active.uniqueId() == self.layer.uniqueId():
-                self._selection_pending = False
-            elif time.monotonic() < self._selection_deadline:
-                QTimer.singleShot(80, self.select_native_layer)
-            else:
-                self._selection_pending = False
 
     def update_controls(self):
         self._updating = True
@@ -1113,13 +1303,13 @@ class LineworkToolOptions(QWidget):
             swatch = QPixmap(16, 16); swatch.fill(QColor(self._foreground_color))
             self.apply_color_button.setIcon(QIcon(swatch))
         self.brush_scope.setEnabled(not changing)
-        self.stroke_brush_label.setText("Seleção: "+(stroke.brush['name'] if stroke and stroke.brush else
-                                                     "Linha lisa" if stroke else "selecione um traço"))
-        names = {s.brush['name'] if s.brush else 'Linha lisa' for s in selected}
-        if len(names) > 1: self.stroke_brush_label.setText('Seleção: vários pincéis')
-        self.selection_label.setText('{} {} · {} {}'.format(len(selected), 'traço' if len(selected)==1 else 'traços',
-                                                          len(point_refs), 'ponto' if len(point_refs)==1 else 'pontos') if selected
-                                     else 'Selecione pontos ou traços no canvas.')
+        self.stroke_brush_label.setText(tr("Selection: ")+(stroke.brush['name'] if stroke and stroke.brush else
+                                                     tr("Smooth line") if stroke else tr("select a stroke")))
+        names = {s.brush['name'] if s.brush else tr("Smooth line") for s in selected}
+        if len(names) > 1: self.stroke_brush_label.setText(tr("Selection: multiple brushes"))
+        self.selection_label.setText('{} {} · {} {}'.format(len(selected), tr("stroke") if len(selected)==1 else tr("strokes"),
+                                                          len(point_refs), tr("point") if len(point_refs)==1 else tr("points")) if selected
+                                     else tr("Select points or strokes on the canvas."))
         for group in self.groups.values():
             group.content.setEnabled(not changing and (self.mode not in ("edit", "pressure") or stroke is not None))
         for key, control in self.controls.items():
@@ -1179,7 +1369,7 @@ class LineworkToolOptions(QWidget):
 
     def topology_action(self, operation):
         if self._writing or self._brush_change or not self.overlay or not self.layer or self.mode != 'edit': return
-        if self.layer.locked(): self.show_error('Desbloqueie a camada para editar.'); return
+        if self.layer.locked(): self.show_error(tr("Unlock the layer to edit.")); return
         try:
             overlay = self.overlay
             overlay.restore_edit_preview(cancel=True)
@@ -1205,8 +1395,8 @@ class LineworkToolOptions(QWidget):
             selection = copy.deepcopy(overlay.selection)
             selection.set_points((result.uid, i) for i in selected)
             selection.primary = result.uid, selected[0]
-            message = ('Pontos mesclados.' if operation == 'merge' else
-                       'Pontas unidas com pincel e cor do traço ativo; diâmetros preservados.')
+            message = (tr("Merged points.") if operation == 'merge' else
+                       tr("Ends joined using the active stroke’s brush and color; diameters preserved."))
             self.start_model_update(updated, [result], message, selection)
         except Exception as exc:
             self.show_error(str(exc)); self.update_controls()
@@ -1224,7 +1414,7 @@ class LineworkToolOptions(QWidget):
             return
         try:
             if self.layer.locked():
-                raise ValueError("Desbloqueie a camada para trocar o pincel.")
+                raise ValueError(tr("Unlock the layer to change the brush."))
             self.overlay.finish_draft()
             view = self.current_view()
             brush = capture_brush(view)
@@ -1235,7 +1425,7 @@ class LineworkToolOptions(QWidget):
                     updated[index].brush = copy.deepcopy(brush)
                     changed.append(updated[index])
             if not changed:
-                self.status.setText("Os traços já usam este pincel e suas configurações."); self.status.show()
+                self.status.setText(tr("The strokes already use this brush and its settings.")); self.status.show()
                 return
             # Prepare native appearances incrementally. No stored curve or SVG
             # changes until every target has rendered successfully; one commit
@@ -1260,25 +1450,33 @@ class LineworkToolOptions(QWidget):
             return
         try:
             view = self.current_view()
-            active = state['document'].activeNode()
+            active = active_node(view) if view else None
             if (not self.active or self.overlay is not state['overlay'] or not view or
                     view.document() != state['document'] or not active or active.uniqueId() != state['layer'].uniqueId()):
                 self.cancel_brush_change(); return
             if state['layer'].locked():
-                raise ValueError("A camada foi bloqueada; a troca foi cancelada.")
+                raise ValueError(tr("The layer was locked; the brush change was canceled."))
             if state['index'] < len(state['changed']):
                 stroke = state['changed'][state['index']]
-                if stroke.brush: state['images'][stroke.uid] = state['renderer'].svg_image(stroke)
+                if stroke.brush:
+                    state['images'][stroke.uid] = (state['renderer'].render(stroke) if state['overlay'].source_frame
+                                                  else state['renderer'].svg_image(stroke))
                 state['index'] += 1; self.brush_progress.setValue(state['index'])
                 self.brush_timer.start(0); return
             if [s.data() for s in state['overlay'].strokes] != state['baseline']:
-                raise ValueError("Os traços mudaram; aplique o pincel novamente.")
+                raise ValueError(tr("The strokes changed; apply the brush again."))
             class Prepared:
                 def svg_image(self, stroke): return state['images'][stroke.uid]
+                def render(self, stroke): return state['images'][stroke.uid]
             self._writing = True
             try:
-                write_layer(state['document'], state['layer'], state['updated'], Prepared())
+                write_layer(state['document'], state['layer'], state['updated'], Prepared(), frame=state['overlay'].source_frame)
+                self._bound_annotation = bytes(state['document'].annotation(ANNOTATION))
                 overlay = state['overlay']; overlay.strokes = state['updated']
+                if overlay.source_frame:
+                    from .animation import descriptor
+                    overlay.source_frame = descriptor(state['document'], state['layer'], overlay.source_frame)
+                    self.binding = self.overlay_binding()
                 if state['selection'] is not None: overlay.selection = state['selection']
                 overlay.selection.prune(overlay.strokes)
                 overlay.history.commit(overlay.strokes)
@@ -1290,7 +1488,7 @@ class LineworkToolOptions(QWidget):
             message = state['message']
             if message is None:
                 name = state['changed'][0].brush['name']
-                message = "Pincel “{}” aplicado a {} {}.".format(name, count, 'traço' if count == 1 else 'traços')
+                message = tr("Brush “{0}” applied to {1} {2}.").format(name, count, tr("stroke") if count == 1 else tr("strokes"))
             self.finish_brush_change(message)
         except Exception as exc:
             self.finish_brush_change(str(exc))
@@ -1307,7 +1505,7 @@ class LineworkToolOptions(QWidget):
 
     def cancel_brush_change(self):
         if self._brush_change:
-            self.finish_brush_change("Operação cancelada; os traços foram preservados.")
+            self.finish_brush_change(tr("Operation cancelled; the strokes were preserved."))
 
     def property_change(self, key, value):
         if self._updating or self._brush_change:
@@ -1328,7 +1526,7 @@ class LineworkToolOptions(QWidget):
                 for stroke in updated:
                     if stroke.uid in ids and getattr(stroke, key) != value:
                         setattr(stroke, key, value); changed.append(stroke)
-                self.start_model_update(updated, changed, 'Ajuste aplicado a {} traços.'.format(len(changed)))
+                self.start_model_update(updated, changed, tr("Adjustment applied to {0} strokes.").format(len(changed)))
             elif selected:
                 setattr(selected[0], key, value); self.overlay.commit()
             if self.overlay and self.overlay.draft:
@@ -1348,7 +1546,7 @@ class LineworkToolOptions(QWidget):
                     ensure_thickness(stroke)
                     for i in indices: set_point_thickness(stroke, i, value)
                     changed.append(stroke)
-                self.start_model_update(updated, changed, 'Espessura aplicada a {} pontos.'.format(len(refs)))
+                self.start_model_update(updated, changed, tr("Thickness applied to {0} points.").format(len(refs)))
             except Exception as exc:
                 self.show_error(str(exc)); self.update_controls()
 
@@ -1370,7 +1568,7 @@ class LineworkToolOptions(QWidget):
         # final foreground avoids repainting for every intermediate slider value.
         if (self._writing or self._brush_change or native_busy() or self.overlay.drag or
                 self.overlay._edit_original or QApplication.activeModalWidget() or
-                QApplication.mouseButtons() != Qt.NoButton):
+                QApplication.mouseButtons() != Qt.MouseButton.NoButton):
             self.color_timer.start(150); return
         self.cancel_color_update()
         view = self.current_view()
@@ -1396,7 +1594,7 @@ class LineworkToolOptions(QWidget):
             return
         try:
             if self.layer.locked():
-                raise ValueError("Desbloqueie a camada para trocar a cor.")
+                raise ValueError(tr("Unlock the layer to change the color."))
             if self.overlay.drag or self.overlay._edit_original:
                 return
             if ids is None:
@@ -1407,17 +1605,17 @@ class LineworkToolOptions(QWidget):
             for stroke in updated:
                 if stroke.uid in ids and stroke.color != color:
                     stroke.color = color; changed.append(stroke)
-            self.start_model_update(updated, changed, "Cor {} aplicada a {} {}.".format(
-                color, len(changed), "traço" if len(changed) == 1 else "traços"))
+            self.start_model_update(updated, changed, tr("Color {0} applied to {1} {2}.").format(
+                color, len(changed), tr("stroke") if len(changed) == 1 else tr("strokes")))
         except Exception as exc:
             self.show_error(str(exc))
 
     def export_svg(self):
         if not self.overlay:
-            self.status.setText("Selecione uma ferramenta Linework e uma camada para exportar.")
+            self.status.setText(tr("Select a Linework tool and layer to export."))
             return
         self.overlay.finish_draft()
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar vetores", "linework.svg", "SVG (*.svg)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export vectors"), "linework.svg", "SVG (*.svg)")
         if path:
             try:
                 with open(path, "w", encoding="utf-8") as handle:
@@ -1431,19 +1629,20 @@ class LineworkToolOptions(QWidget):
                 (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy())
 
     def copy_input(self, event):
+        from .qt import QT_MAJOR
+        if QT_MAJOR == 6:
+            # PyQt 6 omits QInputEvent.setTimestamp. Native clones retain the
+            # timestamp, pointing device and key fields without that setter.
+            return event.clone()
         kind = event.type()
-        if kind in (QEvent.TabletPress, QEvent.TabletMove, QEvent.TabletRelease):
-            copied = QTabletEvent(kind, event.posF(), event.globalPosF(), event.device(),
-                event.pointerType(), event.pressure(), event.xTilt(), event.yTilt(),
-                event.tangentialPressure(), event.rotation(), event.z(), event.modifiers(),
-                event.uniqueId(), event.button(), event.buttons())
-        elif kind in (QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride):
+        if kind in (QEvent.Type.TabletPress, QEvent.Type.TabletMove, QEvent.Type.TabletRelease):
+            copied = copy_tablet_event(event)
+        elif kind in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride):
             copied = QKeyEvent(kind, event.key(), event.modifiers(), event.nativeScanCode(),
                 event.nativeVirtualKey(), event.nativeModifiers(), event.text(),
                 event.isAutoRepeat(), event.count())
         else:
-            copied = QMouseEvent(kind, event.localPos(), event.windowPos(), event.screenPos(),
-                event.button(), event.buttons(), event.modifiers(), event.source())
+            copied = copy_mouse_event(event)
         copied.setTimestamp(event.timestamp())
         return copied
 
@@ -1467,16 +1666,32 @@ class LineworkToolOptions(QWidget):
                 self.input_timer.start(10); break
 
     def eventFilter(self, watched, event):
-        input_event = event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease,
-            QEvent.MouseButtonDblClick, QEvent.MouseMove, QEvent.TabletPress, QEvent.TabletMove,
-            QEvent.TabletRelease, QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride)
+        if self._window_closing:
+            # A timer can fire inside Krita's nested Close/Save loop while the
+            # window is still visible. Resume only when input returns to the
+            # main window after a cancelled close; never during native teardown.
+            if (event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.TabletPress, QEvent.Type.KeyPress)
+                    and isinstance(watched, QWidget) and watched.window() == self._window
+                    and self._window.isVisible() and not native_busy()
+                    and QApplication.activeModalWidget() is None):
+                from .tools import CONTROLLERS
+                for controller in tuple(CONTROLLERS.values()):
+                    if not sip.isdeleted(controller) and controller._window == self._window:
+                        controller.resume_cancelled_close()
+            if self._window_closing:
+                return False
+        if event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.TabletPress, QEvent.Type.KeyPress):
+            self._input_epoch += 1
+        input_event = event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease,
+            QEvent.Type.MouseButtonDblClick, QEvent.Type.MouseMove, QEvent.Type.TabletPress, QEvent.Type.TabletMove,
+            QEvent.Type.TabletRelease, QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride)
         if (watched == self.native_widget and self.overlay and self.active and input_event
                 and not self._brush_change):
             if not self._replaying_input:
-                if event.type() in (QEvent.TabletPress, QEvent.TabletMove, QEvent.TabletRelease):
+                if event.type() in (QEvent.Type.TabletPress, QEvent.Type.TabletMove, QEvent.Type.TabletRelease):
                     self._tablet_until = time.monotonic()+.15
-                elif event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease,
-                                     QEvent.MouseButtonDblClick, QEvent.MouseMove):
+                elif event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease,
+                                     QEvent.Type.MouseButtonDblClick, QEvent.Type.MouseMove):
                     if time.monotonic() < self._tablet_until:
                         event.accept(); return True
             # Krita's native waits run a nested Qt loop. Never let input mutate
@@ -1499,45 +1714,60 @@ class LineworkToolOptions(QWidget):
         # Restore while the view/document are still alive, before Qt starts
         # destroying a window or hiding a closing/switched canvas.
         if self.overlay and self.overlay._edit_original and (
-                (watched == self._window and event.type() == QEvent.Close) or
-                (watched == self._canvas and event.type() in (QEvent.Close, QEvent.Hide))):
+                (watched == self._window and event.type() == QEvent.Type.Close) or
+                (watched == self._canvas and event.type() in (QEvent.Type.Close, QEvent.Type.Hide))):
             self.overlay.restore_edit_preview(cancel=True)
-            if event.type() == QEvent.Close:
+            if event.type() == QEvent.Type.Close:
                 # Let the canvas consume the restored projection while its
                 # OpenGL context still exists, before the native close handler.
-                QApplication.processEvents(QEventLoop.ExcludeUserInputEvents)
+                QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+        if watched == self._window and event.type() == QEvent.Type.Close and not self.input_busy():
+            # Release images and scratch documents before native tools are
+            # destroyed. A cancelled Save/Close dialog can reactivate the tool.
+            from .tools import CONTROLLERS
+            controllers = [c for c in tuple(CONTROLLERS.values())
+                           if not sip.isdeleted(c) and c._window == self._window]
+            # Native close can activate another view while destroying this one.
+            # Mark every controller before releasing any per-view resources.
+            for controller in controllers:
+                controller._window_closing = True
+            self.guard_window_views()
+            for controller in controllers:
+                controller.finish_native_request()
+                controller.dispose(remove_filter=False)
+            return False
         if watched != self.native_widget or not self.overlay or not self.active:
             return False
         etype = event.type()
         if self._brush_change:
-            if etype == QEvent.KeyPress and event.key() == Qt.Key_Escape:
+            if etype == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Escape:
                 self.cancel_brush_change(); return True
-            if etype in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease, QEvent.MouseMove,
-                         QEvent.TabletPress, QEvent.TabletRelease, QEvent.TabletMove,
-                         QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride):
+            if etype in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.MouseMove,
+                         QEvent.Type.TabletPress, QEvent.Type.TabletRelease, QEvent.Type.TabletMove,
+                         QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride):
                 return True
-        if etype == QEvent.Paint or etype == QEvent.Resize:
+        if etype == QEvent.Type.Paint or etype == QEvent.Type.Resize:
             self.overlay.update()
             return False
-        if etype == QEvent.Leave:
+        if etype == QEvent.Type.Leave:
             self.overlay.hover_pos = None; self.overlay.update()
             return False
-        if etype in (QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride):
+        if etype in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride):
             key = event.key()
-            if key == Qt.Key_Space:
-                if etype != QEvent.ShortcutOverride:
-                    self._space = etype == QEvent.KeyPress
+            if key == Qt.Key.Key_Space:
+                if etype != QEvent.Type.ShortcutOverride:
+                    self._space = etype == QEvent.Type.KeyPress
                 return False
-            undo = key == Qt.Key_Z and event.modifiers() & Qt.ControlModifier
-            redo = key == Qt.Key_Y and event.modifiers() & Qt.ControlModifier
-            select_all = key == Qt.Key_A and event.modifiers() & Qt.ControlModifier and self.mode in ('edit', 'pressure')
-            if undo or redo or select_all or key in (Qt.Key_Delete, Qt.Key_Backspace, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
-                if etype == QEvent.ShortcutOverride:
+            undo = key == Qt.Key.Key_Z and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+            redo = key == Qt.Key.Key_Y and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+            select_all = key == Qt.Key.Key_A and event.modifiers() & Qt.KeyboardModifier.ControlModifier and self.mode in ('edit', 'pressure')
+            if undo or redo or select_all or key in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace, Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Escape):
+                if etype == QEvent.Type.ShortcutOverride:
                     event.accept()
                     return True
-                if etype == QEvent.KeyPress:
+                if etype == QEvent.Type.KeyPress:
                     if undo:
-                        self.overlay.redo() if event.modifiers() & Qt.ShiftModifier else self.overlay.undo()
+                        self.overlay.redo() if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else self.overlay.undo()
                     elif redo:
                         self.overlay.redo()
                     elif select_all: self.overlay.select_all()
@@ -1546,38 +1776,47 @@ class LineworkToolOptions(QWidget):
                 event.accept()
                 return True
             return False
-        tablet = etype in (QEvent.TabletPress, QEvent.TabletMove, QEvent.TabletRelease)
-        mouse = etype in (QEvent.MouseButtonPress, QEvent.MouseMove, QEvent.MouseButtonRelease,
-                         QEvent.MouseButtonDblClick)
+        tablet = etype in (QEvent.Type.TabletPress, QEvent.Type.TabletMove, QEvent.Type.TabletRelease)
+        mouse = etype in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseMove, QEvent.Type.MouseButtonRelease,
+                         QEvent.Type.MouseButtonDblClick)
         if not tablet and not mouse:
             return False
-        double_click = etype == QEvent.MouseButtonDblClick
-        press = etype in (QEvent.TabletPress, QEvent.MouseButtonPress) or double_click
-        release = etype in (QEvent.TabletRelease, QEvent.MouseButtonRelease)
+        double_click = etype == QEvent.Type.MouseButtonDblClick
+        press = etype in (QEvent.Type.TabletPress, QEvent.Type.MouseButtonPress) or double_click
+        release = etype in (QEvent.Type.TabletRelease, QEvent.Type.MouseButtonRelease)
         if press:
-            self._passing_navigation = (self._space or event.button() == Qt.MiddleButton or
-                bool(event.modifiers() & Qt.ControlModifier) or
-                (bool(event.modifiers() & Qt.ShiftModifier) and self.mode not in ('edit', 'pressure')) or
-                (event.button() == Qt.RightButton and self.mode not in ("curve", "line")))
+            self._passing_navigation = (self._space or event.button() == Qt.MouseButton.MiddleButton or
+                bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier) or
+                (bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier) and self.mode not in ('edit', 'pressure')) or
+                (event.button() == Qt.MouseButton.RightButton and self.mode not in ("curve", "line")))
         if self._passing_navigation or self._space:
             if release:
                 self._passing_navigation = False
             return False
-        if not press and not release and event.buttons() == Qt.NoButton and self.overlay.drag is None:
-            self.overlay.hover_pos = event.posF() if tablet else event.localPos()
+        if not press and not release and event.buttons() == Qt.MouseButton.NoButton and self.overlay.drag is None:
+            self.overlay.hover_pos = event_position(event) if tablet else event_position(event)
             self.overlay.update()
             return False
         try:
             if press:
-                self.poll()
+                view = self.current_view()
+                from .animation import playback
+                if view and playback(view):
+                    self.overlay.finish_draft()
+                    self.overlay.restore_edit_preview(cancel=True)
+                    playback(view, True)
+                    view.document().waitForDone()
+                if self.overlay.source_frame and not self.overlay.draft and self.overlay._edit_original is None:
+                    self.view_document_wait()
+                self.poll(allow_input=True)
                 if not self.overlay:
                     return False
-            pos = event.posF() if tablet else event.localPos()
+            pos = event_position(event) if tablet else event_position(event)
             pressure = event.pressure() if tablet else 1
-            if double_click and self.mode == "edit" and event.button() == Qt.LeftButton:
+            if double_click and self.mode == "edit" and event.button() == Qt.MouseButton.LeftButton:
                 self.overlay.insert_at(pos)
             elif press:
-                self.overlay.begin(pos, pressure, event.button() if event.button() != Qt.NoButton else Qt.LeftButton, event.modifiers())
+                self.overlay.begin(pos, pressure, event.button() if event.button() != Qt.MouseButton.NoButton else Qt.MouseButton.LeftButton, event.modifiers())
             elif release:
                 self.overlay.end(pos, pressure)
             else:
@@ -1585,5 +1824,16 @@ class LineworkToolOptions(QWidget):
             event.accept()
             return True
         except Exception as exc:
-            self.fail(exc)
+            if isinstance(exc, ValueError) and self.overlay and self.overlay._edit_original is not None:
+                # A rejected edit must retain its target and restore the saved
+                # appearance, so the user can change presets or try again.
+                self.overlay.restore_edit_preview(cancel=True)
+                self.update_controls()
+                self.show_error(str(exc))
+            else:
+                self.fail(exc)
             return True
+
+    def view_document_wait(self):
+        view = self.current_view()
+        if view and view.document(): view.document().waitForDone()

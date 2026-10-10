@@ -1,0 +1,60 @@
+{
+  "conversion_debug": {
+    "active_before": "{13b3d350-239c-4e81-a9df-8c241ec3e1c7}",
+    "source": "{13b3d350-239c-4e81-a9df-8c241ec3e1c7}",
+    "controller": "{13b3d350-239c-4e81-a9df-8c241ec3e1c7}",
+    "controller_has_view": true,
+    "window_has_view": true,
+    "controller_has_document": true,
+    "controller_doc": "{76731e3c-dfd4-4bd5-b778-222a133b25c0}",
+    "implementation": "/tmp/linework-gui-b6zwfply/data/krita/pykrita/linework/tool_options.py",
+    "expected_doc": "{76731e3c-dfd4-4bd5-b778-222a133b25c0}",
+    "controller_active": true,
+    "controller_mode": "edit",
+    "source_visible": false,
+    "frames": [
+      {
+        "time": 0,
+        "editable": true,
+        "strokes": 2
+      }
+    ]
+  },
+  "conversion_trace": [
+    "entry",
+    "source vectorlayer",
+    "created paintlayer",
+    "initialized paintlayer",
+    "selected paintlayer"
+  ],
+  "conversion_preserves_geometry_and_source_backup": "pass",
+  "native_timeline_copy_keeps_geometry_and_edits_independent": "pass",
+  "native_geometry_and_raster_undo_redo": "pass",
+  "native_move_delete_and_undo_keep_geometry": "pass",
+  "linked_clone_frames_stay_linked": "pass",
+  "native_blank_frame_is_editable": "pass",
+  "canvas_brush_on_blank_frame_preserves_other_frames": "pass",
+  "blank_creation_and_brush_edit_undo_redo_sequence": "pass",
+  "point_preview_hides_original_and_cancel_restores_exact_pixels": "pass",
+  "timeline_switch_during_drag_restores_captured_frame": "pass",
+  "saving_during_point_preview_restores_confirmed_frame": "pass",
+  "point_release_commits_geometry_and_native_pixels_together": "pass",
+  "multiple_point_thickness_is_frame_local": "pass",
+  "foreground_color_is_frame_local": "pass",
+  "native_brush_replacement_is_frame_local": "pass",
+  "line_eraser_and_native_undo_are_frame_local": "pass",
+  "point_thinning_and_native_undo_are_frame_local": "pass",
+  "identical_raster_frames_keep_distinct_geometry_when_copied": "pass",
+  "save_immediately_after_native_copy_includes_geometry": "pass",
+  "kra_reopen_and_edit_multiple_frames": "pass",
+  "copy_after_kra_reopen_keeps_identical_raster_geometry": "pass",
+  "vector_commit_keeps_native_animation_save_snapshot": "pass",
+  "native_png_frame_exports": "pass",
+  "real_timeline_cell_and_duplicate_action_keep_geometry": "pass",
+  "native_playback_hides_edit_overlay_and_pause_restores_it": "pass",
+  "drawing_on_regenerated_zero_frame_keeps_moved_geometry": "pass",
+  "external_raster_edit_is_preserved_and_blocks_linework_overwrite": "pass",
+  "result": "pass",
+  "krita": "5.2.14",
+  "application_exit_code": 0
+}

@@ -14,7 +14,7 @@ def payload_digest(source, version=2):
                             'xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" '
                             'xmlns:krita="http://krita.org/namespaces/svg/krita">'+source+'</svg>')
     except ET.ParseError as exc:
-        raise ValueError('A estrutura SVG deste traço não é suportada.') from exc
+        raise ValueError("The SVG structure of this stroke is not supported.") from exc
     for node in root.iter():
         node.attrib.pop('id', None)
         for key in ('d', 'transform', 'width', 'height', 'x', 'y'):

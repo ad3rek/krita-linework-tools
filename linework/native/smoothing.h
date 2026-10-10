@@ -16,7 +16,12 @@
 #include <deque>
 
 static void smoothingValues(KisSmoothingOptions &o, double *v) {
-    v[0]=o.smoothingType(); v[1]=o.smoothnessDistance(); v[2]=o.tailAggressiveness();
+    v[0]=o.smoothingType(); v[2]=o.tailAggressiveness();
+#if LINEWORK_KRITA_API >= 50300
+    v[1]=o.smoothnessDistanceMax();
+#else
+    v[1]=o.smoothnessDistance();
+#endif
     v[3]=o.smoothPressure(); v[4]=o.useScalableDistance(); v[5]=o.delayDistance();
     v[6]=o.useDelayDistance(); v[7]=o.finishStabilizedCurve(); v[8]=o.stabilizeSensors();
 }
@@ -24,11 +29,44 @@ static void setSmoothingValues(KisSmoothingOptions &o, const double *v) {
     // Scalable distance cannot be changed while the stabilizer is selected.
     o.setSmoothingType(KisSmoothingOptions::NO_SMOOTHING);
     o.setUseScalableDistance(v[4]);
+#if LINEWORK_KRITA_API >= 50300
+    o.setSmoothnessDistanceMin(std::clamp(v[1], 1.0, 1000.0));
+    o.setSmoothnessDistanceMax(std::clamp(v[1], 1.0, 1000.0));
+#else
     o.setSmoothnessDistance(std::clamp(v[1], 1.0, 1000.0));
+#endif
     o.setTailAggressiveness(std::clamp(v[2], 0.0, 1.0));
     o.setSmoothPressure(v[3]); o.setDelayDistance(std::clamp(v[5], 0.0, 1000.0));
     o.setUseDelayDistance(v[6]); o.setFinishStabilizedCurve(v[7]); o.setStabilizeSensors(v[8]);
-    o.setSmoothingType(static_cast<KisSmoothingOptions::SmoothingType>(std::clamp(int(v[0]),0,3)));
+    o.setSmoothingType(static_cast<KisSmoothingOptions::SmoothingType>(std::clamp(int(v[0]),0,
+#if LINEWORK_KRITA_API >= 50300
+        4
+#else
+        3
+#endif
+    )));
+}
+static void extendedSmoothingValues(KisSmoothingOptions &o,double *v) {
+    smoothingValues(o,v);
+#if LINEWORK_KRITA_API >= 50300
+    v[9]=o.smoothnessDistanceMin(); v[10]=o.smoothnessDistanceKeepAspectRatio();
+#else
+    v[9]=v[1]; v[10]=1;
+#endif
+}
+static void setExtendedSmoothingValues(KisSmoothingOptions &o,const double *v) {
+    setSmoothingValues(o,v);
+#if LINEWORK_KRITA_API >= 50300
+    o.setSmoothnessDistanceMin(std::clamp(v[9],1.0,1000.0));
+    o.setSmoothnessDistanceKeepAspectRatio(v[10]);
+#endif
+}
+extern "C" LINEWORK_EXPORT int linework_smoothing_features() {
+#if LINEWORK_KRITA_API >= 50300
+    return 3; // variable distance and pixel-perfect mode
+#else
+    return 0;
+#endif
 }
 extern "C" LINEWORK_EXPORT void linework_smoothing_options(double *values, int write) {
     if (!values) return;
@@ -37,6 +75,13 @@ extern "C" LINEWORK_EXPORT void linework_smoothing_options(double *values, int w
         setSmoothingValues(options, values);
         QMetaObject::invokeMethod(&options, "slotWriteConfig", Qt::DirectConnection);
     } else smoothingValues(options, values);
+}
+extern "C" LINEWORK_EXPORT void linework_smoothing_options_v2(double *values,int write) {
+    if(!values)return;
+    KisSmoothingOptions options(true);
+    if(write){setExtendedSmoothingValues(options,values);
+        QMetaObject::invokeMethod(&options,"slotWriteConfig",Qt::DirectConnection);
+    }else extendedSmoothingValues(options,values);
 }
 
 class LineworkGeometryFacade final : public KisStrokesFacade {
@@ -86,9 +131,16 @@ struct LineworkSmoothing {
     bool ended=false;
     void event(const double *input, QEvent::Type type, KisImageSP image={}, KisNodeSP node={}) {
         const QPointF p(input[0],input[1]);
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+        static const QPointingDevice device("Linework pen",1,QInputDevice::DeviceType::Stylus,
+            QPointingDevice::PointerType::Pen,QInputDevice::Capability::Position|QInputDevice::Capability::Pressure,1,1);
+        QTabletEvent tablet(type,&device,p,p,std::clamp(input[2],0.0,1.0),0,0,0,0,0,
+                           Qt::NoModifier,Qt::LeftButton,Qt::LeftButton);
+#else
         QTabletEvent tablet(type,p,p,QTabletEvent::Stylus,QTabletEvent::Pen,
                            std::clamp(input[2],0.0,1.0),0,0,0,0,0,Qt::NoModifier,1,
                            Qt::LeftButton,Qt::LeftButton);
+#endif
         tablet.setTimestamp(clock.elapsed());
         KoPointerEvent pointer(&tablet,p);
         if(type==QEvent::TabletPress) helper->initPaint(&pointer,p,image,node,&facade);
@@ -100,8 +152,8 @@ struct LineworkSmoothing {
     }
 };
 
-extern "C" LINEWORK_EXPORT void *linework_smoothing_begin(Node *wrapper, View *viewWrapper,
-        const double *settings, const double *point) {
+static void *beginSmoothing(Node *wrapper, View *viewWrapper,
+        const double *settings, const double *point,bool extended) {
     if(!wrapper || !viewWrapper || !settings || !point) return nullptr;
     auto image=(wrapper->*member(NodeImage{}))();
     auto node=(wrapper->*member(NodeNode{}))();
@@ -115,11 +167,20 @@ extern "C" LINEWORK_EXPORT void *linework_smoothing_begin(Node *wrapper, View *v
     // Krita's configured tablet curve without changing the canvas setting.
     session->resources.setResource(KoCanvasResource::DisablePressure,true);
     auto options=new KisSmoothingOptions(true);
-    setSmoothingValues(*options,settings);
+    if(extended)setExtendedSmoothingValues(*options,settings);
+    else setSmoothingValues(*options,settings);
     session->helper=std::make_unique<LineworkFreehandHelper>(&session->builder,&session->resources,
                                                           kundo2_noi18n("Linework smoothing"),options);
     session->clock.start();session->event(point,QEvent::TabletPress,image,node);
     return session.release();
+}
+extern "C" LINEWORK_EXPORT void *linework_smoothing_begin(Node *wrapper, View *viewWrapper,
+        const double *settings, const double *point) {
+    return beginSmoothing(wrapper,viewWrapper,settings,point,false);
+}
+extern "C" LINEWORK_EXPORT void *linework_smoothing_begin_v2(Node *wrapper, View *viewWrapper,
+        const double *settings, const double *point) {
+    return beginSmoothing(wrapper,viewWrapper,settings,point,true);
 }
 extern "C" LINEWORK_EXPORT void linework_smoothing_move(void *handle,const double *point) {
     auto s=static_cast<LineworkSmoothing*>(handle);

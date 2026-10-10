@@ -3,20 +3,29 @@
 import ctypes
 import traceback
 from pathlib import Path
-from PyQt5 import sip
-from PyQt5.QtWidgets import QWidget, QApplication
-from PyQt5.QtWidgets import QAbstractButton
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QPalette, QColor
+from .qt import sip
+from .qt import QWidget, QApplication
+from .qt import QAbstractButton, QAction
+from .qt import QIcon, QPixmap, QPainter, QPalette, QColor
 from .native_brush import load_library
+from .i18n import tr
 
 TOOL_IDS = ("LineworkBrush", "LineworkCurve", "LineworkLine", "LineworkEdit", "LineworkPressure", "LineworkErase")
+TOOL_LABELS = ("Linework Brush", "Linework Curve", "Linework Line", "Linework Edit", "Linework Thickness", "Linework Erase")
 CONTROLLERS = {}
 _callback = None
 _icons = {}
 
 
 def theme_icons(window):
-    color = window.palette().color(QPalette.WindowText).name()
+    labels = dict(zip(TOOL_IDS, (tr(label) for label in TOOL_LABELS)))
+    for action in window.findChildren(QAction):
+        if action.objectName() in labels:
+            title = labels[action.objectName()]
+            if action.text() != title: action.setText(title)
+            if action.toolTip() != title: action.setToolTip(title)
+            if action.iconText() != title: action.setIconText(title)
+    color = window.palette().color(QPalette.ColorRole.WindowText).name()
     if color not in _icons:
         themed = {}
         for mode, ident in enumerate(TOOL_IDS):
@@ -25,7 +34,7 @@ def theme_icons(window):
             for size in (16, 22, 24, 32, 48, 64):
                 image = source.pixmap(size, size).toImage()
                 painter = QPainter(image)
-                painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
                 painter.fillRect(image.rect(), QColor(color))
                 painter.end()
                 icon.addPixmap(QPixmap.fromImage(image))
@@ -36,6 +45,8 @@ def theme_icons(window):
             icon = _icons[color][button.objectName()]
             if button.icon().cacheKey() != icon.cacheKey():
                 button.setIcon(icon)
+            title = labels[button.objectName()]
+            if button.toolTip() != title: button.setToolTip(title)
 
 
 def active_tool():
@@ -86,10 +97,11 @@ def install_tools():
 
     _callback = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_void_p)(event)
     library = load_library()
-    library.linework_register_tools.argtypes = [type(_callback), ctypes.c_char_p]
+    library.linework_register_tools.argtypes = [type(_callback), ctypes.c_char_p, ctypes.c_char_p]
     library.linework_register_tools.restype = ctypes.c_int
-    if not library.linework_register_tools(_callback, str(Path(__file__).with_name("icons")).encode()):
-        raise RuntimeError("Não foi possível registrar as ferramentas Linework.")
+    labels = '\n'.join(tr(label) for label in TOOL_LABELS)
+    if not library.linework_register_tools(_callback, str(Path(__file__).with_name("icons")).encode(), labels.encode()):
+        raise RuntimeError(tr("Linework tools could not be registered."))
     library.linework_clear_callbacks.argtypes = []
     library.linework_clear_callbacks.restype = None
 

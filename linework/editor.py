@@ -2,10 +2,10 @@
 import copy
 import math
 import time
-from PyQt5.QtCore import Qt, QPointF, QRectF, QEvent, pyqtSignal
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen, QImage
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QKeySequence
+from .qt import event_position, Qt, QPointF, QRectF, QEvent, pyqtSignal
+from .qt import QColor, QPainter, QPainterPath, QPen, QImage
+from .qt import QWidget
+from .qt import QKeySequence
 from .selection import Selection
 from .spatial import SpatialIndex
 from .model import (Point, Stroke, History, clamp, distance, segment_distance,
@@ -18,7 +18,7 @@ from .native_brush import point_thickness, ensure_thickness
 def painter_path(stroke):
     poly = outline(stroke)
     path = QPainterPath()
-    path.setFillRule(Qt.WindingFill)
+    path.setFillRule(Qt.FillRule.WindingFill)
     if poly:
         path.moveTo(*poly[0])
         for x, y in poly[1:]:
@@ -62,9 +62,9 @@ class LineworkCanvas(QWidget):
         self._spatial_dirty = set()
         self._spatial_sync = False
         self.changed.connect(self.invalidate_spatial)
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
-        self.setAttribute(Qt.WA_TabletTracking, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TabletTracking, True)
 
     def active_stroke(self):
         return self.strokes[self.selected] if 0 <= self.selected < len(self.strokes) else None
@@ -218,6 +218,48 @@ class LineworkCanvas(QWidget):
                 return None
         return side_hit
 
+    def thickness_guide(self, stroke, index):
+        """The visible diameter guide, in document coordinates."""
+        tangent = handle_vector(stroke, index, 'out') or handle_vector(stroke, index, 'in')
+        if tangent is None or math.hypot(*tangent) < 1e-7:
+            a, b = stroke.points[max(0, index-1)], stroke.points[min(len(stroke.points)-1, index+1)]
+            tangent = b.x-a.x, b.y-a.y
+        length = math.hypot(*tangent)
+        normal = (-tangent[1]/length, tangent[0]/length) if length else (0, 1)
+        radius = (stroke.width*stroke.minimum+(1-stroke.minimum)*point_thickness(stroke, index))/2
+        return normal, max(6/self.zoom, min(radius, 100/self.zoom))
+
+    def thickness_handle_at(self, p):
+        if self.mode != 'pressure':
+            return None
+        best = self.pick_radius/self.zoom
+        hit = None
+        for stroke in self.selected_strokes():
+            for index, anchor in enumerate(stroke.points):
+                if self.locked_point is not None and (stroke.uid, index) != self.locked_point:
+                    continue
+                normal, radius = self.thickness_guide(stroke, index)
+                for sign in (-1, 1):
+                    end = Point(anchor.x+sign*normal[0]*radius, anchor.y+sign*normal[1]*radius)
+                    d = distance(p, end)
+                    # Short guides must still allow clicking their anchor.
+                    if d <= best and d < distance(p, anchor):
+                        best, hit = d, (stroke, index, tuple(sign*v for v in normal))
+        if hit is not None:
+            spatial = self.spatial_index()
+            if any(distance(p, spatial.strokes[uid].points[i]) < best
+                   for uid, i in spatial.anchors_in((p.x-best, p.y-best, p.x+best, p.y+best))):
+                return None
+        return hit
+
+    def begin_thickness_drag(self, pos, direction=None):
+        self.drag = 'pressure'
+        self.drag_start = pos
+        self._pressure_start = self.local_point(pos)
+        self._pressure_direction = direction
+        self._initial_thicknesses = {(s.uid, i): point_thickness(s, i)
+                                    for s, i in self.selected_point_refs()}
+
     def insert_at(self, pos):
         if self.mode != "edit" or self.locked_point is not None:
             return
@@ -233,17 +275,17 @@ class LineworkCanvas(QWidget):
         self.selectedChanged.emit()
         self.update()
 
-    def begin(self, pos, pressure, button=Qt.LeftButton, modifiers=Qt.NoModifier):
+    def begin(self, pos, pressure, button=Qt.MouseButton.LeftButton, modifiers=Qt.KeyboardModifier.NoModifier):
         self.setFocus()
         self.hover_pos = pos
-        if button == Qt.MiddleButton or (modifiers & Qt.ShiftModifier and self.mode not in ("edit", "pressure")):
+        if button == Qt.MouseButton.MiddleButton or (modifiers & Qt.KeyboardModifier.ShiftModifier and self.mode not in ("edit", "pressure")):
             self.drag = "pan"
             self.last_pos = pos
             return
-        if button == Qt.RightButton:
+        if button == Qt.MouseButton.RightButton:
             self.finish_draft()
             return
-        if button != Qt.LeftButton:
+        if button != Qt.MouseButton.LeftButton:
             return
         p = self.local_point(pos, pressure)
         if not (0 <= p.x <= self.doc_width and 0 <= p.y <= self.doc_height):
@@ -259,7 +301,16 @@ class LineworkCanvas(QWidget):
                 self.selected = self.point_index = -1
             self.draft.points.append(p)
         else:
-            side = self.handle_at(p) if not modifiers & Qt.ShiftModifier else None
+            diameter = self.thickness_handle_at(p) if not modifiers & Qt.KeyboardModifier.ShiftModifier else None
+            if diameter:
+                stroke, index, direction = diameter
+                if (stroke.uid, index) not in self.selection.point_keys(self.strokes):
+                    self.selection.set_points([(stroke.uid, index)])
+                self.selection.primary = stroke.uid, index
+                self.begin_thickness_drag(pos, direction)
+                self.selectedChanged.emit(); self.update()
+                return
+            side = self.handle_at(p) if not modifiers & Qt.KeyboardModifier.ShiftModifier else None
             if side:
                 self.handle_side = side
                 opposite = handle_vector(self.active_stroke(), self.point_index,
@@ -273,22 +324,20 @@ class LineworkCanvas(QWidget):
                     return
                 # A miss or Shift-click cannot replace the pinned anchor.
                 if self.mode == 'pressure':
-                    self.drag = 'pressure'
-                    self._initial_thicknesses = {(s.uid, i): point_thickness(s, i) for s, i in self.selected_point_refs()}
-                    self.drag_start = pos
+                    self.begin_thickness_drag(pos)
                 else:
                     self.drag = 'point'; self.last_doc = p
                 self.update(); return
-            if self.mode == "edit" and modifiers & Qt.AltModifier:
+            if self.mode == "edit" and modifiers & Qt.KeyboardModifier.AltModifier:
                 self.insert_at(pos)
                 return
             before = copy.deepcopy(self.selection)
-            hit, index = self.select_at(p, bool(modifiers & Qt.ShiftModifier))
-            if modifiers & Qt.ShiftModifier and hit:
+            hit, index = self.select_at(p, bool(modifiers & Qt.KeyboardModifier.ShiftModifier))
+            if modifiers & Qt.KeyboardModifier.ShiftModifier and hit:
                 self.update(); return
             if not hit and self.mode in ("edit", "pressure"):
                 self.drag = "select"; self._selection_before = before
-                self._selection_add = bool(modifiers & Qt.ShiftModifier)
+                self._selection_add = bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
                 self._selection_start = p; self._selection_end = p
                 self.update(); return
             active = self.active_stroke()
@@ -298,16 +347,14 @@ class LineworkCanvas(QWidget):
                 elif self.mode == "pressure":
                     if self.point_index < 0:
                         self.selection.primary = active.uid, min(range(len(active.points)), key=lambda i: distance(p, active.points[i]))
-                    self.drag = "pressure"
-                    self._initial_thicknesses = {(s.uid, i): point_thickness(s, i) for s, i in self.selected_point_refs()}
-                    self.drag_start = pos
+                    self.begin_thickness_drag(pos)
                 else:
                     self.drag = "point" if self.point_index >= 0 else "stroke"
                     self.last_doc = p
         self.update()
         self.selectedChanged.emit()
 
-    def move(self, pos, pressure, modifiers=Qt.NoModifier):
+    def move(self, pos, pressure, modifiers=Qt.KeyboardModifier.NoModifier):
         self.hover_pos = pos
         if self.drag == "pan":
             self.offset += pos-self.last_pos
@@ -345,7 +392,7 @@ class LineworkCanvas(QWidget):
                     vector = p.x-point.x, p.y-point.y
                     setattr(point, "handle_"+self.handle_side, vector)
                     length = math.hypot(*vector)
-                    if self._opposite_length is not None and length > 1e-7 and not modifiers & Qt.AltModifier:
+                    if self._opposite_length is not None and length > 1e-7 and not modifiers & Qt.KeyboardModifier.AltModifier:
                         opposite = "out" if self.handle_side == "in" else "in"
                         setattr(point, "handle_"+opposite,
                                 tuple(-v*self._opposite_length/length for v in vector))
@@ -357,6 +404,10 @@ class LineworkCanvas(QWidget):
                     self.last_doc = p
                 else:
                     delta = (self.drag_start.y()-pos.y())/self.zoom
+                    if self._pressure_direction is not None:
+                        dx, dy = p.x-self._pressure_start.x, p.y-self._pressure_start.y
+                        nx, ny = self._pressure_direction
+                        delta = 2*(dx*nx+dy*ny)/max(.01, 1-stroke.minimum)
                     for target in self.selected_strokes(): ensure_thickness(target)
                     for target, index in self.selected_point_refs():
                         set_point_thickness(target, index, self._initial_thicknesses[(target.uid, index)]+delta)
@@ -380,15 +431,15 @@ class LineworkCanvas(QWidget):
         self.update()
 
     def event(self, event):
-        if event.type() in (QEvent.TabletPress, QEvent.TabletMove, QEvent.TabletRelease):
+        if event.type() in (QEvent.Type.TabletPress, QEvent.Type.TabletMove, QEvent.Type.TabletRelease):
             self._tablet_until = time.monotonic()+.15
-            if event.type() == QEvent.TabletPress:
-                button = event.button() if event.button() != Qt.NoButton else Qt.LeftButton
-                self.begin(event.posF(), event.pressure(), button, event.modifiers())
-            elif event.type() == QEvent.TabletMove:
-                self.move(event.posF(), event.pressure(), event.modifiers())
+            if event.type() == QEvent.Type.TabletPress:
+                button = event.button() if event.button() != Qt.MouseButton.NoButton else Qt.MouseButton.LeftButton
+                self.begin(event_position(event), event.pressure(), button, event.modifiers())
+            elif event.type() == QEvent.Type.TabletMove:
+                self.move(event_position(event), event.pressure(), event.modifiers())
             else:
-                self.end(event.posF(), event.pressure())
+                self.end(event_position(event), event.pressure())
             event.accept()
             return True
         return super().event(event)
@@ -402,7 +453,7 @@ class LineworkCanvas(QWidget):
             self.move(QPointF(event.pos()), 1, event.modifiers())
 
     def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.insert_at(QPointF(event.pos()))
 
     def mouseReleaseEvent(self, event):
@@ -410,7 +461,7 @@ class LineworkCanvas(QWidget):
             self.end(QPointF(event.pos()), 1)
 
     def wheelEvent(self, event):
-        pos = event.posF()
+        pos = event_position(event)
         doc = (pos-self.offset)/self.zoom
         self.zoom = clamp(self.zoom*1.2**(event.angleDelta().y()/120), .005, 100)
         self.offset = pos-doc*self.zoom
@@ -418,16 +469,16 @@ class LineworkCanvas(QWidget):
         event.accept()
 
     def keyPressEvent(self, event):
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.finish_draft()
-        elif event.key() == Qt.Key_Escape:
+        elif event.key() == Qt.Key.Key_Escape:
             if self.drag == "select": self.selection = self._selection_before
             elif self.drag is None: self.selection.clear()
             self.draft = None
             self.drag = None
             self.selectedChanged.emit()
             self.update()
-        elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+        elif event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             if self.mode == "edit" and self.selection.points:
                 self.invalidate_spatial(self.selection.ids())
                 for stroke in self.selected_strokes():

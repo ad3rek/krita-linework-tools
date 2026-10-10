@@ -1,0 +1,284 @@
+{
+  "release": "0.1.4",
+  "date": "2026-10-10",
+  "targets": {
+    "Windows": {
+      "5.2.14": {
+        "file": "linework_native.dll",
+        "qt": 5
+      },
+      "5.3.3": {
+        "file": "5.3.3/linework_native.dll",
+        "qt": 5
+      },
+      "5.3.4": {
+        "file": "5.3.4/linework_native.dll",
+        "qt": 5
+      },
+      "5.3.4.1": {
+        "file": "5.3.4.1/linework_native.dll",
+        "qt": 5
+      },
+      "6.0.3": {
+        "file": "6.0.3/linework_native.dll",
+        "qt": 6
+      },
+      "6.0.4": {
+        "file": "6.0.4/linework_native.dll",
+        "qt": 6
+      },
+      "6.0.4.1": {
+        "file": "6.0.4.1/linework_native.dll",
+        "qt": 6
+      }
+    },
+    "Linux": {
+      "5.2.14": {
+        "file": "liblinework_native.so",
+        "qt": 5
+      }
+    }
+  },
+  "binaries": {
+    "linework/native/linework_vectorize.dll": {
+      "bytes": 300544,
+      "sha256": "04b0e1284c0bcee56cb8b0b897e0c01e0bcb72bd86ed9007320a3b99be270d4a"
+    },
+    "linework/native/liblinework_native.so": {
+      "bytes": 362672,
+      "sha256": "9fe0cb86f6499ce284862177826c7c7a4c30be281733a10a996a0a76525bfc14"
+    },
+    "linework/native/linework_native.dll": {
+      "bytes": 428544,
+      "sha256": "b72d7b97dd57d1246a72b866925f189079163bcaa84688dbcd23f62a31791dc7"
+    },
+    "linework/native/liblinework_vectorize.so": {
+      "bytes": 215144,
+      "sha256": "0a69e1da8606d4757283d9044cd47242348c4160c08959c049aeaa0fe3ba868f"
+    },
+    "linework/native/5.3.4.1/linework_native.dll": {
+      "bytes": 432128,
+      "sha256": "caf9f8a3354abc8c5ac2e5e626c2d0352e2b325616644bc4641d3c18961bc716"
+    },
+    "linework/native/5.3.3/linework_native.dll": {
+      "bytes": 432128,
+      "sha256": "af1c566cdc55451662d290b94e7f9b0a244358cb92f14a1e8058966289c7e753"
+    },
+    "linework/native/6.0.3/linework_native.dll": {
+      "bytes": 478720,
+      "sha256": "889b0c62387c6f3dcb8b2fd9ab782444520ec8d1cbb8e54b98fc2132f322dd90"
+    },
+    "linework/native/6.0.4/linework_native.dll": {
+      "bytes": 478720,
+      "sha256": "df75f01ba91fbc4afae9e7297dafd57001f5ca4df1d1e03234a41e056e1456e0"
+    },
+    "linework/native/6.0.4.1/linework_native.dll": {
+      "bytes": 478720,
+      "sha256": "eff23a3f9c46cee6495d776793c4c302b83bb15b22a52bcf98273d236aef51a8"
+    },
+    "linework/native/5.3.4/linework_native.dll": {
+      "bytes": 432128,
+      "sha256": "801499b3aa6aaa09ca61108ff575fcb1199bfd55b513999d77f26825cf927952"
+    }
+  },
+  "compiler": "LLVM-MinGW Clang 18.1.8 UCRT (20240619)",
+  "toolchain": {
+    "toolchain_url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz",
+    "toolchain_sha256": "27d33157cc252c29ad6f777a96a0d94176fea1b534ff09b5071485def143b90e"
+  },
+  "application_archives": [
+    {
+      "file": "krita-x64-5.3.4.1.zip",
+      "url": "https://download.kde.org/stable/krita/5.3.4.1/krita-x64-5.3.4.1.zip",
+      "sha256": "eda810059a120171d30d4661c7684c73a8feb72b01ad5709531cbebe6b84d032"
+    },
+    {
+      "file": "krita-x64-6.0.4.1.zip",
+      "url": "https://download.kde.org/stable/krita/6.0.4.1/krita-x64-6.0.4.1.zip",
+      "sha256": "f85eeaba95c947bf7efa31f9723f1458aa985f2f89e26afca8bf98628ce41413"
+    },
+    {
+      "file": "krita-6.0.4.1.tar.xz",
+      "url": "https://download.kde.org/stable/krita/6.0.4.1/krita-6.0.4.1.tar.xz",
+      "sha256": "bd0568754417ffca0ef60448d1cc7fb153658af1fb9796f027fa7e69b69098df"
+    },
+    {
+      "file": "krita-x64-5.3.3.zip",
+      "url": "https://download.kde.org/stable/krita/5.3.3/krita-x64-5.3.3.zip",
+      "bytes": 226801003,
+      "sha256": "87278594fac0267680303280e410578388d606aec5a290f2b0d009909f4254f0",
+      "metalink_note": "HTTP Error 404: Not Found"
+    },
+    {
+      "file": "krita-6.0.3.tar.xz",
+      "url": "https://download.kde.org/stable/krita/6.0.3/krita-6.0.3.tar.xz",
+      "bytes": 206701316,
+      "sha256": "9716b8b9b58d5a7c4cc755380ae2a0ba2298086aed93c63c74f0d69edb63b032",
+      "metalink_note": "HTTP Error 404: Not Found"
+    },
+    {
+      "file": "krita-x64-5.3.4.zip",
+      "url": "https://download.kde.org/stable/krita/5.3.4/krita-x64-5.3.4.zip",
+      "bytes": 227868616,
+      "sha256": "4bf5b51100b30fa68edd12b995932b82f8a0080ef115b5461941fa2d186d126c"
+    },
+    {
+      "file": "krita-x64-6.0.3.zip",
+      "url": "https://download.kde.org/stable/krita/6.0.3/krita-x64-6.0.3.zip",
+      "bytes": 244732242,
+      "sha256": "c0fe0292a4a9bb5b145b0239b92c5b11fc93915dab37bed6d33b6648ad03578b"
+    },
+    {
+      "file": "krita-x64-6.0.4.zip",
+      "url": "https://download.kde.org/stable/krita/6.0.4/krita-x64-6.0.4.zip",
+      "bytes": 245876734,
+      "sha256": "7150fba732a8ccacee8b2c5ce2bf20eeb9b53d24dda751597b8ec3285a1b5b54"
+    },
+    {
+      "file": "krita-6.0.4.tar.xz",
+      "url": "https://download.kde.org/stable/krita/6.0.4/krita-6.0.4.tar.xz",
+      "bytes": 206806924,
+      "sha256": "ef73e57fe20fa5bd896d53d4af6eb254e5ade83e6a39b47273dd320f9823ab4b"
+    }
+  ],
+  "archive_hash_scope": "SHA256 of downloaded official HTTPS files; not independent vendor signature verification.",
+  "windows_sdk_registry": "https://invent.kde.org/api/v4/projects/16406",
+  "qt6_sdk_packages": {
+    "ext_kitemmodels-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_kitemmodels",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790679778",
+      "timestamp": 1790679778,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_qt": "transition.now/qt6.8.0",
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "d206eaf259e773bfd9aca69591ce53a288fd9bb510ea220e16666bca0675c284"
+    },
+    "ext_kguiaddons-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_kguiaddons",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790679623",
+      "timestamp": 1790679623,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_qt": "transition.now/qt6.8.0",
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0",
+        "ext_patch": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "dc862041f6d8aa6bb5386f5b98ca0f4015c4ab50d363e9872b219effc969b7d3"
+    },
+    "ext_qt-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_qt",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790678219",
+      "timestamp": 1790678219,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_icu": "transition.now/qt6.8.0",
+        "ext_freetype": "transition.now/qt6.8.0",
+        "ext_png": "transition.now/qt6.8.0",
+        "ext_jpeg": "transition.now/qt6.8.0",
+        "ext_patch": "transition.now/qt6.8.0",
+        "ext_googleangle": "transition.now/qt6.8.0",
+        "ext_openssl": "transition.now/qt6.8.0",
+        "ext_zlib": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "99e5825387973b6b87db6eea3f13746d9c561b0c36f62b96e6877e0722615350"
+    },
+    "ext_kcoreaddons-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_kcoreaddons",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790679573",
+      "timestamp": 1790679573,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0",
+        "ext_qt": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "c004622476895a69c63e3ece1240abb9ad2adc8a625af41d183c57bb95414f60"
+    },
+    "ext_kwidgetsaddons-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_kwidgetsaddons",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790679916",
+      "timestamp": 1790679916,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_qt": "transition.now/qt6.8.0",
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "c59ba450f99e0dfda18c46d4492c1d4a1419148aafc108ffe7a70d5944a539d7"
+    },
+    "ext_eigen3-master-metadata": {
+      "identifier": "ext_eigen3",
+      "branch": "master",
+      "version": "master-1789993225",
+      "timestamp": 1789993225,
+      "gitRevision": "0fd95c4efca2e5b5024121bb0ccae5b353956cd9",
+      "dependencies": {},
+      "runtime-dependencies": {},
+      "archive_sha256": "4ebfc6035806ebc65e5461a82c99c71327deaa067f00b1f010e6672cfbd4bb2c"
+    },
+    "ext_kconfig-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_kconfig",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790679519",
+      "timestamp": 1790679519,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_qt": "transition.now/qt6.8.0",
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0",
+        "ext_patch": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "b00c485fa07ed4f94187dc6e2ec3f9a7a5a51d59f35b609193f7a439279d157e"
+    },
+    "ext_kcompletion-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_kcompletion",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790680625",
+      "timestamp": 1790680625,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0",
+        "ext_qt": "transition.now/qt6.8.0",
+        "ext_kconfig": "transition.now/qt6.8.0",
+        "ext_kcodecs": "transition.now/qt6.8.0",
+        "ext_kwidgetsaddons": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "960544128e907bbd9f8a22929618c5a9ce5a2354b605d706642f75155fe5ab3f"
+    },
+    "ext_ki18n-transition.now-qt6.8.0-metadata": {
+      "identifier": "ext_ki18n",
+      "branch": "transition.now/qt6.8.0",
+      "version": "transition.now-qt6.8.0-1790679678",
+      "timestamp": 1790679678,
+      "gitRevision": "b3f405c1d3be43cf5efce823e6bb554a1a02e2fe",
+      "dependencies": {
+        "ext_qt": "transition.now/qt6.8.0",
+        "ext_extra_cmake_modules": "transition.now/qt6.8.0",
+        "ext_patch": "transition.now/qt6.8.0",
+        "ext_gettext": "transition.now/qt6.8.0"
+      },
+      "runtime-dependencies": {},
+      "archive_sha256": "548b6d66a2d950352f14d6cd02357d64260242c31ef31ce9929c35db670056f5"
+    }
+  },
+  "legacy_qt5_sdk_provenance": "../windows-build.json",
+  "qt": "Windows 5.x: Qt 5.15.7; Windows 6.x: Qt 6.8.0; Linux: Qt 5.15.17",
+  "source_headers": "5.2.14 source for legacy; paired 5.3.3/6.0.3 source archive; paired 5.3.4/6.0.4 archive; paired 5.3.4.1/6.0.4.1 archive.",
+  "all_target_compilation": "pass",
+  "limits": [
+    "No physical Windows or tablet validation",
+    "Linux bridge targets 5.2.14 only",
+    "Unknown ABI targets are rejected before loading"
+  ]
+}

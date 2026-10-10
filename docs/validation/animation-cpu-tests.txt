@@ -1,0 +1,8 @@
+----------------------------------------------------------------------
+Ran 83 tests in 43.086s
+
+OK
+Installed in: /tmp/tmpg1vceosj/roaming/krita/pykrita
+Restart Krita to load the native bridge.
+Manual activation: Settings > Configure Krita > Python Plugin Manager > Linework.
+Select Linework Brush in the toolbox; controls appear in Tool Options.

@@ -1,10 +1,12 @@
-LINEWORK NATIVE BRIDGE — KRITA 5.2.14
-Public release: 0.1.2 (development reports retain their original version labels)
+LINEWORK NATIVE BRIDGES
+Public release: 0.1.4 (development reports retain their original version labels)
 
 Linux build: KDE Neon x86_64, Qt 5.15.17, Python 3.12.
-Windows build: official Krita 5.2.14 x64, Qt 5.15.7, LLVM-MinGW 18.1.8 UCRT,
-Python 3.10. The bridge requires the matching application ABI. Do not substitute
-other native DLLs or load it into another Krita version.
+Windows builds: official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64,
+LLVM-MinGW 18.1.8 UCRT. 5.2.14 uses Qt 5.15.7 / Python 3.10; 5.3 uses
+Qt 5.15.7 / Python 3.13; 6.0 uses Qt 6.8.0 / Python 3.13. Every bridge
+requires its matching application ABI. native/bridges.json maps application
+versions to binaries; do not substitute another target's DLL.
 
 Official sources: https://github.com/KDE/krita/tree/v5.2.14
 Revision: 31056c6b76a164069752fc9d5f655f9479aca246
@@ -42,6 +44,28 @@ instantiations placed before explicit specializations, which Clang rejects.
 This private DLL does not expose those C++ templates. Mathematical code and
 vendored originals are unchanged; the generated header is build-only.
 Reinstall and restart Krita after rebuilding. Validate with isolated resources.
+
+Modern Windows targets
+Use the official v6.0.3 source archive for 5.3.3 and 6.0.3; use v6.0.4 for
+5.3.4 and 6.0.4. The application pairs share source but different Qt builds.
+Use the Qt 5/KF5 Windows SDK for 5.3 and Qt 6.8.0/KF6 Windows SDK for 6.0.
+The Qt 6 packages are in KDE's dependency registry branch
+krita/transition.now-qt6.8.0. Boost and Eigen headers are also required.
+
+python3 build_windows.py --krita-source /path/krita-6.0.4 \
+  --sdk-prefix /path/windows-qt6-sdk --krita-bin /path/krita-x64-6.0.4/bin \
+  --toolchain /path/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64 \
+  --krita-version 6.0.4 --qt-major 6 --bridge-only \
+  --output-directory /path/linework/native/6.0.4
+
+Repeat with each application version, its runtime and matching SDK; choose
+--qt-major 5 for 5.3. The standalone vectorizer is independent of Qt and is
+shared by all Windows targets. Linux's supplied bridge still targets 5.2.14.
+
+The native exports declare their target version and Qt major. Modern
+KisSmoothingOptions uses variable minimum/maximum distances and Pixel mode;
+the legacy API remains available for 5.2.14. Python imports only the PyQt
+binding supplied by the running Krita.
 
 Architecture
 Krita's Python API cannot replay a complete continuous sample sequence through

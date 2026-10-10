@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Adopt native affine transforms without replacing selected shape objects."""
+from .i18n import tr
 import json
 import math
 from collections import OrderedDict
-from PyQt5.QtCore import QByteArray
-from PyQt5.QtGui import QTransform
+from .qt import QByteArray
+from .qt import QTransform
 from .model import load_strokes, outline, transform_stroke
 from .native_brush import shape_frame, shape_canonical, render_shape, NativeBrushRenderer
 from .svg_fingerprint import payload_digest
@@ -86,7 +87,7 @@ def sync_layer(document, layer, view):
     inverse_pixel = pixel_to_flake.inverted()[0]
     for stroke in strokes:
         name='lw_'+stroke.uid;shape=actual.get(name)
-        if shape is None:raise ValueError('Um traço Linework foi removido pela ferramenta nativa.')
+        if shape is None:raise ValueError(tr("A Linework stroke was removed by the native tool."))
         old_state=states.get(name)
         current=shape_frame(shape)
         if old_state and all(math.isclose(a,b,rel_tol=1e-10,abs_tol=1e-10)
@@ -101,22 +102,22 @@ def sync_layer(document, layer, view):
             old_state=cached[name][1]
         if old_state:
             if canonical_digest(shape, old_state.get('payload_version', 1)) != old_state['payload']:
-                raise ValueError('A geometria ou o estilo SVG foi alterado. Linework aceita mover, girar e redimensionar o traço.')
+                raise ValueError(tr("The SVG geometry or style has changed. Linework supports moving, rotating and resizing the line."))
             previous=QTransform(*old_state['frame'])
         else:
             previous=legacy_frame(document,shape,stroke)
         inverse,ok=previous.inverted()
-        if not ok:raise ValueError('A transformação anterior do traço é inválida.')
+        if not ok:raise ValueError(tr("The previous stroke transformation is invalid."))
         delta=pixel_to_flake*inverse*current*inverse_pixel
         if old_state is None and all(math.isclose(a,b,rel_tol=1e-9,abs_tol=1e-8)
                for a,b in zip(coefficients(delta),[1,0,0,1,0,0])):
-            raise ValueError('A aparência do traço foi alterada sem uma transformação de posição ou escala.')
+            raise ValueError(tr("The appearance of the stroke was changed without a position or scale transformation."))
         transform_stroke(stroke,coefficients(delta));changed.append((name,shape,stroke))
     if not changed:
         # Remember legacy baselines without marking a previously clean file as
         # modified: the next real write persists poses together with the strokes.
         return False
-    if layer.locked():raise ValueError('Desbloqueie a camada antes de atualizar a transformação.')
+    if layer.locked():raise ValueError(tr("Unlock the layer before updating the transformation."))
     renderer=NativeBrushRenderer(view)
     try:
         # Resolve presets and prepare all images before touching any shape.
@@ -129,7 +130,7 @@ def sync_layer(document, layer, view):
     finally:renderer.close()
     record['strokes']=[s.data() for s in strokes];record['poses']=new_states
     data['version']=5
-    document.setAnnotation(ANNOTATION,'Linhas e pressão editáveis do plugin Linework',
+    document.setAnnotation(ANNOTATION,tr("Linework plugin editable lines and pressure"),
                            QByteArray(json.dumps(data,ensure_ascii=False).encode('utf-8')))
     document.setModified(True);document.refreshProjection();document.waitForDone()
     return True

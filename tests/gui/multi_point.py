@@ -3,10 +3,10 @@ import os
 import copy,hashlib,json,time,traceback,math
 from pathlib import Path
 from krita import Krita,Extension
-from PyQt5.QtCore import QTimer,Qt,QPointF,QEvent
-from PyQt5.QtGui import QMouseEvent,QKeyEvent
-from PyQt5.QtWidgets import QApplication,QDialog,QDockWidget
-from PyQt5.QtTest import QTest
+from linework.qt import event_position, QTimer,Qt,QPointF,QEvent
+from linework.qt import QMouseEvent,QKeyEvent
+from linework.qt import QApplication,QDialog,QDockWidget
+from linework.qt import QTest
 ROOT=Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 class Probe(Extension):
  def setup(self):self.result={};self.tries=0;QTimer.singleShot(1800,lambda:self.safe(self.start))
@@ -24,21 +24,21 @@ class Probe(Extension):
   if hasattr(self,'window'):self.window.qwindow().close()
   QTimer.singleShot(300,QApplication.instance().quit)
  def data(self):return [s.data() for s in self.c.overlay.strokes]
- def mouse(self,kind,point,mod=Qt.NoModifier):
+ def mouse(self,kind,point,mod=Qt.KeyboardModifier.NoModifier):
   o=self.c.overlay;o.sync_transform();pos=o.image_to_widget.map(QPointF(*point))
-  button=Qt.NoButton if kind==QEvent.MouseMove else Qt.LeftButton
-  buttons=Qt.NoButton if kind==QEvent.MouseButtonRelease else Qt.LeftButton
+  button=Qt.MouseButton.NoButton if kind==QEvent.Type.MouseMove else Qt.MouseButton.LeftButton
+  buttons=Qt.MouseButton.NoButton if kind==QEvent.Type.MouseButtonRelease else Qt.MouseButton.LeftButton
   event=QMouseEvent(kind,pos,button,buttons,mod)
-  actual=o.widget_to_image.map(event.localPos())
-  if kind==QEvent.MouseButtonPress:self.event_start=actual
-  if kind==QEvent.MouseMove:self.event_delta=actual-self.event_start
+  actual=o.widget_to_image.map(event_position(event))
+  if kind==QEvent.Type.MouseButtonPress:self.event_start=actual
+  if kind==QEvent.Type.MouseMove:self.event_delta=actual-self.event_start
   QApplication.sendEvent(self.c.native_widget,event)
   assert self.c.overlay and not self.c._error,self.c.status.text()
- def click(self,point,mod=Qt.NoModifier):
-  self.mouse(QEvent.MouseButtonPress,point,mod);self.mouse(QEvent.MouseButtonRelease,point,mod)
- def key(self,key,mod=Qt.NoModifier):
-  QApplication.sendEvent(self.c.native_widget,QKeyEvent(QEvent.ShortcutOverride,key,mod))
-  QApplication.sendEvent(self.c.native_widget,QKeyEvent(QEvent.KeyPress,key,mod))
+ def click(self,point,mod=Qt.KeyboardModifier.NoModifier):
+  self.mouse(QEvent.Type.MouseButtonPress,point,mod);self.mouse(QEvent.Type.MouseButtonRelease,point,mod)
+ def key(self,key,mod=Qt.KeyboardModifier.NoModifier):
+  QApplication.sendEvent(self.c.native_widget,QKeyEvent(QEvent.Type.ShortcutOverride,key,mod))
+  QApplication.sendEvent(self.c.native_widget,QKeyEvent(QEvent.Type.KeyPress,key,mod))
  def alpha(self,x,y):return bytes(self.layer.projectionPixelData(x,y,1,1))[3]
  def start(self):
   self.k=Krita.instance()
@@ -94,18 +94,18 @@ class Probe(Extension):
   self.result['bulk_width_only_selected_curves_one_undo_redo']='pass'
   o.undo();assert self.c.controls['width'].mixed
   representative=self.c.controls['width'].value()
-  edit=self.c.controls['width'].lineEdit();QTest.mouseClick(edit,Qt.LeftButton)
-  QTest.keyClick(edit,Qt.Key_A,Qt.ControlModifier);QTest.keyClicks(edit,str(representative));QTest.keyClick(edit,Qt.Key_Return)
+  edit=self.c.controls['width'].lineEdit();QTest.mouseClick(edit,Qt.MouseButton.LeftButton)
+  QTest.keyClick(edit,Qt.Key.Key_A,Qt.KeyboardModifier.ControlModifier);QTest.keyClicks(edit,str(representative));QTest.keyClick(edit,Qt.Key.Key_Return)
   self.representative=representative;self.after(lambda:self.wait_update(self.same_value_done))
  def same_value_done(self):
   assert [s.width for s in self.c.overlay.strokes[:2]]==[self.representative]*2
   assert not self.c.controls['width'].mixed
   self.result['mixed_value_accepts_typing_same_as_primary']='pass'
   self.c.overlay.undo()  # Restore the two different base widths before editing diameters.
-  self.click((150,180),Qt.ShiftModifier);assert len(self.c.overlay.selected_point_refs())==5
-  self.click((150,180),Qt.ShiftModifier);assert len(self.c.overlay.selected_point_refs())==6
+  self.click((150,180),Qt.KeyboardModifier.ShiftModifier);assert len(self.c.overlay.selected_point_refs())==5
+  self.click((150,180),Qt.KeyboardModifier.ShiftModifier);assert len(self.c.overlay.selected_point_refs())==6
   self.click((900,650));assert not self.c.overlay.selection.ids()
-  self.click((150,180));self.click((150,350),Qt.ShiftModifier)
+  self.click((150,180));self.click((150,350),Qt.KeyboardModifier.ShiftModifier)
   assert len(self.c.overlay.selected_point_refs())==2 and len(self.c.overlay.selected_strokes())==2
   assert self.c.thickness.mixed
   self.result['shift_add_toggle_individual_anchors_across_curves']='pass'
@@ -123,11 +123,11 @@ class Probe(Extension):
   self.c.overlay.redo();assert self.data()==expected
   self.result['same_pixel_width_across_bases_preserves_pressure_and_handles']='pass'
   self.drag_before=self.data();self.drag_svg={s.name():s.toSvg() for s in self.layer.shapes()}
-  self.mouse(QEvent.MouseButtonPress,(150,180));o=self.c.overlay
+  self.mouse(QEvent.Type.MouseButtonPress,(150,180));o=self.c.overlay
   assert o.drag=='point' and len(o._edit_original)==2
   assert self.alpha(150,180)==0 and self.alpha(150,350)==0 and self.alpha(300,520)>0
   assert {s.name():s.toSvg() for s in self.layer.shapes()}==self.drag_svg
-  self.mouse(QEvent.MouseMove,(180,200));o.refresh_native_preview();self.after(self.drag_moved,200)
+  self.mouse(QEvent.Type.MouseMove,(180,200));o.refresh_native_preview();self.after(self.drag_moved,200)
  def drag_moved(self):
   o=self.c.overlay
   assert len(o.native_previews)==2
@@ -138,14 +138,14 @@ class Probe(Extension):
    for axis in (0,1):assert math.isclose(a['points'][0][axis],b['points'][0][axis],abs_tol=1e-8), (a['points'][0],b['points'][0],self.event_delta.x(),self.event_delta.y(),o.last_doc)
    a['points'][0][:2]=b['points'][0][:2]
   assert actual==expected
-  self.key(Qt.Key_Escape);assert self.data()==self.drag_before
+  self.key(Qt.Key.Key_Escape);assert self.data()==self.drag_before
   assert {s.name():s.toSvg() for s in self.layer.shapes()}==self.drag_svg
   assert self.alpha(150,180)>0 and self.alpha(150,350)>0
   assert len(o.selected_point_refs())==2
   self.result['multi_point_drag_hides_both_originals_and_escape_restores']='pass'
   from linework.tools import select_tool
   select_tool(4)
-  self.mouse(QEvent.MouseButtonPress,(150,180));self.mouse(QEvent.MouseMove,(150,160));self.mouse(QEvent.MouseButtonRelease,(150,160))
+  self.mouse(QEvent.Type.MouseButtonPress,(150,180));self.mouse(QEvent.Type.MouseMove,(150,160));self.mouse(QEvent.Type.MouseButtonRelease,(150,160))
   actual=self.data()
   for old,new in zip(self.drag_before,actual):
    old0=copy.deepcopy(old);new0=copy.deepcopy(new)
@@ -154,15 +154,15 @@ class Probe(Extension):
   for s in self.c.overlay.strokes[:2]:assert math.isclose(s.width*s.points[0].thickness,10-self.event_delta.y(),abs_tol=1e-8)
   self.result['group_thickness_drag_adds_same_pixel_delta']='pass'
   self.rectangle_depth=len(self.c.overlay.history.undo_stack)
-  self.mouse(QEvent.MouseButtonPress,(110,150));assert self.c.overlay.drag=='select'
-  self.mouse(QEvent.MouseMove,(330,380));self.mouse(QEvent.MouseButtonRelease,(330,380))
+  self.mouse(QEvent.Type.MouseButtonPress,(110,150));assert self.c.overlay.drag=='select'
+  self.mouse(QEvent.Type.MouseMove,(330,380));self.mouse(QEvent.Type.MouseButtonRelease,(330,380))
   assert len(self.c.overlay.selected_point_refs())==4 and len(self.c.overlay.history.undo_stack)==self.rectangle_depth
   self.result['rectangle_selects_four_anchors_without_history']='pass'
-  select_tool(3);before=self.data();self.key(Qt.Key_Delete)
+  select_tool(3);before=self.data();self.key(Qt.Key.Key_Delete)
   assert [len(s.points) for s in self.c.overlay.strokes]==[1,1,3]
   self.c.overlay.undo();assert self.data()==before
   self.result['delete_multiple_points_and_undo']='pass'
-  self.key(Qt.Key_A,Qt.ControlModifier);assert len(self.c.overlay.selected_point_refs())==9
+  self.key(Qt.Key.Key_A,Qt.KeyboardModifier.ControlModifier);assert len(self.c.overlay.selected_point_refs())==9
   self.all_before=self.data();self.c.thickness.setValue(50)
   self.after(lambda:self.wait_update(self.all_done))
  def all_done(self):
@@ -187,7 +187,7 @@ class Probe(Extension):
  def capture(self):
   options=self.window.qwindow().findChild(QDockWidget,'sharedtooldocker');options.show();options.raise_()
   docks=[d for d in self.window.qwindow().findChildren(QDockWidget) if d.windowTitle()=='Tool Options']
-  if docks:self.window.qwindow().resizeDocks(docks,[650]*len(docks),Qt.Vertical)
+  if docks:self.window.qwindow().resizeDocks(docks,[650]*len(docks),Qt.Orientation.Vertical)
   QApplication.processEvents()
   self.window.qwindow().grab().save(str(ROOT/'docs/images/multi-point-thickness.png'))
   self.result['result']='pass';self.finish()

@@ -1,16 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Real canvas eraser gestures and topology actions in native Tool Options."""
 import copy
-import faulthandler
 import json
 import math
 import os
 import traceback
 from pathlib import Path
 from krita import Krita, Extension
-from PyQt5.QtCore import QTimer, QEvent, QPointF, Qt
-from PyQt5.QtGui import QMouseEvent, QKeyEvent, QTabletEvent
-from PyQt5.QtWidgets import QApplication, QDialog, QDockWidget
+from linework.qt import QTimer, QEvent, QPointF, Qt
+from linework.qt import QMouseEvent, QKeyEvent, tablet_event
+from linework.qt import QApplication, QDialog, QDockWidget
 
 ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 
@@ -18,8 +17,6 @@ ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 class Probe(Extension):
     def setup(self):
         self.result = {}; self.tries = 0
-        self.stack_log = (ROOT/'stack.log').open('w')
-        faulthandler.dump_traceback_later(20, repeat=True, file=self.stack_log)
         self.after(self.start, 1800)
     def createActions(self, window): pass
     def after(self, fn, delay=100): QTimer.singleShot(delay, lambda: self.safe(fn))
@@ -30,7 +27,6 @@ class Probe(Extension):
         except Exception:
             self.result.update(result='fail', traceback=traceback.format_exc()); self.finish()
     def finish(self):
-        faulthandler.cancel_dump_traceback_later()
         (ROOT/'docs/validation/eraser-topology.json').write_text(json.dumps(self.result, indent=2))
         for doc in Krita.instance().documents(): doc.setModified(False)
         if hasattr(self, 'window'): self.window.qwindow().close()
@@ -45,23 +41,23 @@ class Probe(Extension):
         select_tool(mode); self.c=current_controller(self.window)
         assert self.c is not None
         self.c.poll()
-    def mouse(self, kind, x, y, modifiers=Qt.NoModifier):
+    def mouse(self, kind, x, y, modifiers=Qt.KeyboardModifier.NoModifier):
         self.c._tablet_until = 0
         overlay=self.c.overlay; overlay.sync_transform()
         pos=overlay.image_to_widget.map(QPointF(x,y))
-        event=QMouseEvent(kind,pos,Qt.NoButton if kind==QEvent.MouseMove else Qt.LeftButton,
-                         Qt.NoButton if kind==QEvent.MouseButtonRelease else Qt.LeftButton,modifiers)
+        event=QMouseEvent(kind,pos,Qt.MouseButton.NoButton if kind==QEvent.Type.MouseMove else Qt.MouseButton.LeftButton,
+                         Qt.MouseButton.NoButton if kind==QEvent.Type.MouseButtonRelease else Qt.MouseButton.LeftButton,modifiers)
         QApplication.sendEvent(self.c.native_widget,event)
         assert self.c.overlay and not self.c._error, self.c.status.text()
-    def click(self,x,y,modifiers=Qt.NoModifier):
-        self.mouse(QEvent.MouseButtonPress,x,y,modifiers); self.mouse(QEvent.MouseButtonRelease,x,y,modifiers)
+    def click(self,x,y,modifiers=Qt.KeyboardModifier.NoModifier):
+        self.mouse(QEvent.Type.MouseButtonPress,x,y,modifiers); self.mouse(QEvent.Type.MouseButtonRelease,x,y,modifiers)
     def key(self,key):
-        for kind in (QEvent.ShortcutOverride,QEvent.KeyPress):
-            QApplication.sendEvent(self.c.native_widget,QKeyEvent(kind,key,Qt.NoModifier))
+        for kind in (QEvent.Type.ShortcutOverride,QEvent.Type.KeyPress):
+            QApplication.sendEvent(self.c.native_widget,QKeyEvent(kind,key,Qt.KeyboardModifier.NoModifier))
     def alpha_column(self,x,y): return sum(bytes(self.layer.projectionPixelData(x,y-20,1,40))[3::4])
     def capture(self,name):
         dock=self.window.qwindow().findChild(QDockWidget,'sharedtooldocker'); dock.show(); dock.raise_()
-        self.window.qwindow().resizeDocks([dock],[650],Qt.Vertical)
+        self.window.qwindow().resizeDocks([dock],[650],Qt.Orientation.Vertical)
         QApplication.processEvents()
         self.window.qwindow().grab().save(str(ROOT/'docs/images'/name))
     def select(self, keys, primary=None):
@@ -134,8 +130,8 @@ class Probe(Extension):
         assert len(self.c.overlay.strokes[0].points)==3
         self.assert_saved(); self.result['zero_width_keeps_editable_anchor']='pass'
         self.before=self.data(); self.depth=len(self.c.overlay.history.undo_stack)
-        self.mouse(QEvent.MouseButtonPress,420,140); self.mouse(QEvent.MouseMove,480,260)
-        self.key(Qt.Key_Escape)
+        self.mouse(QEvent.Type.MouseButtonPress,420,140); self.mouse(QEvent.Type.MouseMove,480,260)
+        self.key(Qt.Key.Key_Escape)
         assert self.data()==self.before and len(self.c.overlay.history.undo_stack)==self.depth
         assert self.c.overlay._edit_original is None
         self.result['point_eraser_escape_restores_originals']='pass'
@@ -151,10 +147,10 @@ class Probe(Extension):
         self.tool(5); self.c.eraser_mode.setCurrentIndex(1); self.c.eraser_strength.setValue(100)
         self.before=self.data(); self.depth=len(self.c.overlay.history.undo_stack)
         self.c.overlay.sync_transform(); pos=self.c.overlay.image_to_widget.map(QPointF(270,400))
-        for kind in [QEvent.TabletPress]+[QEvent.TabletMove]*20+[QEvent.TabletRelease]:
-            event=QTabletEvent(kind,pos,pos,QTabletEvent.Stylus,QTabletEvent.Pen,
-                0 if kind==QEvent.TabletRelease else .25,0,0,0,0,0,Qt.NoModifier,9,
-                Qt.LeftButton,Qt.NoButton if kind==QEvent.TabletRelease else Qt.LeftButton)
+        for kind in [QEvent.Type.TabletPress]+[QEvent.Type.TabletMove]*20+[QEvent.Type.TabletRelease]:
+            event=tablet_event(kind,pos,0 if kind==QEvent.Type.TabletRelease else .25,
+                Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton if kind==QEvent.Type.TabletRelease else Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier)
             QApplication.sendEvent(self.c.native_widget,event)
         self.after(self.pressure_checked,200)
     def pressure_checked(self):
@@ -164,7 +160,7 @@ class Probe(Extension):
         assert len(self.c.overlay.history.undo_stack)==self.depth+1
         self.c.overlay.undo(); assert self.data()==self.before
         self.result['tablet_pressure_and_repeated_stationary_samples_control_eraser_without_buildup']='pass'
-        self.mouse(QEvent.MouseButtonPress,270,520)
+        self.mouse(QEvent.Type.MouseButtonPress,270,520)
         assert self.c.overlay._edit_original
         path=ROOT/'examples/save-during-erase.kra'; assert self.doc.saveAs(str(path))
         assert self.c.overlay._edit_original is None and self.c.overlay._edit_session is None
@@ -173,18 +169,18 @@ class Probe(Extension):
         self.result['saving_during_eraser_gesture_finishes_once_and_keeps_editable_data']='pass'
         self.tool(5); self.c.eraser_mode.setCurrentIndex(0); self.c.eraser_size.setValue(30)
         before=self.data(); depth=len(self.c.overlay.history.undo_stack)
-        self.mouse(QEvent.MouseButtonPress,850,850); self.c.overlay.undo()
-        self.mouse(QEvent.MouseButtonRelease,850,850)
+        self.mouse(QEvent.Type.MouseButtonPress,850,850); self.c.overlay.undo()
+        self.mouse(QEvent.Type.MouseButtonRelease,850,850)
         assert self.data()==before and len(self.c.overlay.history.undo_stack)==depth
         self.result['undo_empty_eraser_gesture_does_not_undo_previous_edit']='pass'
         self.before=self.data(); self.depth=len(self.c.overlay.history.undo_stack)
-        self.mouse(QEvent.MouseButtonPress,270,520); self.mouse(QEvent.MouseMove,270,640)
+        self.mouse(QEvent.Type.MouseButtonPress,270,520); self.mouse(QEvent.Type.MouseMove,270,640)
         assert len(self.c.overlay.strokes)==4 and len(self.layer.shapes())==6
-        self.key(Qt.Key_Escape)
+        self.key(Qt.Key.Key_Escape)
         assert self.data()==self.before and len(self.c.overlay.history.undo_stack)==self.depth
         self.assert_saved(); self.result['whole_line_eraser_preview_hides_originals_and_escape_restores_order']='pass'
-        self.mouse(QEvent.MouseButtonPress,270,490); self.mouse(QEvent.MouseMove,270,660)
-        self.mouse(QEvent.MouseButtonRelease,270,660); self.after(self.lines_deleted,200)
+        self.mouse(QEvent.Type.MouseButtonPress,270,490); self.mouse(QEvent.Type.MouseMove,270,660)
+        self.mouse(QEvent.Type.MouseButtonRelease,270,660); self.after(self.lines_deleted,200)
     def lines_deleted(self):
         assert len(self.c.overlay.strokes)==4 and len(self.layer.shapes())==4
         assert len(self.c.overlay.history.undo_stack)==self.depth+1
@@ -198,7 +194,7 @@ class Probe(Extension):
         self.layer.setLocked(False); self.result['locked_layer_preserved_without_disabling_editor']='pass'
         self.tool(3); assert self.c.topology_group.isVisible() and not self.c.eraser_group.isVisible()
         # Real Shift-click selects two different endpoints. Last click is active.
-        self.click(420,140); self.click(480,260,Qt.ShiftModifier)
+        self.click(420,140); self.click(480,260,Qt.KeyboardModifier.ShiftModifier)
         assert self.c.overlay.selection.primary==(self.ids[1],0)
         assert self.c.join_button.isEnabled()
         self.before=self.data(); self.depth=len(self.c.overlay.history.undo_stack)
@@ -282,34 +278,34 @@ class Probe(Extension):
         length=math.hypot(*vector)
         x=anchor.x+vector[0]-vector[1]/length*12/o.zoom
         y=anchor.y+vector[1]+vector[0]/length*12/o.zoom
-        self.mouse(QEvent.MouseButtonPress,x,y)
+        self.mouse(QEvent.Type.MouseButtonPress,x,y)
         assert o.drag=='handle' and o.handle_side==side
-        self.key(Qt.Key_Escape); assert self.data()==before
+        self.key(Qt.Key.Key_Escape); assert self.data()==before
         self.result['expanded_handle_hit_radius_escape_preserves_geometry']='pass'
         self.c.lock_point.setChecked(True); assert o.locked_point==(stroke.uid,index)
-        self.click(120,640); self.click(750,260,Qt.ShiftModifier)
+        self.click(120,640); self.click(750,260,Qt.KeyboardModifier.ShiftModifier)
         o.select_all(); assert o.selection.points=={(stroke.uid,index)} and not o.selection.strokes
         self.tool(4); assert self.c.overlay.locked_point==(stroke.uid,index)
         self.click(750,260); assert self.c.overlay.selection.points=={(stroke.uid,index)}
         self.tool(3); o=self.c.overlay
-        self.mouse(QEvent.MouseButtonPress,anchor.x,anchor.y)
-        self.mouse(QEvent.MouseMove,anchor.x+15,anchor.y+5)
+        self.mouse(QEvent.Type.MouseButtonPress,anchor.x,anchor.y)
+        self.mouse(QEvent.Type.MouseMove,anchor.x+15,anchor.y+5)
         assert o.drag=='point' and self.data()!=before
-        self.key(Qt.Key_Escape); assert self.data()==before
+        self.key(Qt.Key.Key_Escape); assert self.data()==before
         self.result['locked_active_point_ignores_misses_shift_select_all_and_survives_tool_switch']='pass'
         self.c.lock_point.setChecked(False)
         self.c.selection_mode.setCurrentIndex(2)
         self.click(anchor.x,anchor.y)
         assert o.selection.strokes=={stroke.uid} and not o.selection.points
         assert len(o.selected_point_refs())==len(stroke.points)
-        self.mouse(QEvent.MouseButtonPress,anchor.x,anchor.y)
-        self.mouse(QEvent.MouseMove,anchor.x+15,anchor.y+5)
+        self.mouse(QEvent.Type.MouseButtonPress,anchor.x,anchor.y)
+        self.mouse(QEvent.Type.MouseMove,anchor.x+15,anchor.y+5)
         assert o.drag=='stroke'
         for old,new in zip(before,self.data()):
             if old['id']==stroke.uid:
                 assert all(math.isclose(p[0]-q[0],15,abs_tol=1e-5) and math.isclose(p[1]-q[1],5,abs_tol=1e-5) for p,q in zip(new['points'],old['points']))
             else: assert old==new
-        self.key(Qt.Key_Escape); assert self.data()==before
+        self.key(Qt.Key.Key_Escape); assert self.data()==before
         self.result['stroke_selection_from_anchor_moves_whole_path_and_escape_restores']='pass'
         self.c.selection_mode.setCurrentIndex(1); self.select({(stroke.uid,index)},(stroke.uid,index))
 

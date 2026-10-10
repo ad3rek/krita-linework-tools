@@ -2,6 +2,31 @@
 
 The original validation environment is **Linux x86_64, Krita 5.2.14 / Qt 5.15.17 / Python 3.12**. The bridge requires compatible native libraries. Canvas regressions run the real application in isolation; they do not replace physical stylus validation.
 
+## 0.1.4 validation
+
+The release CPU suite passed **100 tests**: [run log](validation/0.1.4/cpu-tests.txt). The [release report](validation/0.1.4/release.json) lists the fresh application runs, and [native build provenance](validation/0.1.4/native-build.json) records the version matrix, official archives, SDK packages and SHA256 hashes. Seven Windows bridges compiled against the matching application headers and exports; the Linux bridge remains specific to 5.2.14.
+
+The official Windows **5.3.4.1 and 6.0.4.1** applications passed the layer lifecycle, thickness-handle and smoothing probes under Wine 11.0. Layer tests exercise deleting and restoring a stroke through both Linework history and native Undo, switching layers without delayed reselection, editing the selected layer and drawing after removing a Linework layer. Thickness tests use the actual **Basic-1 Quick Brush preset**: both guide ends, 100% and 1067% zoom, active-point locking, native pixel changes, exact Undo restoration and selection preservation when a different engine rejects an edit.
+
+Windows 5.3.4.1 and 6.0.4.1 also passed rapid drawing, queued mouse/tablet/shortcut input, continued drawing and saved/reopened pixels with normal exits. Qt 6 input is copied through native event cloning because its PyQt binding omits the timestamp setter used by Qt 5. Both versions passed the Spanish localization probe. Windows 6.0.4.1 additionally passed closing with multiple views and returning to editing after a cancelled close.
+
+The fresh Linux 5.2.14, Windows 5.3.4.1 and Windows 6.0.4.1 animation probes also passed all **27 checks**, including normal process exits. Native image-to-tool stroke requests are disconnected while a window closes and restored if the user cancels closing. Queued animation updates skip closing windows and documents without a live view. The runner records `application_exit_code` and treats a crash after functional checks as a failed run.
+
+Linux 5.2.14 passed the same thickness cases, foreground-color editing, and localization probes for Spanish and Arabic. Localization checks include native tool titles, action/toolbox tooltips, Tool Options, the selected-language override and right-to-left layout. The catalog checks verify all locale JSON files and formatting placeholders; they do not establish translation quality. See [catalog coverage](TRANSLATIONS.md).
+
+To reproduce the additional probes:
+
+```sh
+python3 tests/gui/run.py layer_lifecycle
+python3 tests/gui/run.py thickness_handles
+python3 tests/gui/run.py localization --language es
+python3 tests/gui/run.py localization --language ar
+python3 tests/gui/run_windows_wine.py thickness_handles --krita-bin /path/krita-x64-5.3.4.1/bin
+python3 tests/gui/run_windows_wine.py layer_lifecycle --krita-bin /path/krita-x64-6.0.4.1/bin
+```
+
+Every passing application run also requires a normal process exit. Windows testing uses the actual official Windows runtimes in dedicated Wine prefixes; it is not physical Windows or stylus validation. The full 743-stroke Windows bulk replay/history check remains incomplete. Reports below retain their historical version and source scope.
+
 ## CPU tests
 
 From the repository root:
@@ -13,11 +38,11 @@ python3 -m unittest discover -s tests -v
 
 The first command requires a C++17 `g++` compiler and rebuilds only the vectorizer. The suite also compiles a reference library from the original OpenToonz sources. Neither the OpenToonz application nor a running Krita is required.
 
-**70 tests passed**, including 16 synthetic fixtures compared against the original core: quadratic position and radius controls match exactly. [Published run log](validation/cpu-tests.txt) · [Reference scope](validation/opentoonz-reference.json).
+The initial 0.1 validation had **70 tests passed**, including 16 synthetic fixtures compared against the original core: quadratic position and radius controls match exactly. [Published run log](validation/cpu-tests.txt) · [Reference scope](validation/opentoonz-reference.json).
 
 ## Krita GUI regressions
 
-Requirements: Krita 5.2.14 compatible with the bridge, its Python/PyQt5 plugin support, `xvfb-run`, `timeout` and Krita's standard presets. Debian/Ubuntu provide `xvfb-run` through `xvfb`, with `xauth` required.
+Requirements: a supported Krita version compatible with its bridge and Python/PyQt plugin support, `xvfb-run`, `timeout` and Krita's standard presets. Debian/Ubuntu provide `xvfb-run` through `xvfb`, with `xauth` required.
 
 ```sh
 python3 tests/gui/run.py cc_lineart
@@ -26,6 +51,7 @@ python3 tests/gui/run.py smoothing
 python3 tests/gui/run.py color
 python3 tests/gui/run.py stroke_lifecycle
 python3 tests/gui/run.py eraser_topology
+python3 tests/gui/run.py animation
 ```
 
 Each run creates a **separate configuration, resources, test plugin, temporary directory and Krita instance**. It does not use the user's open documents or Krita configuration. Results go to `work/gui-results/<probe>/`, ignored by Git; `--output /path` chooses another destination.
@@ -34,10 +60,13 @@ Each run creates a **separate configuration, resources, test plugin, temporary d
 | --- | --- |
 | `cc_lineart` | Treated grayscale bitmap, zoomable preview, new layer, all-stroke preset replacement, all-point diameter editing, preserved pressure/handles, history, point editing, shape observer, save/reopen and unchanged source. |
 | `multi_point` | Inherited native selection, Shift, mixed fields, thickness across different base widths, hidden originals while dragging, Esc, rectangle, deletion, Ctrl+A and save/reopen. |
-| `smoothing` | Qt tablet events through four native filters, compaction and sampled error, pressure, handles, history, Esc, delay, finishing, saving during drawing and tool switching. |
+| `smoothing` | Qt tablet events through four legacy native filters, plus Pixel smoothing on modern builds, compaction and sampled error, pressure, handles, history, Esc, delay, finishing, saving during drawing and tool switching. |
 | `color` | Foreground recoloring of native brushes and smooth lines, selected/whole-layer scope, debounce, rendered pixels, grouped undo/redo, locked layers and save/reopen. |
 | `eraser_topology` | 21 checks: native point thinning, zero recovery, pressure, saving, swept line deletion, cancellation, locks, active style and retained diameters, merging/welding/closing, expanded point/handle targets, point/stroke selection, active-point lock and save/reopen. |
 | `stroke_lifecycle` | Rapid mouse/tablet input in four modes, double click, another gesture during native rendering, queued mouse/tablet/shortcuts, missed release, separate undo steps, continued drawing, native pixels and save/reopen. |
+| `animation` | Native raster keyframes: conversion and source backup, frame-local brush/point/thickness/color edits, copying identical pixels with distinct geometry, linked clones, moving/deleting, native Undo/Redo, preview cancellation and time switching, immediate save after copy, `.kra` reopening, PNG frame export and native playback. |
+
+The earlier 5.2.14 animation development build passed **27 checks on Linux** and **27 on Windows under Wine 11.0**: [Linux animation report](validation/animation.json), [Windows/Wine animation report](validation/windows-animation.json). The probe also checks a real Timeline cell/duplicate action, the native blank regenerated when frame 0 is moved, a vector edit in the same document followed by saving, and external native-brush painting protected against Linework overwrite. PNG frames use Krita's guarded save/export snapshot path. Physical Windows and tablets are outside these reports.
 
 Published reports: [lineart](validation/cc-lineart.json), [multiple selection](validation/multi-point.json), [fresh smoothing run](validation/smoothing.json), and [earlier reduction with reopening in another process](validation/point-reduction.json).
 

@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Krita SVG bridge. Only explicitly recorded plugin shapes are replaced."""
+from .i18n import tr
 import hashlib
 import json
 import math
-from PyQt5.QtCore import QByteArray
+from .qt import QByteArray
 from .model import load_strokes, svg
 from .native_brush import refresh_layer, shape_write
 
@@ -19,8 +20,8 @@ def metadata(document):
     if not raw:
         return {"version": 6, "layers": {}}
     data = json.loads(raw.decode("utf-8"))
-    if data.get("version") not in (1, 2, 3, 4, 5, 6) or not isinstance(data.get("layers"), dict):
-        raise ValueError("Dados Linework de versão não suportada.")
+    if data.get("version") not in (1, 2, 3, 4, 5, 6, 7) or not isinstance(data.get("layers"), dict):
+        raise ValueError(tr("Linework data of unsupported version."))
     return data
 
 
@@ -49,8 +50,7 @@ def check_layer(layer, record, verify=True):
     actual = {s.name(): s for s in layer.shapes()}
     for name, fingerprint in expected.items():
         if name not in actual or (verify and not matches_shape(actual[name], name, record)):
-            raise ValueError("Esta camada foi alterada pelas ferramentas nativas do Krita. "
-                             "Crie uma nova camada Linework para preservar essas alterações.")
+            raise ValueError(tr("This layer was changed by Krita's native tools. Create a new Linework layer to preserve these changes."))
     return actual
 
 
@@ -65,11 +65,13 @@ def check_geometry(document, record):
     valid = previous[:2] == current[:2] and all(math.isclose(a, b, rel_tol=1e-5, abs_tol=.001)
                                               for a, b in zip(previous[2:], current[2:]))
     if not valid:
-        raise ValueError("O tamanho ou a resolução do documento mudou após criar os traços. "
-                         "Preserve a camada existente e crie uma nova camada Linework.")
+        raise ValueError(tr("The document size or resolution changed after you created the strokes. Preserve the existing layer and create a new Linework layer."))
 
 
 def read_layer(document, layer, view=None):
+    if layer is not None and layer.type() == "paintlayer":
+        from .animation import read_frame
+        return read_frame(document, layer)
     if layer is None or layer.type() != "vectorlayer":
         return None
     record = metadata(document)["layers"].get(layer_id(layer))
@@ -84,19 +86,22 @@ def read_layer(document, layer, view=None):
     return load_strokes(record.get("strokes", []))
 
 
-def write_layer(document, layer, strokes, native_renderer=None, trusted=False):
+def write_layer(document, layer, strokes, native_renderer=None, trusted=False, frame=None):
+    if layer is not None and layer.type() == "paintlayer":
+        from .animation import write_frame
+        return write_frame(document, layer, strokes, native_renderer, frame)
     data = metadata(document)
     new_layer = layer is None
     if new_layer:
-        layer = document.createVectorLayer("Linework — traços editáveis")
+        layer = document.createVectorLayer(tr("Linework — editable strokes"))
         active = document.activeNode()
         parent = active.parentNode() if active else document.rootNode()
         if parent is None:
             parent = document.rootNode()
         if not parent.addChildNode(layer, active):
-            raise RuntimeError("Não foi possível criar a camada vetorial.")
+            raise RuntimeError(tr("Unable to create vector layer."))
     if layer.locked():
-        raise ValueError("Desbloqueie a camada antes de aplicar.")
+        raise ValueError(tr("Unlock the layer before applying."))
     key = layer_id(layer)
     previous = data["layers"].get(key, {"strokes": [], "shapes": {}})
     check_geometry(document, previous)
@@ -111,7 +116,7 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False):
         # any outside edits are still detected when the layer is rebound.
         for name, fingerprint in previous["shapes"].items():
             if name not in retained and not matches_shape(current[name], name, previous):
-                raise ValueError("Esta camada foi alterada pelas ferramentas nativas do Krita.")
+                raise ValueError(tr("This layer was changed by Krita's native tools."))
     # Painting/PNG preparation may yield to Qt while the old shapes are stable.
     # Only the import, replacements and final metadata/projection commit enter
     # the native outer wait; other plugins never observe partially changed lists.
@@ -129,14 +134,14 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False):
             if changed:
                 added = list(layer.addShapesFromSvg(markup))
                 if len(added) != len(changed):
-                    raise RuntimeError("O Krita não importou todos os traços vetoriais.")
+                    raise RuntimeError(tr("Krita did not import all vector strokes."))
                 for shape, stroke in zip(added, changed):
                     shape.setName("lw_" + stroke.uid)
             for name in previous["shapes"]:
                 if name in retained:
                     continue
                 if not current[name].remove():
-                    raise RuntimeError("Não foi possível substituir um traço da camada.")
+                    raise RuntimeError(tr("Unable to replace a layer stroke."))
         except Exception:
             for shape in added:
                 shape.remove()
@@ -159,10 +164,14 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False):
                                 "shapes": {name: previous["shapes"][name] if name in retained else digest(s)
                                            for name, s in owned.items()}}
         # Older versions must refuse these documents instead of discarding handles.
-        data["version"] = 6
-        document.setAnnotation(ANNOTATION, "Linhas e pressão editáveis do plugin Linework",
+        data["version"] = max(6, data.get("version", 6))
+        document.setAnnotation(ANNOTATION, tr("Linework plugin editable lines and pressure"),
                                QByteArray(json.dumps(data, ensure_ascii=False).encode("utf-8")))
-        document.setActiveNode(layer)
+        if data['version'] >= 7:
+            from .animation import protect_save
+            protect_save(document, data)
+        if new_layer:
+            document.setActiveNode(layer)
         document.setModified(True)
         document.refreshProjection()
         refresh_layer(layer)

@@ -1,0 +1,38 @@
+{
+  "Windows": {
+    "5.2.14": {
+      "file": "linework_native.dll",
+      "qt": 5
+    },
+    "5.3.3": {
+      "file": "5.3.3/linework_native.dll",
+      "qt": 5
+    },
+    "5.3.4": {
+      "file": "5.3.4/linework_native.dll",
+      "qt": 5
+    },
+    "5.3.4.1": {
+      "file": "5.3.4.1/linework_native.dll",
+      "qt": 5
+    },
+    "6.0.3": {
+      "file": "6.0.3/linework_native.dll",
+      "qt": 6
+    },
+    "6.0.4": {
+      "file": "6.0.4/linework_native.dll",
+      "qt": 6
+    },
+    "6.0.4.1": {
+      "file": "6.0.4.1/linework_native.dll",
+      "qt": 6
+    }
+  },
+  "Linux": {
+    "5.2.14": {
+      "file": "liblinework_native.so",
+      "qt": 5
+    }
+  }
+}

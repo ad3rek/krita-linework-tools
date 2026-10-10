@@ -1,5 +1,6 @@
 KRITA LINEWORK TOOLS — TECHNICAL USER REFERENCE
-Krita 5.2.14 / desktop x86_64 / Qt 5
+Windows: Krita 5.2.14, 5.3.3, 5.3.4, 6.0.3, 6.0.4 / x86_64 / Qt 5 or 6
+Linux: Krita 5.2.14 / x86_64 / compatible Qt 5.15.17
 Integration: GPL-3.0-or-later; OpenToonz core: BSD-3-Clause
 
 The main README.md contains the article, screenshots, installation and tests.
@@ -29,6 +30,8 @@ selection in Edit/Thickness. Ctrl+Z/Ctrl+Shift+Z use Linework's session history,
 which is independent of native history and survives switching Linework tools.
 
 Native smoothing
+Krita 5.3/6.0 also exposes Pixel smoothing and native minimum/maximum
+distances with a proportion lock. The plugin selects the application’s Qt API.
 None uses direct sample segments; Basic uses Krita freehand Bézier interpolation;
 Weighted uses the native distance filter with finishing, pressure smoothing and
 zoom scaling; Stabilizer uses native sample averaging, delay distance, finish
@@ -103,7 +106,7 @@ Only Size sensors in a private preset copy are replaced with a linear diameter
 sensor on KisPaintInformation's Perspective channel. Pressure uses its own
 channel. Installed presets and the user's current preset are unchanged.
 Continuous stroke spacing is retained, and diameter can exceed the base width.
-Direct control supports Smooth line and Pixel/Color Smudge. Unsupported engines
+Direct control supports Smooth line and Pixel/Color Smudge/Quick Brush. Unsupported engines
 are rejected before application. Converting a nonlinear sensor curve at anchors
 and controls can change interpolation between anchors; other Size sensors stop
 contributing once diameter is explicitly edited. Old appearance remains saved

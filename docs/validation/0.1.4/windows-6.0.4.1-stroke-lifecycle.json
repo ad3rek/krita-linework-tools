@@ -1,0 +1,15 @@
+{
+  "rapid_mouse_and_tablet_mode_0": "pass",
+  "rapid_mouse_and_tablet_mode_1": "pass",
+  "rapid_mouse_and_tablet_mode_2": "pass",
+  "rapid_mouse_and_tablet_mode_3": "pass",
+  "double_click_starts_next_brush_stroke": "pass",
+  "input_during_native_wait_is_ordered_and_both_strokes_persist": "pass",
+  "queued_mouse_and_shortcuts_preserve_event_order": "pass",
+  "new_press_preserves_previous_path_after_missing_release": "pass",
+  "individual_strokes_keep_separate_undo_steps": "pass",
+  "subsequent_drawing_and_kra_round_trip": "pass",
+  "result": "pass",
+  "krita": "6.0.4.1 (git bd6e8d0)",
+  "application_exit_code": 0
+}

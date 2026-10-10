@@ -1,20 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Native Krita paint engines, cached as embedded images on editable centerlines."""
+from .i18n import tr
 import ctypes
 import hashlib
 import json
-import re
 from collections import OrderedDict
 from contextlib import contextmanager
 from functools import lru_cache
 from xml.etree import ElementTree
 from pathlib import Path
-from PyQt5 import sip
-from PyQt5.QtCore import QByteArray, QBuffer, QIODevice, QRect
-from PyQt5.QtGui import QImage
+from .qt import sip
+from .qt import QByteArray, QBuffer, QIODevice, QRect
+from .qt import QImage
 from krita import Krita, Preset
 from .model import samples, distance, clamp, freeze_thickness, thickness_factor
-from .native_library import library_path
+from .native_library import load_native_bridge
 
 _BRIDGE_LIBRARY = None
 
@@ -25,7 +25,7 @@ def size_transfer(xml):
     try:
         function = library.linework_pressure_to_size
     except AttributeError as exc:
-        raise ValueError('Reabra o Krita para carregar o controle de espessura atualizado.') from exc
+        raise ValueError(tr("Reopen Krita to load the updated thickness control.")) from exc
     function.argtypes = [ctypes.c_char_p, ctypes.c_double]
     function.restype = ctypes.c_double
     encoded = xml.encode()
@@ -41,8 +41,8 @@ def size_factor(brush, pressure):
 
 def validate_thickness_brush(brush):
     engine = ElementTree.fromstring(brush['xml']).get('paintopid')
-    if engine not in ('paintbrush', 'colorsmudge'):
-        raise ValueError('O controle direto de espessura requer um preset dos motores Pixel ou Color Smudge do Krita.')
+    if engine not in ('paintbrush', 'colorsmudge', 'roundmarker'):
+        raise ValueError(tr("Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset."))
 
 
 def ensure_thickness(stroke):
@@ -63,12 +63,7 @@ def load_library():
     # Keep their library loaded for the complete plugin/application lifetime.
     global _BRIDGE_LIBRARY
     if _BRIDGE_LIBRARY is None:
-        if not re.fullmatch(r'5\.2\.14(?:[- ].*)?', Krita.instance().version()):
-            raise ValueError("This native bridge requires Krita 5.2.14.")
-        try:
-            _BRIDGE_LIBRARY = ctypes.PyDLL(str(library_path('native')))
-        except OSError as exc:
-            raise ValueError("Não foi possível carregar o motor nativo Linework: "+str(exc)) from exc
+        _BRIDGE_LIBRARY = load_native_bridge(Krita.instance().version())
     return _BRIDGE_LIBRARY
 
 
@@ -78,8 +73,18 @@ def native_busy():
     return bool(function())
 
 
+def active_node(view):
+    """Read this canvas' selected node without delivering nested GUI events."""
+    from .qt import QUuid
+    function = load_library().linework_view_active_node
+    function.argtypes = [ctypes.c_void_p]
+    function.restype = ctypes.c_char_p
+    uid = function(sip.unwrapinstance(view))
+    return view.document().nodeByUniqueID(QUuid(uid.decode())) if uid else None
+
+
 def update_layer_icons(window, layers):
-    from PyQt5.QtWidgets import QWidget
+    from .qt import QWidget
     if not layers and _BRIDGE_LIBRARY is None:
         return
     library = load_library()
@@ -96,10 +101,10 @@ def update_layer_icons(window, layers):
 def capture_brush(view):
     eraser = Krita.instance().action("erase_action")
     if eraser and eraser.isChecked():
-        raise ValueError("Desative a borracha do Krita; use a ferramenta Linework Erase para apagar linhas.")
+        raise ValueError(tr("Disable the Krita eraser; use the Linework Erase tool to erase lines."))
     resource = view.currentBrushPreset()
     if resource is None:
-        raise ValueError("Selecione um preset no painel Pincéis do Krita.")
+        raise ValueError(tr("Select a preset in Krita's Brushes panel."))
     return {"engine": "krita-native", "name": resource.name(),
             "filename": resource.filename(), "xml": Preset(resource).toXML(),
             "flow": view.paintingFlow()}
@@ -137,12 +142,12 @@ def shape_write(layer):
         begin = library.linework_shape_write_begin
         end = library.linework_shape_write_end
     except AttributeError as exc:
-        raise ValueError("Reabra o Krita para carregar a ponte nativa Linework atualizada.") from exc
+        raise ValueError(tr("Reopen Krita to load the updated Linework native bridge.")) from exc
     begin.argtypes = [ctypes.c_void_p]; begin.restype = ctypes.c_void_p
     end.argtypes = [ctypes.c_void_p]; end.restype = None
     session = begin(sip.unwrapinstance(layer))
     if not session:
-        raise ValueError("Não foi possível iniciar a gravação segura da camada Linework.")
+        raise ValueError(tr("Could not begin a protected Linework layer write."))
     try:
         yield
     finally:
@@ -157,25 +162,25 @@ def refresh_layer(layer):
 
 
 def shape_frame(shape):
-    from PyQt5.QtGui import QTransform
+    from .qt import QTransform
     library = load_library()
     library.linework_shape_info.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     library.linework_shape_info.restype = ctypes.c_int
     info = (ctypes.c_double*9)()
     if not library.linework_shape_info(sip.unwrapinstance(shape), info):
-        raise ValueError('Não foi possível ler a transformação do traço.')
+        raise ValueError(tr("Unable to read the stroke transformation."))
     transform = QTransform(*info[:6])
     return transform if info[8] else QTransform.fromScale(info[6], info[7])*transform
 
 
 def shape_image_bounds(shape):
-    from PyQt5.QtCore import QRectF
+    from .qt import QRectF
     library = load_library()
     library.linework_shape_image_bounds.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     library.linework_shape_image_bounds.restype = ctypes.c_int
     info = (ctypes.c_double*4)()
     if not library.linework_shape_image_bounds(sip.unwrapinstance(shape), info):
-        raise ValueError('A imagem do traço não pôde ser localizada.')
+        raise ValueError(tr("The stroke image could not be located."))
     return QRectF(*info)
 
 
@@ -185,7 +190,7 @@ def shape_canonical(shape):
     library.linework_shape_canonical.restype = ctypes.c_char_p
     value = library.linework_shape_canonical(sip.unwrapinstance(shape))
     if not value:
-        raise ValueError('Não foi possível verificar a geometria do traço.')
+        raise ValueError(tr("Unable to check stroke geometry."))
     return value.decode('utf-8')
 
 
@@ -209,7 +214,7 @@ def render_shape(document, layer, shape, stroke, renderer):
         count = len(poly)
     if not function(sip.unwrapinstance(layer), sip.unwrapinstance(shape), png, points, count,
                     x,y,width,height,72/document.xRes(),72/document.yRes()):
-        raise ValueError('Não foi possível atualizar a aparência do traço transformado.')
+        raise ValueError(tr("Unable to update the appearance of the transformed stroke."))
 
 
 class NativeBrushRenderer:
@@ -235,7 +240,7 @@ class NativeBrushRenderer:
         try:
             self._uncached_paint = self.library.linework_paint_with_thickness
         except AttributeError as exc:
-            raise ValueError('Reabra o Krita para carregar o controle de espessura atualizado.') from exc
+            raise ValueError(tr("Reopen Krita to load the updated thickness control.")) from exc
         self._uncached_paint.argtypes = ([ctypes.c_void_p]*3+[ctypes.c_char_p]*2+
             [ctypes.c_double]*3+[ctypes.POINTER(ctypes.c_double), ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_int])
         self._uncached_paint.restype = ctypes.c_int
@@ -309,7 +314,7 @@ class NativeBrushRenderer:
         if bounds.isEmpty():
             bounds = QRect(0, 0, 1, 1)
         pixels = bytes(self.node.pixelData(bounds.x(), bounds.y(), bounds.width(), bounds.height()))
-        image = QImage(pixels, bounds.width(), bounds.height(), bounds.width()*4, QImage.Format_ARGB32).copy()
+        image = QImage(pixels, bounds.width(), bounds.height(), bounds.width()*4, QImage.Format.Format_ARGB32).copy()
         return bounds, image
 
     def start_live(self, stroke):
@@ -356,7 +361,7 @@ class NativeBrushRenderer:
         try:
             x, y, width, height = bounds
             pixels = ctypes.string_at(self.library.linework_preview_pixels(preview), width*height*4)
-            image = QImage(pixels, width, height, width*4, QImage.Format_ARGB32).copy()
+            image = QImage(pixels, width, height, width*4, QImage.Format.Format_ARGB32).copy()
             return QRect(x, y, width, height), image
         finally:
             self.library.linework_preview_delete(preview)
@@ -374,7 +379,7 @@ class NativeBrushRenderer:
         for resource in resources.values():
             if resource.filename() == brush["filename"] and resource.name() == brush["name"]:
                 return resource
-        raise ValueError("Reinstale o preset nativo “{}” para editar este traço.".format(brush["name"]))
+        raise ValueError(tr("Reinstall the native preset “{0}” to edit this stroke.").format(brush["name"]))
 
     def render(self, stroke, preview=False):
         key = hashlib.sha256(json.dumps(stroke.data(), sort_keys=True).encode()).hexdigest()
@@ -382,7 +387,7 @@ class NativeBrushRenderer:
             self.cache.move_to_end(key)
             return self.cache[key]
         if self.busy:
-            raise ValueError("O renderizador de pincéis está ocupado.")
+            raise ValueError(tr("The brush renderer is busy."))
         self.load_bridge()
         self.busy = True
         try:
@@ -426,16 +431,16 @@ class NativeBrushRenderer:
                 return bounds, image, None
             data = QByteArray()
             buffer = QBuffer(data)
-            buffer.open(QIODevice.WriteOnly)
+            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
             if not image.save(buffer, "PNG"):
-                raise ValueError("Falha ao gravar a aparência do pincel.")
+                raise ValueError(tr("Failed to save brush appearance."))
             encoded = bytes(data.toBase64()).decode("ascii")
             result = (bounds, image, encoded)
             self.cache[key] = result
-            self.cache_bytes += image.byteCount()+len(encoded)
+            self.cache_bytes += image.sizeInBytes()+len(encoded)
             while self.cache_bytes > 64*1024*1024 and len(self.cache) > 1:
                 _, old = self.cache.popitem(last=False)
-                self.cache_bytes -= old[1].byteCount()+len(old[2])
+                self.cache_bytes -= old[1].sizeInBytes()+len(old[2])
             return result
         finally:
             self.busy = False
@@ -447,3 +452,11 @@ class NativeBrushRenderer:
         return ('<g id="lw_{}"><image x="{}" y="{}" width="{}" height="{}" '
                 'xlink:href="data:image/png;base64,{}"/></g>').format(stroke.uid,
                     bounds.x(), bounds.y(), bounds.width(), bounds.height(), encoded)
+
+
+def guard_view_close(view, closing=True):
+    library=load_library()
+    method=library.linework_view_close_guard
+    method.argtypes=[ctypes.c_void_p,ctypes.c_int]
+    method.restype=None
+    method(sip.unwrapinstance(view),int(closing))

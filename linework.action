@@ -2,11 +2,38 @@
 <ActionCollection version="2" name="Linework">
   <Actions category="Tools">
     <text>Linework</text>
+    <Action name="linework_animate">
+      <icon />
+      <text>Animate Linework layer…</text>
+      <toolTip>Animate Linework layer…</toolTip>
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+    </Action>
+    <Action name="linework_blank_frame">
+      <icon />
+      <text>New Linework frame…</text>
+      <toolTip>New Linework frame…</toolTip>
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+    </Action>
+    <Action name="linework_duplicate_frame">
+      <icon />
+      <text>Duplicate Linework frame…</text>
+      <toolTip>Duplicate Linework frame…</toolTip>
+      <shortcut />
+      <isCheckable>false</isCheckable>
+      <activationFlags>0</activationFlags>
+      <activationConditions>0</activationConditions>
+    </Action>
     <Action name="linework_vectorize">
       <icon />
-      <text>Vetorizar camada em Linework…</text>
-      <toolTip>Converter uma camada raster em traços Linework editáveis</toolTip>
-      <iconText>Vetorizar camada</iconText>
+      <text>Vectorize layer in Linework…</text>
+      <toolTip>Vectorize layer in Linework…</toolTip>
+      <iconText>Vectorize layer in Linework…</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>
@@ -16,9 +43,9 @@
     </Action>
     <Action name="LineworkBrush">
       <icon />
-      <text>Linework Brush — pincel</text>
-      <toolTip>Linework Brush — pincel</toolTip>
-      <iconText>Linework Brush — pincel</iconText>
+      <text>Linework Brush</text>
+      <toolTip>Linework Brush</toolTip>
+      <iconText>Linework Brush</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>
@@ -28,9 +55,9 @@
     </Action>
     <Action name="LineworkCurve">
       <icon />
-      <text>Linework Curve — curva</text>
-      <toolTip>Linework Curve — curva</toolTip>
-      <iconText>Linework Curve — curva</iconText>
+      <text>Linework Curve</text>
+      <toolTip>Linework Curve</toolTip>
+      <iconText>Linework Curve</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>
@@ -40,9 +67,9 @@
     </Action>
     <Action name="LineworkLine">
       <icon />
-      <text>Linework Line — linha</text>
-      <toolTip>Linework Line — linha</toolTip>
-      <iconText>Linework Line — linha</iconText>
+      <text>Linework Line</text>
+      <toolTip>Linework Line</toolTip>
+      <iconText>Linework Line</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>
@@ -52,9 +79,9 @@
     </Action>
     <Action name="LineworkEdit">
       <icon />
-      <text>Linework Edit — pontos</text>
-      <toolTip>Linework Edit — pontos</toolTip>
-      <iconText>Linework Edit — pontos</iconText>
+      <text>Linework Edit</text>
+      <toolTip>Linework Edit</toolTip>
+      <iconText>Linework Edit</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>
@@ -64,9 +91,9 @@
     </Action>
     <Action name="LineworkPressure">
       <icon />
-      <text>Linework Thickness — espessura</text>
-      <toolTip>Linework Thickness — espessura</toolTip>
-      <iconText>Linework Thickness — espessura</iconText>
+      <text>Linework Thickness</text>
+      <toolTip>Linework Thickness</toolTip>
+      <iconText>Linework Thickness</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>
@@ -76,9 +103,9 @@
     </Action>
     <Action name="LineworkErase">
       <icon />
-      <text>Linework Erase — apagar traço</text>
-      <toolTip>Linework Erase — apagar traço</toolTip>
-      <iconText>Linework Erase — apagar traço</iconText>
+      <text>Linework Erase</text>
+      <toolTip>Linework Erase</toolTip>
+      <iconText>Linework Erase</iconText>
       <whatsThis />
       <shortcut />
       <isCheckable>false</isCheckable>

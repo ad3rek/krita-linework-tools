@@ -150,7 +150,9 @@ def compact_stroke(stroke, mode):
     """
     before = len(stroke.points)
     if before < 3 or stroke.kind != 'curve': return before, before
-    tolerance = min(MODE_TOLERANCE[max(0, min(3, int(mode)))], max(.03, stroke.width*.08))
+    # Pixel-perfect native paths keep the same tight limit as unsmoothed input.
+    index = 0 if int(mode) == 4 else max(0, min(3, int(mode)))
+    tolerance = min(MODE_TOLERANCE[index], max(.03, stroke.width*.08))
     pressure_tolerance = min(PRESSURE_TOLERANCE, DIAMETER_TOLERANCE/max(1., stroke.width))
     limits = (tolerance, pressure_tolerance, DIAMETER_TOLERANCE)
     independent = any(p.thickness is not None for p in stroke.points)

@@ -1,0 +1,10 @@
+{
+  "zoom_1.0_side_1_locked_False": "pass",
+  "zoom_10.67_side_-1_locked_False": "pass",
+  "zoom_10.67_side_1_locked_True": "pass",
+  "rejected_engine_preserves_selection_geometry_appearance_and_history": "pass",
+  "result": "pass",
+  "krita": "6.0.4.1 (git bd6e8d0)",
+  "application_exit_code": 0,
+  "exit_verification": "Runner process exit observed; retained original test scope."
+}

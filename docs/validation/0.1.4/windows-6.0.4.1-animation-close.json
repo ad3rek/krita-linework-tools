@@ -1,0 +1,8 @@
+{
+  "animated_view_is_editable": "pass",
+  "cancelled_close_restores_editable_tool": "pass",
+  "reopened_second_view_is_editable": "pass",
+  "result": "pass",
+  "krita": "6.0.4.1 (git bd6e8d0)",
+  "application_exit_code": 0
+}

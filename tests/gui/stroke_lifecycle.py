@@ -2,13 +2,14 @@
 """Verify release, subsequent strokes and input delivered during native waits."""
 import json
 import os
+import sys
 import time
 import traceback
 from pathlib import Path
 from krita import Krita, Extension, ManagedColor
-from PyQt5.QtCore import QEvent, QPointF, QTimer, Qt
-from PyQt5.QtGui import QColor, QKeyEvent, QMouseEvent, QTabletEvent
-from PyQt5.QtWidgets import QApplication, QDialog
+from linework.qt import QEvent, QPointF, QTimer, Qt
+from linework.qt import QColor, QKeyEvent, QMouseEvent, tablet_event
+from linework.qt import QApplication, QDialog
 
 ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 
@@ -16,7 +17,13 @@ ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 class Probe(Extension):
     def setup(self):
         self.result = {}; self.tries = 0
+        self.event_error=None
+        sys.excepthook=self.on_event_error
         self.after(self.start, 1800)
+
+    def on_event_error(self, kind, value, tb):
+        self.event_error=''.join(traceback.format_exception(kind,value,tb))
+        (ROOT/'event-error.txt').write_text(self.event_error)
 
     def createActions(self, window): pass
 
@@ -24,7 +31,13 @@ class Probe(Extension):
         QTimer.singleShot(delay, lambda: self.safe(fn))
 
     def safe(self, fn):
-        try: fn()
+        try:
+            if hasattr(self, 'c') and (self.c.input_busy() or self.c._pending_input):
+                self.after(fn,100)
+                return
+            if self.event_error: raise AssertionError(self.event_error)
+            (ROOT/'phase.json').write_text(json.dumps({'phase': fn.__name__, 'mode': getattr(self, 'mode', None), 'completed': self.result}))
+            fn()
         except Exception:
             self.result.update(result='fail', traceback=traceback.format_exc())
             self.finish()
@@ -73,19 +86,18 @@ class Probe(Extension):
         o = self.c.overlay
         assert o, self.c.status.text()
         o.sync_transform(); pos = o.image_to_widget.map(QPointF(x, y))
-        buttons = Qt.NoButton if kind == 'release' else Qt.LeftButton
+        buttons = Qt.MouseButton.NoButton if kind == 'release' else Qt.MouseButton.LeftButton
         if tablet:
-            etype = {'press': QEvent.TabletPress, 'move': QEvent.TabletMove,
-                     'release': QEvent.TabletRelease}[kind]
-            ev = QTabletEvent(etype, pos, pos, QTabletEvent.Stylus, QTabletEvent.Pen,
-                0 if kind == 'release' else pressure, 0, 0, 0, 0, 0, Qt.NoModifier,
-                1, Qt.LeftButton, buttons)
+            etype = {'press': QEvent.Type.TabletPress, 'move': QEvent.Type.TabletMove,
+                     'release': QEvent.Type.TabletRelease}[kind]
+            ev = tablet_event(etype, pos, 0 if kind == 'release' else pressure,
+                              Qt.MouseButton.LeftButton, buttons, Qt.KeyboardModifier.NoModifier)
         else:
             self.c._tablet_until = 0
-            etype = {'press': QEvent.MouseButtonPress, 'move': QEvent.MouseMove,
-                     'release': QEvent.MouseButtonRelease, 'double': QEvent.MouseButtonDblClick}[kind]
-            ev = QMouseEvent(etype, pos, Qt.NoButton if kind == 'move' else Qt.LeftButton,
-                             buttons, Qt.NoModifier)
+            etype = {'press': QEvent.Type.MouseButtonPress, 'move': QEvent.Type.MouseMove,
+                     'release': QEvent.Type.MouseButtonRelease, 'double': QEvent.Type.MouseButtonDblClick}[kind]
+            ev = QMouseEvent(etype, pos, Qt.MouseButton.NoButton if kind == 'move' else Qt.MouseButton.LeftButton,
+                             buttons, Qt.KeyboardModifier.NoModifier)
         QApplication.sendEvent(self.c.native_widget, ev)
 
     def stroke(self, y, tablet=False, double=False):
@@ -144,9 +156,9 @@ class Probe(Extension):
         def paint(*args):
             renderer._paint = original
             self.stroke(850)
-            for key in (Qt.Key_Z, Qt.Key_Y):
-                for kind in (QEvent.ShortcutOverride, QEvent.KeyPress):
-                    QApplication.sendEvent(self.c.native_widget, QKeyEvent(kind, key, Qt.ControlModifier))
+            for key in (Qt.Key.Key_Z, Qt.Key.Key_Y):
+                for kind in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress):
+                    QApplication.sendEvent(self.c.native_widget, QKeyEvent(kind, key, Qt.KeyboardModifier.ControlModifier))
             return original(*args)
         renderer._paint = paint
         self.stroke(800)

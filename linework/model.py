@@ -23,7 +23,7 @@ def clamp(value, low, high):
 def finite(value):
     value = float(value)
     if not math.isfinite(value):
-        raise ValueError("Coordenada ou espessura inválida.")
+        raise ValueError("Invalid coordinate or thickness.")
     return value
 
 
@@ -81,15 +81,15 @@ class Stroke:
     def from_data(cls, data):
         raw = data["points"]
         if not raw or len(raw) > MAX_POINTS:
-            raise ValueError("Quantidade de pontos inválida.")
+            raise ValueError("Invalid number of points.")
         points = [Point(finite(p[0]), finite(p[1]), clamp(finite(p[2]), 0, 2)) for p in raw]
         if "handles" in data:
             handles = data["handles"]
             if not isinstance(handles, list) or len(handles) != len(points):
-                raise ValueError("Quantidade de alças inválida.")
+                raise ValueError("Invalid number of handles.")
             for point, pair in zip(points, handles):
                 if not isinstance(pair, (list, tuple)) or len(pair) != 2:
-                    raise ValueError("Alças de curva inválidas.")
+                    raise ValueError("Invalid curve handles.")
                 values = []
                 for vector in pair:
                     if vector is None:
@@ -97,43 +97,43 @@ class Stroke:
                     elif isinstance(vector, (list, tuple)) and len(vector) == 2:
                         values.append(tuple(finite(v) for v in vector))
                     else:
-                        raise ValueError("Alça de curva inválida.")
+                        raise ValueError("Invalid curve handle.")
                 point.handle_in, point.handle_out = values
         if 'pressure_handles' in data:
             handles=data['pressure_handles']
             if not isinstance(handles,list) or len(handles)!=len(points):
-                raise ValueError('Quantidade de controles de espessura inválida.')
+                raise ValueError("Invalid quantity of thickness controls.")
             for point,pair in zip(points,handles):
                 if not isinstance(pair,(list,tuple)) or len(pair)!=2:
-                    raise ValueError('Controles de espessura inválidos.')
+                    raise ValueError("Invalid thickness controls.")
                 point.pressure_in,point.pressure_out=(None if v is None else finite(v) for v in pair)
         if 'thickness_profile' in data:
             profile = data['thickness_profile']
             if not isinstance(profile, list) or len(profile) != len(points):
-                raise ValueError('Quantidade de espessuras inválida.')
+                raise ValueError("Invalid number of thicknesses.")
             for point, values in zip(points, profile):
                 if not isinstance(values, (list, tuple)) or len(values) != 3:
-                    raise ValueError('Perfil de espessura inválido.')
+                    raise ValueError("Invalid thickness profile.")
                 if values[0] is None:
-                    raise ValueError('Perfil de espessura incompleto.')
+                    raise ValueError("Incomplete thickness profile.")
                 point.thickness = finite(values[0])
                 if not 0 <= point.thickness <= 20000:
-                    raise ValueError('Espessura do ponto fora do intervalo.')
+                    raise ValueError("Point thickness out of range.")
                 point.thickness_in, point.thickness_out = (None if v is None else finite(v) for v in values[1:])
         color = data.get("color", "#202020")
         uid = data["id"]
         if not re.fullmatch(r"[0-9a-f]{32}", uid):
-            raise ValueError("Identificador de traço inválido.")
+            raise ValueError("Invalid stroke identifier.")
         if not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
-            raise ValueError("Cor inválida.")
+            raise ValueError("Invalid color.")
         brush = data.get("brush")
         if brush is not None:
             if not isinstance(brush, dict) or brush.get("engine") != "krita-native":
-                raise ValueError("Dados de pincel inválidos.")
+                raise ValueError("Invalid brush data.")
             if any(not isinstance(brush.get(k), str) for k in ("name", "filename", "xml")):
-                raise ValueError("Preset de pincel inválido.")
+                raise ValueError("Invalid brush preset.")
             if len(brush["xml"]) > 4*1024*1024:
-                raise ValueError("Preset de pincel grande demais.")
+                raise ValueError("Brush preset too big.")
             brush = copy.deepcopy(brush)
             brush["flow"] = clamp(finite(brush.get("flow", 1)), 0, 1)
         return cls(points, clamp(finite(data.get("width", 8)), .1, 2000), color,
@@ -146,10 +146,10 @@ class Stroke:
 
 def load_strokes(data):
     if not isinstance(data, list) or len(data) > MAX_STROKES:
-        raise ValueError("Quantidade de traços inválida.")
+        raise ValueError("Invalid number of strokes.")
     strokes = [Stroke.from_data(s) for s in data]
     if len({s.uid for s in strokes}) != len(strokes):
-        raise ValueError("Identificadores de traços repetidos.")
+        raise ValueError("Repeated stroke identifiers.")
     return strokes
 
 
@@ -216,9 +216,9 @@ def freeze_thickness(stroke, convert=None):
 def transform_stroke(stroke, coefficients):
     a,b,c,d,tx,ty=(finite(v) for v in coefficients)
     determinant=a*d-b*c
-    if abs(determinant)<1e-10:raise ValueError('A escala do traço não pode ser zero.')
+    if abs(determinant)<1e-10:raise ValueError("The stroke scale cannot be zero.")
     width=stroke.width*math.sqrt(abs(determinant))
-    if not .1<=width<=2000:raise ValueError('A espessura transformada excede o intervalo de 0,1 a 2000 px.')
+    if not .1<=width<=2000:raise ValueError("The transformed thickness exceeds the range of 0.1 to 2000 px.")
     if stroke.kind == 'curve':
         # Chord-dependent automatic tangents are not invariant under unequal
         # X/Y scaling. Freeze their current controls before the affine mapping.
@@ -335,7 +335,7 @@ def insert_point(stroke, index, t):
     if t >= 1-1e-5:
         return index+1
     if len(stroke.points) >= MAX_POINTS:
-        raise ValueError("Este traço atingiu o limite de pontos.")
+        raise ValueError("This stroke has reached the point limit.")
     t = clamp(t, 0, 1)
     if stroke.kind == "line":
         point = segment_point(stroke, index, t)
@@ -453,7 +453,7 @@ def svg(strokes, width, height, x_res=72.0, y_res=72.0, native_renderer=None):
     for s in strokes:
         if s.brush:
             if native_renderer is None:
-                raise ValueError("O pincel nativo precisa do renderizador do Krita.")
+                raise ValueError("The native brush needs the Krita renderer.")
             paths.append(native_renderer.svg_image(s))
         else:
             paths.append('<g id="lw_{id}"><path id="lw_{id}_outline" fill="{color}" fill-opacity="{opacity}" d="{path}"/></g>'.format(

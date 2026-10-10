@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Krita 5.2.14 ABI bridge; use only from its GUI thread and loaded libkis objects.
+// Version-specific ABI bridge; use from its GUI thread and loaded libkis objects.
 #include "export.h"
 #include <Node.h>
 #include <View.h>
@@ -14,6 +14,19 @@
 #include <SvgSavingContext.h>
 #include <QBuffer>
 #include <memory>
+
+#ifndef LINEWORK_KRITA_VERSION
+#define LINEWORK_KRITA_VERSION "5.2.14"
+#endif
+#ifndef LINEWORK_KRITA_API
+#define LINEWORK_KRITA_API 50214
+#endif
+extern "C" LINEWORK_EXPORT const char *linework_bridge_krita_version() {
+    return LINEWORK_KRITA_VERSION;
+}
+extern "C" LINEWORK_EXPORT const char *linework_bridge_qt_version() {
+    return QT_VERSION_STR;
+}
 #include <vector>
 #include <stdexcept>
 #include <KisView.h>
@@ -51,6 +64,7 @@
 #include <kis_indirect_painting_support.h>
 #include <kis_painter.h>
 #include <kis_undo_store.h>
+#include <kis_annotation.h>
 #include <kis_simple_stroke_strategy.h>
 #include <KisBusyWaitBroker.h>
 #include <kis_cubic_curve.h>
@@ -60,6 +74,9 @@
 #include <KoToolFactoryBase.h>
 #include <KoToolManager.h>
 #include <KoToolManager_p.h>
+#include <KoToolProxy.h>
+#include <KoToolProxy_p.h>
+#include <canvas/kis_tool_proxy.h>
 #include <KoCanvasBase.h>
 #include <KoShapeManager.h>
 #include <kis_shape_layer.h>
@@ -92,6 +109,33 @@ template struct Access<ShapeShape,&Shape::shape>;
 
 extern "C" LINEWORK_EXPORT int linework_native_busy() {
     return KisBusyWaitBroker::instance()->guiThreadIsWaitingForBetterWeather();
+}
+
+extern "C" LINEWORK_EXPORT void linework_view_close_guard(View *wrapper,int closing) {
+    auto view=wrapper ? (wrapper->*member(ViewView{}))() : nullptr;
+    auto canvas=view ? dynamic_cast<KisCanvas2*>(view->canvasBase()) : nullptr;
+    auto proxy=canvas ? dynamic_cast<KisToolProxy*>(canvas->toolProxy()) : nullptr;
+    if (!proxy || !canvas->image()) return;
+    auto image=canvas->image();
+    if (!closing) { proxy->initializeImage(image); return; }
+    // The image can outlive its final view (libkis handles and save snapshots).
+    // Finish input while tools exist, then disconnect requests which otherwise
+    // call through the proxy during the native tool destruction sequence.
+    QMetaObject::invokeMethod(proxy,"requestStrokeEnd",Qt::DirectConnection);
+    QObject::disconnect(image.data(),SIGNAL(sigUndoDuringStrokeRequested()),proxy,SLOT(requestUndoDuringStroke()));
+    QObject::disconnect(image.data(),SIGNAL(sigRedoDuringStrokeRequested()),proxy,SLOT(requestRedoDuringStroke()));
+    QObject::disconnect(image.data(),SIGNAL(sigStrokeCancellationRequested()),proxy,SLOT(requestStrokeCancellation()));
+    QObject::disconnect(image.data(),SIGNAL(sigStrokeEndRequested()),proxy,SLOT(requestStrokeEnd()));
+}
+
+extern "C" LINEWORK_EXPORT const char *linework_view_active_node(View *wrapper) {
+    // libkis Document::activeNode() flushes synchronized GUI events in 5.3/6.0.
+    // A timer must not run nested selection/undo callbacks while polling input.
+    static thread_local QByteArray id;
+    auto view = wrapper ? (wrapper->*member(ViewView{}))() : nullptr;
+    auto node = view ? view->currentNode() : KisNodeSP();
+    id = node ? node->uuid().toString().toUtf8() : QByteArray();
+    return id.constData();
 }
 
 extern "C" LINEWORK_EXPORT int linework_shape_info(Shape *wrapper,double *out){
@@ -130,8 +174,9 @@ static const char *toolIds[]={"LineworkBrush","LineworkCurve","LineworkLine","Li
 
 class LineworkTool final:public KisToolPaint {
     int mode;
+    QPointer<KoToolProxy> proxy;
 public:
-    LineworkTool(KoCanvasBase *canvas,int mode):KisToolPaint(canvas,QCursor(Qt::CrossCursor)),mode(mode){
+    LineworkTool(KoCanvasBase *canvas,int mode):KisToolPaint(canvas,QCursor(Qt::CrossCursor)),mode(mode),proxy(canvas->toolProxy()){
         setSupportOutline(mode==0);
         if(auto kis=dynamic_cast<KisCanvas2*>(canvas)){
             QObject::connect(kis->image().data(),&KisImage::sigStrokeEndRequested,this,[this]{
@@ -143,6 +188,11 @@ public:
                     toolCallback(4,this->mode,this->canvas()->canvasWidget());
             });
         }
+    }
+    ~LineworkTool() override {
+        // Image teardown can request a stroke end after a view's tools have
+        // been detached. Never leave a proxy pointing at this deleted tool.
+        if (proxy && proxy->priv()->activeTool == this) proxy->setActiveTool(nullptr);
     }
     void activate(const QSet<KoShape*> &shapes)override{
         KisToolPaint::activate(shapes);
@@ -165,9 +215,8 @@ public:
 class LineworkToolFactory final:public KoToolFactoryBase {
     int mode;
 public:
-    LineworkToolFactory(int mode,const QString &icons):KoToolFactoryBase(QString::fromLatin1(toolIds[mode])),mode(mode){
-        const char *labels[]={"Linework Brush — pincel","Linework Curve — curva","Linework Line — linha","Linework Edit — pontos","Linework Thickness — espessura","Linework Erase — apagar traço"};
-        setToolTip(QString::fromUtf8(labels[mode]));
+    LineworkToolFactory(int mode,const QString &icons,const QStringList &labels):KoToolFactoryBase(QString::fromLatin1(toolIds[mode])),mode(mode){
+        setToolTip(labels[mode]);
         setSection(QStringLiteral("1 Linework"));
         setPriority(40+mode);
         setActivationShapeId(KRITA_TOOL_ACTIVATION_ID);
@@ -176,13 +225,15 @@ public:
     KoToolBase *createTool(KoCanvasBase *canvas)override{return new LineworkTool(canvas,mode);}
 };
 
-extern "C" LINEWORK_EXPORT int linework_register_tools(ToolCallback callback,const char *icons){
+extern "C" LINEWORK_EXPORT int linework_register_tools(ToolCallback callback,const char *icons,const char *translatedLabels){
     if(!callback || !QCoreApplication::instance() || QThread::currentThread()!=QCoreApplication::instance()->thread())return 0;
+    const auto labels=QString::fromUtf8(translatedLabels ? translatedLabels : "").split('\n');
+    if(labels.size()!=6)return 0;
     toolCallback=callback;
     auto registry=KoToolRegistry::instance();
     auto manager=KoToolManager::instance();
     for(int mode=0;mode<6;mode++)if(!registry->contains(QString::fromLatin1(toolIds[mode]))){
-        auto factory=new LineworkToolFactory(mode,QString::fromUtf8(icons));
+        auto factory=new LineworkToolFactory(mode,QString::fromUtf8(icons),labels);
         registry->add(factory);
         // Python extensions load after the manager's initial registry snapshot.
         // Register the new actions before the first document attaches its canvas.
@@ -228,6 +279,9 @@ extern "C" LINEWORK_EXPORT void *linework_edit_begin(Node *wrapper){
 extern "C" LINEWORK_EXPORT void linework_edit_end(void *pointer){
     auto session=static_cast<LineworkEditSession*>(pointer);
     if(!session)return;
+    // This is our own completion, not a save/time-switch asking the tool to
+    // finish. waitForDone() can emit sigStrokeEndRequested synchronously.
+    QScopedValueRollback<int> guard(previewMutationDepth,previewMutationDepth+1);
     session->image->endStroke(session->stroke);
     session->image->waitForDone();
     delete session;
@@ -238,13 +292,39 @@ extern "C" LINEWORK_EXPORT void linework_edit_end(void *pointer){
 // KoShapes concurrently with those writes. Enter the image's outer wait while
 // it is stable: subsequent waits drain workers without pumping that feedback.
 // Keep this narrowly scoped to committing already-prepared shape appearances.
-struct LineworkShapeWrite { KisImageSP image; };
+class LineworkAnnotationUndo final : public KUndo2Command {
+    KisImageWSP image;
+    KisAnnotationSP before, after;
+    bool first = true;
+    void apply(KisAnnotationSP annotation) {
+        KisImageSP live = image;
+        if (!live) return;
+        if (annotation) live->addAnnotation(annotation);
+        else live->removeAnnotation(QStringLiteral("org.felipe.linework.v1"));
+    }
+public:
+    LineworkAnnotationUndo(KisImageSP image, KisAnnotationSP before, KisAnnotationSP after)
+        : image(image), before(before), after(after) {}
+    void undo() override { apply(before); }
+    void redo() override { if (first) first = false; else apply(after); }
+};
+
+struct LineworkShapeWrite {
+    KisImageSP image;
+    KisAnnotationSP before;
+    QScopedValueRollback<int> mutation;
+    explicit LineworkShapeWrite(KisImageSP img):image(img),
+        before(img->annotation(QStringLiteral("org.felipe.linework.v1"))),
+        mutation(previewMutationDepth,previewMutationDepth+1) {
+        image->undoStore()->beginMacro(kundo2_noi18n("Linework"));
+    }
+};
 extern "C" LINEWORK_EXPORT void *linework_shape_write_begin(Node *wrapper){
     if(!wrapper || QThread::currentThread()!=QCoreApplication::instance()->thread())return nullptr;
     auto image=(wrapper->*member(NodeImage{}))();
     if(!image)return nullptr;
     image->waitForDone();
-    auto session=new LineworkShapeWrite{image};
+    auto session=new LineworkShapeWrite(image);
     KisBusyWaitBroker::instance()->notifyWaitOnImageStarted(image.data());
     return session;
 }
@@ -252,6 +332,10 @@ extern "C" LINEWORK_EXPORT void linework_shape_write_end(void *pointer){
     auto session=static_cast<LineworkShapeWrite*>(pointer);
     if(!session)return;
     session->image->waitForDone();
+    auto after = session->image->annotation(QStringLiteral("org.felipe.linework.v1"));
+    if (after != session->before)
+        session->image->undoStore()->addCommand(new LineworkAnnotationUndo(session->image, session->before, after));
+    session->image->undoStore()->endMacro();
     KisBusyWaitBroker::instance()->notifyWaitOnImageEnded(session->image.data());
     delete session;
 }
@@ -794,3 +878,5 @@ extern "C" LINEWORK_EXPORT void linework_stream_end(void *handle){
     stream->image->waitForDone();
     delete stream;
 }
+
+#include "animation.h"

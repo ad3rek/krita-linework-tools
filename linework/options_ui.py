@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Compact sections using the current Krita/Qt style and palette."""
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QToolButton, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy
+from .i18n import tr
+from .qt import Qt
+from .qt import QWidget, QToolButton, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy
 
 
 class OptionsSection(QWidget):
@@ -12,15 +13,15 @@ class OptionsSection(QWidget):
         self.title = title
         self.expanded = expanded
         self.header.setAutoRaise(True)
-        self.header.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.header.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.header.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.header.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         font = self.header.font(); font.setBold(True); self.header.setFont(font)
         self.header.setAccessibleName(title)
         header_row = QHBoxLayout()
         header_row.setContentsMargins(0, 0, 0, 0); header_row.setSpacing(8)
         header_row.addWidget(self.header)
         separator = QFrame(self)
-        separator.setFrameShape(QFrame.HLine); separator.setFrameShadow(QFrame.Sunken)
+        separator.setFrameShape(QFrame.Shape.HLine); separator.setFrameShadow(QFrame.Shadow.Sunken)
         header_row.addWidget(separator, 1)
         self.content = QWidget(self)
         layout = QVBoxLayout(self)
@@ -31,7 +32,7 @@ class OptionsSection(QWidget):
 
     def set_expanded(self, expanded):
         self.expanded = expanded
-        self.header.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
-        self.header.setToolTip(('Recolher ' if expanded else 'Expandir ')+self.title.lower())
-        self.header.setAccessibleDescription('Expandida' if expanded else 'Recolhida')
+        self.header.setArrowType(Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow)
+        self.header.setToolTip((tr("Collapse ") if expanded else tr("Expand "))+self.title.lower())
+        self.header.setAccessibleDescription(tr("Expanded") if expanded else tr("Collapsed"))
         self.content.setVisible(expanded)

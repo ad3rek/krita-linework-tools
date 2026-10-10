@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Krita's own freehand smoothing, recorded as editable cubic segments."""
+from .i18n import tr
 import ctypes
-from PyQt5 import sip
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QFormLayout, QComboBox, QDoubleSpinBox, QCheckBox
+from .qt import sip
+from .qt import pyqtSignal
+from .qt import QWidget, QFormLayout, QComboBox, QDoubleSpinBox, QCheckBox
 from .native_brush import load_library
 from .model import Point, Stroke, samples, distance, MAX_POINTS
 from .curve_fit import compact_stroke
@@ -24,14 +25,22 @@ def library():
         lib.linework_smoothing_take.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_int]
         lib.linework_smoothing_take.restype = ctypes.c_int
     except AttributeError as exc:
-        raise ValueError('Reabra o Krita para carregar os motores de suavização do Linework.') from exc
+        raise ValueError(tr("Reopen Krita to load the Linework smoothing engines.")) from exc
     return lib
 
 
 def settings(values=None):
-    data = (ctypes.c_double*9)(*(values or [0]*9))
-    library().linework_smoothing_options(data, int(values is not None))
-    return list(data)
+    lib = library()
+    extended = hasattr(lib, 'linework_smoothing_options_v2')
+    count = 11 if extended else 9
+    source = list(values) if values is not None else [0]*count
+    if extended and len(source) == 9: source += [source[1], 1]
+    data = (ctypes.c_double*count)(*source[:count])
+    function = lib.linework_smoothing_options_v2 if extended else lib.linework_smoothing_options
+    function.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_int]
+    function.restype = None
+    function(data, int(values is not None))
+    return list(data) if extended else list(data)+[data[1], 1]
 
 
 class SmoothingOptions(QWidget):
@@ -41,19 +50,25 @@ class SmoothingOptions(QWidget):
         super().__init__(parent)
         self.form = QFormLayout(self); self.form.setContentsMargins(0, 0, 0, 0)
         self.mode = QComboBox()
-        self.mode.addItems(['Sem suavização', 'Básica (leve)', 'Ponderada (pesada)', 'Estabilizador'])
-        self.mode.setToolTip('Ao concluir o traço, os pontos são reduzidos em todos os modos, '
-                             'preservando cantos e variações de pressão e espessura.')
-        self.form.addRow('Modo', self.mode)
+        self.mode.addItems([tr("No smoothing"), tr("Basic (light)"), tr("Weighted (heavy)"), tr("Stabilizer")])
+        lib = library()
+        features = lib.linework_smoothing_features() if hasattr(lib, 'linework_smoothing_features') else 0
+        self.variable_distance = bool(features & 1)
+        if features & 2: self.mode.addItem(tr("Pixel perfect"))
+        self.mode.setToolTip(tr("When completing the stroke, the points are reduced in all modes, preserving corners and variations in pressure and thickness."))
+        self.form.addRow(tr("Mode"), self.mode)
         self.fields = {}
         for key, label, low, high, suffix in (
-                (1, 'Distância', 1, 1000, ''), (2, 'Finalização', 0, 100, ' %'),
-                (5, 'Distância de atraso', 0, 1000, ' px')):
+                (1, tr("Distance"), 3 if self.variable_distance else 1, 1000, ''),
+                (9, tr("Minimum distance"), 3, 1000, ''),
+                (2, tr("Stroke ending"), 0, 100, ' %'),
+                (5, tr("Delay Distance"), 0, 1000, ' px')):
             field = QDoubleSpinBox(); field.setRange(low, high); field.setDecimals(1)
             field.setSuffix(suffix); field.setKeyboardTracking(False)
             self.fields[key] = field; self.form.addRow(label, field)
-        for key, label in ((3, 'Suavizar pressão'), (4, 'Proporcional ao zoom'),
-                           (6, 'Usar atraso'), (7, 'Concluir linha'), (8, 'Estabilizar sensores')):
+        for key, label in ((3, tr("Smooth pressure")), (4, tr("Proportional to zoom")),
+                           (6, tr("Use delay")), (7, tr("Finish line")), (8, tr("Stabilize sensors")),
+                           (10, tr("Keep distance ratio"))):
             field = QCheckBox(label); self.fields[key] = field; self.form.addRow(field)
         self.reload()
         self.mode.currentIndexChanged.connect(self.update_values)
@@ -74,15 +89,28 @@ class SmoothingOptions(QWidget):
     def update_visibility(self):
         mode = self.mode.currentIndex()
         for key, field in self.fields.items():
-            visible = key == 1 and mode in (2, 3) or key in (2, 3, 4) and mode == 2 or key in (5, 6, 7, 8) and mode == 3
+            visible = (key == 1 and mode in (2, 3) or key in (2, 3, 4) and mode == 2
+                       or key in (5, 6, 7, 8) and mode == 3
+                       or key in (9, 10) and self.variable_distance and mode in (2, 3))
             field.setVisible(visible)
             label = self.form.labelForField(field)
             if label: label.setVisible(visible)
-        self.form.labelForField(self.fields[1]).setText('Amostras' if mode == 3 else 'Distância')
+        self.form.labelForField(self.fields[1]).setText(
+            (tr("Maximum samples") if mode == 3 else tr("Maximum distance")) if self.variable_distance
+            else (tr("Samples") if mode == 3 else tr("Distance")))
+        self.form.labelForField(self.fields[9]).setText(tr("Minimum samples") if mode == 3 else tr("Minimum distance"))
         self.fields[5].setEnabled(self.fields[6].isChecked())
 
     def update_values(self, *_):
         if self._loading: return
+        sender = self.sender()
+        if self.variable_distance and self.values[10] and sender in (self.fields[1], self.fields[9]):
+            changed, other = (1, 9) if sender is self.fields[1] else (9, 1)
+            old = self.values[changed]
+            if old > 0:
+                self._loading = True
+                self.fields[other].setValue(self.values[other]*self.fields[changed].value()/old)
+                self._loading = False
         self.values[0] = self.mode.currentIndex()
         for key, field in self.fields.items():
             self.values[key] = (float(field.isChecked()) if isinstance(field, QCheckBox)
@@ -95,10 +123,15 @@ class NativeSmoother:
         self.mode = int(values[0])
         renderer.ensure_scratch()
         self.lib = library()
-        self.handle = self.lib.linework_smoothing_begin(sip.unwrapinstance(renderer.node),
-            sip.unwrapinstance(renderer.view), (ctypes.c_double*9)(*values),
+        extended = hasattr(self.lib, 'linework_smoothing_begin_v2')
+        begin = self.lib.linework_smoothing_begin_v2 if extended else self.lib.linework_smoothing_begin
+        begin.argtypes = [ctypes.c_void_p]*2+[ctypes.POINTER(ctypes.c_double)]*2
+        begin.restype = ctypes.c_void_p
+        count = 11 if extended else 9
+        self.handle = begin(sip.unwrapinstance(renderer.node),
+            sip.unwrapinstance(renderer.view), (ctypes.c_double*count)(*values[:count]),
             (ctypes.c_double*3)(first.x, first.y, first.pressure))
-        if not self.handle: raise ValueError('Não foi possível iniciar a suavização nativa.')
+        if not self.handle: raise ValueError(tr("Unable to start native smoothing."))
 
     def move(self, point):
         self.lib.linework_smoothing_move(self.handle, (ctypes.c_double*3)(point.x, point.y, point.pressure))
@@ -127,7 +160,7 @@ class NativeSmoother:
                 if kind == 0:
                     if not stroke._live_points: stroke._live_points.append(Point(x, y, pressure))
                     changed = True; continue
-                if len(stroke.points) >= MAX_POINTS: raise ValueError('Este traço atingiu o limite de pontos.')
+                if len(stroke.points) >= MAX_POINTS: raise ValueError(tr("This stroke has reached the point limit."))
                 a.handle_out = cx-x, cy-y; b.handle_in = dx-ex, dy-ey
                 stroke.points.append(b)
                 # The live raster receives the same cubic as the saved geometry;

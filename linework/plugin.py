@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+from .i18n import tr
 from krita import Extension, Krita
-from PyQt5.QtCore import QTimer, QEvent, Qt
-from PyQt5.QtWidgets import QApplication
+from .qt import QTimer, QEvent, Qt
+from .qt import QApplication
 from .storage import metadata
 from .native_brush import update_layer_icons, native_busy
 from .tools import select_tool, current_controller, theme_icons
@@ -18,18 +19,24 @@ class LineworkExtension(Extension):
         self._transform_pending = None
         self._syncing = False
         self._tablet_down = False
+        from .animation import install_callback
+        install_callback()
+        notifier = Krita.instance().notifier()
+        notifier.setActive(True)
+        notifier.imageCreated.connect(lambda: QTimer.singleShot(0, self.initialize_animation))
+        notifier.viewCreated.connect(lambda: QTimer.singleShot(0, self.initialize_animation))
         QApplication.instance().installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.TabletPress:self._tablet_down = True
-        elif event.type() == QEvent.TabletRelease:self._tablet_down = False
+        if event.type() == QEvent.Type.TabletPress:self._tablet_down = True
+        elif event.type() == QEvent.Type.TabletRelease:self._tablet_down = False
         return False
 
     def sync_native_transforms(self):
         from .tools import active_tool
         from .transforms import pending_signature, sync_layer
         if (self._syncing or active_tool() >= 0 or self._tablet_down or
-                QApplication.mouseButtons() != Qt.NoButton or QApplication.activeModalWidget()):
+                QApplication.mouseButtons() != Qt.MouseButton.NoButton or QApplication.activeModalWidget()):
             self._transform_pending = None
             return
         window = Krita.instance().activeWindow()
@@ -54,6 +61,8 @@ class LineworkExtension(Extension):
 
     def update_icons(self):
         if native_busy(): return
+        from .animation import flush
+        flush()
         self.sync_native_transforms()
         for window in Krita.instance().windows():
             theme_icons(window.qwindow())
@@ -64,24 +73,58 @@ class LineworkExtension(Extension):
                 continue
             try:
                 key = document.rootNode().uniqueId().toString()
-                raw = bytes(document.annotation("org.felipe.linework.v1"))
+                raw = document.annotation("org.felipe.linework.v1")
                 cached = self._annotations.get(key)
                 if cached is None or cached[0] != raw:
                     cached = (raw, tuple(metadata(document)["layers"]))
                     self._annotations[key] = cached
+                    from .animation import bootstrap_document
+                    bootstrap_document(document)
                 update_layer_icons(window.qwindow(), cached[1])
             except (RuntimeError, ValueError):
                 continue
 
     def createActions(self, window):
-        action = window.createAction("linework_edit", "Linework Brush", "tools/scripts")
+        action = window.createAction("linework_edit", tr("Linework Brush"), "tools/scripts")
         action.triggered.connect(lambda: select_tool(0))
-        new_action = window.createAction("linework_new", "Nova camada Linework…", "tools/scripts")
+        new_action = window.createAction("linework_new", tr("New Linework layer…"), "tools/scripts")
         # Krita passes a stack-allocated libkis Window to createActions. Never
         # retain that wrapper in a callback; resolve the active window on use.
         new_action.triggered.connect(self.new_layer)
-        vectorize_action = window.createAction('linework_vectorize', 'Vetorizar camada em Linework…', 'tools/scripts')
+        vectorize_action = window.createAction('linework_vectorize', tr("Vectorize layer in Linework…"), 'tools/scripts')
         vectorize_action.triggered.connect(self.vectorize)
+        animate = window.createAction('linework_animate', tr("Animate Linework layer…"), 'tools/scripts')
+        animate.triggered.connect(self.animate_layer)
+        blank = window.createAction('linework_blank_frame', tr("New Linework frame…"), 'tools/scripts')
+        blank.triggered.connect(lambda: self.animation_frame(False))
+        duplicate = window.createAction('linework_duplicate_frame', tr("Duplicate Linework frame…"), 'tools/scripts')
+        duplicate.triggered.connect(lambda: self.animation_frame(True))
+        for created in (action, new_action, vectorize_action, animate, blank, duplicate):
+            created.setToolTip(created.text()); created.setIconText(created.text())
+
+    def initialize_animation(self):
+        from .animation import bootstrap_document, AnimationBusy
+        for document in Krita.instance().documents():
+            try:
+                bootstrap_document(document)
+            except AnimationBusy:
+                QTimer.singleShot(100, self.initialize_animation)
+            except (RuntimeError, ValueError):
+                continue
+
+    def animate_layer(self):
+        window = Krita.instance().activeWindow()
+        if window is None: return
+        select_tool(0)
+        controller = current_controller(window)
+        if controller: controller.animate_layer()
+
+    def animation_frame(self, duplicate):
+        window = Krita.instance().activeWindow()
+        if window is None: return
+        select_tool(0)
+        controller = current_controller(window)
+        if controller: controller.animation_frame(duplicate)
 
     def vectorize(self):
         from .vectorize import open_vectorizer

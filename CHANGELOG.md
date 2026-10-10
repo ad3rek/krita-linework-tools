@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.4 — 2026-10-10
+
+- Select version-specific Windows x64 native bridges for Krita 5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1. Verify the compiled application target and Qt major before registering tools.
+- Use Krita's own PyQt 5 or PyQt 6 binding, scoped enums and matching mouse/tablet event constructors. Clone queued Qt 6 input events natively, avoiding an unavailable timestamp setter that interrupted rapid drawing.
+- Preserve modern native smoothing minimum/maximum distances and their proportion lock, and expose Krita's Pixel smoothing mode on 5.3/6.0.
+- Rebind newly converted Linework layers when modern libkis delivers the active-node change before geometry metadata is written.
+- Keep selection and editable metadata synchronized with native deletion Undo/Redo. Stop delayed layer selection from overriding a layer the user has selected.
+- Read the canvas's active node without flushing nested application events, and defer timer-driven rebinding during input.
+- Make thickness guide endpoints draggable, with screen-space picking at high zoom and support for the Quick Brush engine used by Basic-1. A rejected thickness edit restores the original appearance and preserves its selection.
+- Follow Krita's interface language with catalogs for its 75 listed locales and English fallback. Translation coverage and automatic translation limitations are documented in docs/TRANSLATIONS.md.
+- Report the detected Krita version and installation guidance when the native bridge rejects an incompatible application. Preserve the library path and original error for DLL load failures, while checking version compatibility before loading native code.
+- Add animated Linework paint layers in Krita's native Timeline while retaining the original vector layer as a hidden backup.
+- Carry editable geometry through native frame copying, moving, deletion and linked clones, and preserve it in `.kra` schema 7 annotations.
+- Use native Undo for frame geometry and pixels, restore captured-frame previews on cancellation or timeline changes, and hide editing guides during playback.
+- Add Animate Layer, New Frame and Duplicate Frame actions to Tools → Scripts and shortcut settings.
+- Protect native tool/image lifetime during window closing and resume editing after a cancelled close.
+- Include isolated regressions for layer lifecycle, thickness handles and interface language, plus 100 CPU tests. Animation validation covers 27 checks on Linux and the same 27 in each of the official Windows 5.3.4.1 and 6.0.4.1 applications under Wine 11.0. Include an editable animation example and real application captures.
+
+Linux compatibility remains Krita 5.2.14 with compatible libraries. Native paint-layer transforms do not update Linework paths; external pixel changes are preserved and protected against Linework overwrite. Layer duplication, cross-document frame transfer and physical tablets need further validation.
+
 ## 0.1.3 — 2026-10-09
 
 - Refine the native Tool Options layout with flat theme-aware headers, small arrows and separators. Put selection/thickness first when editing, combine brush/color actions, and collapse less frequent taper/connection controls initially.

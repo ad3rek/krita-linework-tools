@@ -14,8 +14,8 @@ import time
 import traceback
 from pathlib import Path
 from krita import Krita, Extension
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication, QDialog
+from linework.qt import QTimer
+from linework.qt import QApplication, QDialog
 
 ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 

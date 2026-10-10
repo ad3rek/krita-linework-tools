@@ -3,8 +3,8 @@
 import copy, hashlib, json, math, os, statistics, time, traceback
 from pathlib import Path
 from krita import Krita, Extension
-from PyQt5.QtCore import QTimer, QPointF
-from PyQt5.QtWidgets import QApplication, QDialog
+from linework.qt import QTimer, QPointF
+from linework.qt import QApplication, QDialog
 ROOT=Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 class Probe(Extension):
  def setup(self): self.result={}; self.after(self.start,1800)
@@ -102,7 +102,7 @@ class Probe(Extension):
  def pixels(self,stroke,cached):
   self.renderer.use_preset_cache=cached
   bounds,image,_=self.renderer.render(stroke,preview=True)
-  ptr=image.constBits();ptr.setsize(image.byteCount())
+  ptr=image.constBits();ptr.setsize(image.sizeInBytes())
   return (bounds.x(),bounds.y(),bounds.width(),bounds.height(),hashlib.sha256(bytes(ptr)).hexdigest())
  def check_presets(self):
   from linework.native_brush import ensure_thickness

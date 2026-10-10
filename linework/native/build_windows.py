@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Cross-build for official Krita 5.2.14 Windows using LLVM-MinGW 18 UCRT."""
+"""Cross-build a version-specific bridge for official Windows Krita."""
 import argparse
 from pathlib import Path
 import re
@@ -14,16 +14,24 @@ def main():
     parser.add_argument('--sdk-prefix', required=True, type=Path)
     parser.add_argument('--krita-bin', required=True, type=Path)
     parser.add_argument('--toolchain', required=True, type=Path)
+    parser.add_argument('--krita-version', default='5.2.14')
+    parser.add_argument('--qt-major', type=int, choices=(5, 6), default=5)
+    parser.add_argument('--output-directory', type=Path)
+    parser.add_argument('--bridge-only', action='store_true')
     args = parser.parse_args()
+    version_parts = tuple(map(int, args.krita_version.split('.')))
+    api_version = version_parts[0]*10000+version_parts[1]*100+version_parts[2]
     root = Path(__file__).resolve().parent
+    output = (args.output_directory or root).resolve()
+    output.mkdir(parents=True, exist_ok=True)
     source = args.krita_source.resolve()
     sdk = args.sdk_prefix.resolve()/'include'
     # Do not resolve the compiler symlink: its target triple comes from argv[0].
     compiler = args.toolchain.absolute()/'bin/x86_64-w64-mingw32-clang++'
     tools = args.toolchain.absolute()/'bin'
-    qt, kf = sdk, sdk/'KF5'
+    qt, kf = sdk, sdk/('KF'+str(args.qt_major))
     if not (source/'libs/libkis/Node.h').exists() or not (qt/'QtCore/qconfig.h').exists():
-        parser.error('Official Krita 5.2.14 sources and the Windows Qt 5.15.7 SDK are required.')
+        parser.error('Official Krita sources and a matching Windows Qt/KF SDK are required.')
     with tempfile.TemporaryDirectory(prefix='linework-windows-') as tmp:
         generated = Path(tmp)
         exports = ['kritaglobal','kritaimage','kritaui','kritalibkis','kritapigment',
@@ -40,7 +48,7 @@ def main():
             (generated/template.name.replace('.cmake','')).write_text(text+'\n')
         libraries = ['libkritalibkis','libkritaui','libkritaimage','libkritaflake',
             'libkritapigment','libkritaresources','libkritaglobal','libkritacommand',
-            'Qt5Core','Qt5Gui','Qt5Widgets','Qt5Xml']
+            *['Qt'+str(args.qt_major)+name for name in ('Core','Gui','Widgets','Xml')]]
         imports = []
         for name in libraries:
             dll = args.krita_bin.resolve()/(name+'.dll')
@@ -55,10 +63,16 @@ def main():
         includes = [generated,sdk,kf,source/'libs/ui']
         includes += sorted({p.parent for p in (source/'libs').rglob('*.h') if '/tests/' not in str(p)})
         includes += sorted(p for p in qt.iterdir() if p.is_dir())
+        includes += [sdk/'eigen3']
         includes += sorted(p for p in kf.iterdir() if p.is_dir())
         subprocess.run([str(compiler),'-std=c++17','-fno-operator-names','-DNOMINMAX',
+            '-DLINEWORK_KRITA_VERSION="'+args.krita_version+'"',
+            '-DLINEWORK_KRITA_API='+str(api_version),
             '-shared','-O2','-Wno-deprecated-declarations',str(root/'bridge.cpp'),
-            *[f'-I{p}' for p in includes],*imports,'-o',str(root/'linework_native.dll')],check=True)
+            *[f'-I{p}' for p in includes],*imports,'-o',str(output/'linework_native.dll')],check=True)
+        if args.bridge_only:
+            print('Built:', output/'linework_native.dll')
+            return
         port = root/'opentoonz'
         # Upstream exports templates before their specializations. Clang rejects
         # that Windows-only ordering; this private DLL needs no template exports.
@@ -71,8 +85,8 @@ def main():
         sources.append(port/'upstream/toonz/sources/common/tgeometry/tgeometry.cpp')
         subprocess.run([str(compiler),'-std=c++17','-DTGEOMETRY_EXPORTS','-D_USE_MATH_DEFINES','-DNOMINMAX','-O2','-shared',
             '-I'+str(port/'compat'),'-I'+str(generated),'-I'+str(port/'upstream/toonz/sources/include'),'-I'+str(port/'core'),
-            *map(str,sources),'-o',str(root/'linework_vectorize.dll')],check=True)
-    print('Built:',root/'linework_native.dll',root/'linework_vectorize.dll')
+            *map(str,sources),'-o',str(output/'linework_vectorize.dll')],check=True)
+    print('Built:',output/'linework_native.dll',output/'linework_vectorize.dll')
 
 
 if __name__ == '__main__':

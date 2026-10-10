@@ -3,8 +3,8 @@
 import json, os, traceback
 from pathlib import Path
 from krita import Krita, Extension
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtWidgets import QApplication, QDialog, QDockWidget, QScrollArea, QStyleFactory
+from linework.qt import QTimer, Qt
+from linework.qt import QApplication, QDialog, QDockWidget, QScrollArea, QStyleFactory
 
 ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 
@@ -44,16 +44,19 @@ class Probe(Extension):
         self.strokes = [Stroke([Point(120,180,.5),Point(280,130,1),Point(430,220,.7)],width=18),
                         Stroke([Point(140,330),Point(400,400)],width=12,color='#287590')]
         write_layer(self.doc, layer, self.strokes)
+        self.layer = layer
+        self.result['written_binding'] = self.edit_state()
         self.dock = self.window.qwindow().findChild(QDockWidget, 'sharedtooldocker')
         self.dock.show(); self.dock.raise_()
-        self.window.qwindow().resizeDocks([self.dock], [290], Qt.Horizontal)
-        self.window.qwindow().resizeDocks([self.dock], [700], Qt.Vertical)
+        self.window.qwindow().resizeDocks([self.dock], [290], Qt.Orientation.Horizontal)
+        self.window.qwindow().resizeDocks([self.dock], [700], Qt.Orientation.Vertical)
         self.mode = 0; self.after(self.show_mode)
 
     def show_mode(self):
         from linework.tools import select_tool, current_controller
         select_tool(self.mode); self.c = current_controller(self.window); self.c.poll()
         if self.mode in (3, 4):
+            self.result['edit_binding_before_selection'] = self.edit_state()
             self.c.overlay.selection.set_points([(self.strokes[0].uid,1),(self.strokes[1].uid,0)])
             self.c.overlay.selectedChanged.emit()
         if self.mode == 0: self.c.smoothing.mode.setCurrentIndex(3)
@@ -66,6 +69,7 @@ class Probe(Extension):
         name = ('brush','curve','line','edit','thickness','eraser')[self.mode]
         self.dock.grab().save(str(ROOT/'docs/images'/('options-'+name+'.png')))
         if self.mode == 3:
+            self.result['edit_binding_after_selection'] = self.edit_state()
             assert self.c.thickness.isVisible() and self.c.thickness.isEnabled()
             self.window.qwindow().grab().save(str(ROOT/'docs/images/options-in-krita.png'))
             before = self.c.thickness.value()
@@ -86,6 +90,23 @@ class Probe(Extension):
         self.mode += 1
         if self.mode < 6: self.after(self.show_mode)
         else: self.after(self.light)
+
+    def edit_state(self):
+        active = self.doc.activeNode()
+        overlay = self.c.overlay
+        from linework.storage import metadata, layer_id
+        return {'active': active.name() if active else None,
+                'active_type': active.type() if active else None,
+                'active_id': layer_id(active) if active else None,
+                'written_id': layer_id(self.layer) if hasattr(self, 'layer') else None,
+                'metadata': metadata(self.doc),
+                'document': self.doc.rootNode().uniqueId().toString(),
+                'view_document': self.c.current_view().document().rootNode().uniqueId().toString(),
+                'layer': self.c.layer.name() if self.c.layer else None,
+                'strokes': [s.uid for s in overlay.strokes] if overlay else None,
+                'expected': [s.uid for s in self.strokes],
+                'selection': [list(x) for x in overlay.selection.points] if overlay else None,
+                'mode': self.c.mode, 'status': self.c.status.text()}
 
     def light(self):
         from linework.tools import select_tool, current_controller

@@ -7,7 +7,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,12 +62,10 @@ class PlatformTests(unittest.TestCase):
         with patch.object(module.platform,'system',return_value='Linux'), \
                 patch.object(module.platform,'machine',return_value='x86_64'):
             self.assertEqual(module.library_path('native').name,'liblinework_native.so')
-        qt = types.ModuleType('PyQt5.QtCore')
-        qt.QCoreApplication = types.SimpleNamespace(applicationDirPath=lambda:'C:/Krita/bin')
         handles = [object(),object()]
         with patch.object(module.platform,'system',return_value='Windows'), \
                 patch.object(module.platform,'machine',return_value='AMD64'), \
-                patch.dict(sys.modules,{'PyQt5.QtCore':qt}), \
+                patch.object(module,'application_directory',return_value='C:/Krita/bin'), \
                 patch.object(module.os,'add_dll_directory',side_effect=handles,create=True) as add:
             self.assertEqual(module.library_path('native').name,'linework_native.dll')
             self.assertEqual(module.library_path('vectorize').name,'linework_vectorize.dll')
@@ -78,6 +76,74 @@ class PlatformTests(unittest.TestCase):
         module = standalone('native_paths', ROOT/'linework/native_library.py')
         with patch.object(module.platform,'machine',return_value='arm64'):
             with self.assertRaises(ValueError):module.library_path('native')
+
+    def test_native_bridge_accepts_official_version_and_build_suffix(self):
+        module = standalone('native_paths', ROOT/'linework/native_library.py')
+        path = Path('C:/Krita/pykrita/linework/native/linework_native.dll')
+        bridge = object()
+        for version in ('5.2.14', '5.2.14 (git 31056c6)', '5.2.14-1'):
+            with self.subTest(version=version), \
+                    patch.object(module, 'library_path', return_value=path), \
+                    patch.object(module.ctypes, 'PyDLL', return_value=bridge) as load:
+                self.assertIs(module.load_native_bridge(version), bridge)
+                load.assert_called_once_with(str(path))
+
+    def test_windows_versions_select_their_own_native_bridge(self):
+        module = standalone('native_paths', ROOT/'linework/native_library.py')
+        for version, qt in [('5.3.3',5),('5.3.4',5),('5.3.4.1',5),('6.0.3',6),('6.0.4',6),('6.0.4.1',6)]:
+            bridge = types.SimpleNamespace(
+                linework_bridge_krita_version=Mock(return_value=version.encode()),
+                linework_bridge_qt_version=Mock(return_value=(str(qt)+'.0.0').encode()))
+            with self.subTest(version=version), \
+                    patch.object(module.platform,'system',return_value='Windows'), \
+                    patch.object(module.platform,'machine',return_value='AMD64'), \
+                    patch.object(module,'application_directory',return_value='C:/Krita/bin'), \
+                    patch.object(module.os,'add_dll_directory',return_value=object(),create=True), \
+                    patch.object(module.ctypes,'PyDLL',return_value=bridge) as load:
+                self.assertIs(module.load_native_bridge(version+' (git abc123)'),bridge)
+                self.assertEqual(Path(load.call_args.args[0]).parts[-2:],(version,'linework_native.dll'))
+
+    def test_mispackaged_version_or_qt_bridge_is_rejected(self):
+        module = standalone('native_paths', ROOT/'linework/native_library.py')
+        for compiled, qt in [('6.0.4','6.8.0'),('6.0.3','5.15.7')]:
+            bridge = types.SimpleNamespace(
+                linework_bridge_krita_version=Mock(return_value=compiled.encode()),
+                linework_bridge_qt_version=Mock(return_value=qt.encode()))
+            with self.subTest(compiled=compiled,qt=qt), \
+                    patch.object(module.platform,'system',return_value='Windows'), \
+                    patch.object(module,'library_path',return_value=Path('bad.dll')), \
+                    patch.object(module.ctypes,'PyDLL',return_value=bridge):
+                with self.assertRaises(ValueError):module.load_native_bridge('6.0.3')
+
+    def test_incompatible_krita_never_loads_dll_and_explains_installation(self):
+        module = standalone('native_paths', ROOT/'linework/native_library.py')
+        for version in ('5.2.13', '5.2.15', '5.2.140', '5.3.5', '6.0.5', '5.2.14.1', ''):
+            with self.subTest(version=version), \
+                    patch.object(module.platform, 'system', return_value='Windows'), \
+                    patch.object(module, 'library_path') as resolve, \
+                    patch.object(module.ctypes, 'PyDLL') as load:
+                with self.assertRaises(ValueError) as error:
+                    module.load_native_bridge(version)
+                resolve.assert_not_called()
+                load.assert_not_called()
+                message = str(error.exception)
+                self.assertIn('Detected: Krita '+(version or '(unknown)'), message)
+                self.assertIn('Supported on Windows: Krita 5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4, 6.0.4.1', message)
+                self.assertIn('Windows x86_64 Linework package', message)
+                self.assertIn(module.KRITA_DOWNLOAD, message)
+
+    def test_native_loader_error_preserves_path_version_and_cause(self):
+        module = standalone('native_paths', ROOT/'linework/native_library.py')
+        path = Path('C:/Krita/pykrita/linework/native/linework_native.dll')
+        cause = OSError('WinError 126: The specified module could not be found')
+        with patch.object(module, 'library_path', return_value=path), \
+                patch.object(module.ctypes, 'PyDLL', side_effect=cause):
+            with self.assertRaises(ValueError) as error:
+                module.load_native_bridge('5.2.14 (git 31056c6)')
+            self.assertIs(error.exception.__cause__, cause)
+            self.assertIn(str(path), str(error.exception))
+            self.assertIn('5.2.14 (git 31056c6)', str(error.exception))
+            self.assertIn('WinError 126', str(error.exception))
 
 
 if __name__ == '__main__':

@@ -6,9 +6,9 @@ import os
 import traceback
 from pathlib import Path
 from krita import Krita, Extension, ManagedColor
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication, QDialog, QDockWidget
+from linework.qt import QTimer, Qt
+from linework.qt import QColor
+from linework.qt import QApplication, QDialog, QDockWidget
 
 ROOT = Path(os.environ['LINEWORK_TEST_ROOT']).resolve()
 
@@ -177,7 +177,7 @@ class Probe(Extension):
         self.c.status.hide()
         options = self.window.qwindow().findChild(QDockWidget, 'sharedtooldocker')
         options.show(); options.raise_()
-        self.window.qwindow().resizeDocks([options], [650], Qt.Vertical)
+        self.window.qwindow().resizeDocks([options], [650], Qt.Orientation.Vertical)
         QApplication.processEvents()
         self.window.qwindow().grab().save(str(ROOT/'docs/images/color-editing.png'))
         self.result['result'] = 'pass'; self.finish()

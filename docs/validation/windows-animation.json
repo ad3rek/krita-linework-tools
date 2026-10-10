@@ -1,0 +1,60 @@
+{
+  "conversion_debug": {
+    "active_before": "{e83c8545-65dc-43d7-94b3-7c14f4161b7a}",
+    "source": "{e83c8545-65dc-43d7-94b3-7c14f4161b7a}",
+    "controller": "{e83c8545-65dc-43d7-94b3-7c14f4161b7a}",
+    "source_visible": false,
+    "frames": [
+      {
+        "time": 0,
+        "editable": true,
+        "strokes": 2
+      }
+    ]
+  },
+  "conversion_preserves_geometry_and_source_backup": "pass",
+  "native_timeline_copy_keeps_geometry_and_edits_independent": "pass",
+  "native_geometry_and_raster_undo_redo": "pass",
+  "native_move_delete_and_undo_keep_geometry": "pass",
+  "linked_clone_frames_stay_linked": "pass",
+  "native_blank_frame_is_editable": "pass",
+  "canvas_brush_on_blank_frame_preserves_other_frames": "pass",
+  "blank_creation_and_brush_edit_undo_redo_sequence": "pass",
+  "point_preview_hides_original_and_cancel_restores_exact_pixels": "pass",
+  "timeline_switch_during_drag_restores_captured_frame": "pass",
+  "saving_during_point_preview_restores_confirmed_frame": "pass",
+  "point_release_commits_geometry_and_native_pixels_together": "pass",
+  "multiple_point_thickness_is_frame_local": "pass",
+  "foreground_color_is_frame_local": "pass",
+  "native_brush_replacement_is_frame_local": "pass",
+  "line_eraser_and_native_undo_are_frame_local": "pass",
+  "point_thinning_and_native_undo_are_frame_local": "pass",
+  "identical_raster_frames_keep_distinct_geometry_when_copied": "pass",
+  "save_immediately_after_native_copy_includes_geometry": "pass",
+  "kra_reopen_and_edit_multiple_frames": "pass",
+  "copy_after_kra_reopen_keeps_identical_raster_geometry": "pass",
+  "vector_commit_keeps_native_animation_save_snapshot": "pass",
+  "native_png_frame_exports": "pass",
+  "real_timeline_cell_and_duplicate_action_keep_geometry": "pass",
+  "native_playback_hides_edit_overlay_and_pause_restores_it": "pass",
+  "drawing_on_regenerated_zero_frame_keeps_moved_geometry": "pass",
+  "external_raster_edit_is_preserved_and_blocks_linework_overwrite": "pass",
+  "result": "pass",
+  "krita": "5.2.14 (git 31056c6)",
+  "build": "unreleased animation development",
+  "platform": "windows-wine",
+  "source_sha256": {
+    "linework/animation.py": "c92acadaf3197890fc722d5ea68d0bbc35bd2e442c939d54d04eda2859bf2abf",
+    "linework/native/animation.h": "8e7db21dc627ec72cc50c2aeec797a2c805cb81a043829f4600f9f6014b845e4",
+    "linework/native/bridge.cpp": "77fe77b1fa4a08075c808a391909f8e1106fecf60d222da315f2f55935277020",
+    "linework/tool_options.py": "086538cdb45f9da56e76904d8f0e500b5973f5b39e188e5abe36c6a10c963c09",
+    "linework/storage.py": "d7aa2ca50e14fa10f447b8541f8a0ac315c2006ac7b34b57068f328df71b59ab",
+    "linework/plugin.py": "1d7555173eaf9545cbcfefd3cc07d0e5a7ab4ffeec172399687d8da3c323fa78",
+    "linework/preview.py": "efbf02a42267da1074cc0c89f84f1cc067313bda9f1fde6e28226a5313970c3f",
+    "linework/native/liblinework_native.so": "770ef5c009c471bc8940cbdf1dd4d6b719014c20ee1201738cb19bff10ae5411",
+    "linework/native/linework_native.dll": "6a214dedabf77fc3a65720f84cc28b11a993202ea34a9cf00de8c19803bc73cf",
+    "tests/gui/animation.py": "aa61c02fbcfc8982f057418c1dcdb9f25e3778eff9ea5420b5ee191267c0c20c"
+  },
+  "check_count": 27,
+  "validation_limit": "Wine 11.0; physical Windows hardware and tablets not tested."
+}

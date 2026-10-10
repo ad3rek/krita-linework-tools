@@ -1,0 +1,9 @@
+{
+  "language": "ar",
+  "krita": "5.2.14",
+  "tool_titles_options_and_actions": "pass",
+  "layout_direction": 1,
+  "result": "pass",
+  "application_exit_code": 0,
+  "exit_verification": "Runner process exit observed; retained original test scope."
+}

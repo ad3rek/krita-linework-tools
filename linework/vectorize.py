@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Automatic raster-to-Linework conversion inside Krita."""
+from .i18n import tr
 import copy
 import ctypes
 import time
-from PyQt5 import sip
-from PyQt5.QtCore import Qt,QThread,QTimer,QRect,QRectF,QPointF,pyqtSignal
-from PyQt5.QtGui import QImage,QPainter,QColor
-from PyQt5.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QFormLayout,QComboBox,
+from .qt import event_position, sip
+from .qt import Qt,QThread,QTimer,QRect,QRectF,QPointF,pyqtSignal
+from .qt import QImage,QPainter,QColor
+from .qt import (QDialog,QVBoxLayout,QHBoxLayout,QFormLayout,QComboBox,
     QSpinBox,QDoubleSpinBox,QCheckBox,QLabel,QPushButton,QProgressBar,QMessageBox)
 from krita import Krita
 from .native_brush import load_library,NativeBrushRenderer,capture_brush
@@ -19,22 +20,22 @@ from .model import History
 
 def layer_snapshot(document,layer):
     if layer is None or layer.type() not in ('paintlayer','filelayer'):
-        raise ValueError('Selecione uma camada raster para vetorizar.')
+        raise ValueError(tr("Select a raster layer to vectorize."))
     bounds=layer.bounds().intersected(QRect(0,0,document.width(),document.height()))
-    if bounds.isEmpty():raise ValueError('Esta camada está vazia dentro do canvas.')
+    if bounds.isEmpty():raise ValueError(tr("This layer is empty inside the canvas."))
     if bounds.width()*bounds.height()>32000000:
-        raise ValueError('A área desenhada excede 32 milhões de pixels. Divida-a em camadas menores.')
+        raise ValueError(tr("The drawn area exceeds 32 million pixels. Divide it into smaller layers."))
     lib=load_library()
     lib.linework_layer_snapshot.argtypes=[ctypes.c_void_p,ctypes.POINTER(ctypes.c_int)]
     lib.linework_layer_snapshot.restype=ctypes.c_void_p
     lib.linework_preview_pixels.argtypes=[ctypes.c_void_p];lib.linework_preview_pixels.restype=ctypes.c_void_p
     lib.linework_preview_delete.argtypes=[ctypes.c_void_p]
     geometry=(ctypes.c_int*4)();handle=lib.linework_layer_snapshot(sip.unwrapinstance(layer),geometry)
-    if not handle:raise ValueError('Não foi possível ler a camada raster.')
+    if not handle:raise ValueError(tr("Unable to read the raster layer."))
     try:
         x,y,w,h=geometry
         pixels=ctypes.string_at(lib.linework_preview_pixels(handle),w*h*4)
-        image=QImage(pixels,w,h,QImage.Format_ARGB32).copy()
+        image=QImage(pixels,w,h,QImage.Format.Format_ARGB32).copy()
         return image,(x,y)
     finally:lib.linework_preview_delete(handle)
 
@@ -51,7 +52,7 @@ class TraceWorker(QThread):
             begin=time.perf_counter();raw=self.engine.run(self.pixels,*self.args)
             strokes=result_strokes(raw,self.offset,opacity=self.opacity,cancel=lambda:self.cancelled)
             for stroke in strokes:
-                if self.cancelled:raise InterruptedError('Vetorização cancelada.')
+                if self.cancelled:raise InterruptedError(tr("Vectorization canceled."))
                 path=painter_path(stroke);color=QColor(stroke.color)
                 self.preview_paths.append((path,color,stroke.opacity,path.boundingRect()))
             self.outcome=(strokes,time.perf_counter()-begin,None)
@@ -65,8 +66,8 @@ class Preview(QLabel):
         super().__init__(parent);self.setMinimumSize(480,300)
         self.source=QImage();self.paths=None;self.opacity=1.;self.document_offset=(0,0)
         self.mode=0;self._scale=1.;self._origin=QPointF();self._fit=True;self._drag=None
-        self.setCursor(Qt.OpenHandCursor)
-        self.setToolTip('Roda do mouse: zoom · Arraste: mover · Duplo clique: ajustar à janela')
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setToolTip(tr("Mouse wheel: zoom · Drag: move · Double click: fit to window"))
 
     def extent(self):
         return QPointF(self.source.width()*(2 if self.mode==2 else 1)+(8 if self.mode==2 else 0),self.source.height())
@@ -106,24 +107,24 @@ class Preview(QLabel):
         event.accept()
 
     def mousePressEvent(self,event):
-        if event.button() in (Qt.LeftButton,Qt.MiddleButton):
-            self._drag=event.localPos();self.setCursor(Qt.ClosedHandCursor);event.accept()
+        if event.button() in (Qt.MouseButton.LeftButton,Qt.MouseButton.MiddleButton):
+            self._drag=event_position(event);self.setCursor(Qt.CursorShape.ClosedHandCursor);event.accept()
         else:super().mousePressEvent(event)
 
     def mouseMoveEvent(self,event):
         if self._drag is not None:
-            self._origin+=event.localPos()-self._drag;self._drag=event.localPos()
+            self._origin+=event_position(event)-self._drag;self._drag=event_position(event)
             self._fit=False;self.update();event.accept()
         else:super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self,event):
-        if event.button() in (Qt.LeftButton,Qt.MiddleButton):
-            self._drag=None;self.setCursor(Qt.OpenHandCursor);event.accept()
+        if event.button() in (Qt.MouseButton.LeftButton,Qt.MouseButton.MiddleButton):
+            self._drag=None;self.setCursor(Qt.CursorShape.OpenHandCursor);event.accept()
         else:super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self,event):
-        if event.button()==Qt.LeftButton:
-            self._drag=None;self.setCursor(Qt.OpenHandCursor);self.fit_to_view();event.accept()
+        if event.button()==Qt.MouseButton.LeftButton:
+            self._drag=None;self.setCursor(Qt.CursorShape.OpenHandCursor);self.fit_to_view();event.accept()
         else:super().mouseDoubleClickEvent(event)
 
     def resizeEvent(self,event):
@@ -133,16 +134,16 @@ class Preview(QLabel):
     def paintEvent(self,event):
         painter=QPainter(self);painter.fillRect(self.rect(),self.palette().dark())
         if self.source.isNull():return
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform,self._scale<1)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform,self._scale<1)
         visible=QRectF(-self._origin.x()/self._scale,-self._origin.y()/self._scale,
                        self.width()/self._scale,self.height()/self._scale)
         painter.translate(self._origin);painter.scale(self._scale,self._scale)
         box=QRectF(0,0,self.source.width(),self.source.height())
         for x,result in ([(0,False),(self.source.width()+8,True)] if self.mode==2 else [(0,self.mode==0)]):
-            painter.save();painter.translate(x,0);painter.setClipRect(box);painter.fillRect(box,Qt.white)
+            painter.save();painter.translate(x,0);painter.setClipRect(box);painter.fillRect(box,Qt.GlobalColor.white)
             if result and self.paths is not None:
-                painter.translate(-self.document_offset[0],-self.document_offset[1]);painter.setPen(Qt.NoPen)
+                painter.translate(-self.document_offset[0],-self.document_offset[1]);painter.setPen(Qt.PenStyle.NoPen)
                 area=visible.translated(self.document_offset[0]-x,self.document_offset[1])
                 for path,color,opacity,bounds in self.paths:
                     if not bounds.intersects(area):continue
@@ -154,64 +155,64 @@ class Preview(QLabel):
 
 class VectorizeDialog(QDialog):
     def __init__(self,window):
-        super().__init__(window.qwindow());self.setWindowTitle('Vetorizar camada em Linework')
-        self.setWindowModality(Qt.ApplicationModal);self.setAttribute(Qt.WA_DeleteOnClose)
+        super().__init__(window.qwindow());self.setWindowTitle(tr("Vectorize layer in Linework"))
+        self.setWindowModality(Qt.WindowModality.ApplicationModal);self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.window=window;self.view=window.activeView();self.document=self.view.document()
         self.source=self.document.activeNode();self.snapshot,self.offset=layer_snapshot(self.document,self.source)
         self.setMinimumWidth(640);self.worker=None;self.strokes=None;self._reject_pending=False
         self._applying=False;self._apply_index=0;self.renderer=None;self._apply_cancel=False
         self._native_svg={}
         self._geometry=(self.document.width(),self.document.height(),self.document.xRes(),self.document.yRes())
-        body=QVBoxLayout(self);body.addWidget(QLabel('Origem: '+self.source.name()))
-        body.addWidget(QLabel('Motor: OpenToonz · linha central'))
+        body=QVBoxLayout(self);body.addWidget(QLabel(tr("Source: ")+self.source.name()))
+        body.addWidget(QLabel(tr("Engine: OpenToonz · centerline")))
         form=QFormLayout();body.addLayout(form)
-        self.mode=QComboBox();self.mode.addItems(['Traços sobre fundo claro','Alfa / fundo transparente'])
+        self.mode=QComboBox();self.mode.addItems([tr("strokes on a light background"),tr("Alpha/transparent background")])
         border=[self.snapshot.pixelColor(x,y).alpha() for x,y in
             ((0,0),(self.snapshot.width()-1,0),(0,self.snapshot.height()-1),
              (self.snapshot.width()-1,self.snapshot.height()-1))]
         self.mode.setCurrentIndex(1 if sum(a<16 for a in border)>=3 else 0)
         form.addRow('Detectar',self.mode)
         self.threshold=QSpinBox();self.threshold.setRange(1,254);self.threshold.setValue(128 if self.mode.currentIndex() else 170)
-        form.addRow('Limiar',self.threshold)
+        form.addRow(tr("Threshold"),self.threshold)
         self.noise=QSpinBox();self.noise.setRange(0,10000);self.noise.setValue(12);self.noise.setSuffix(' px²')
-        form.addRow('Remover manchas menores que',self.noise)
+        form.addRow(tr("Remove specks smaller than"),self.noise)
         self.accuracy=QDoubleSpinBox();self.accuracy.setRange(1,10);self.accuracy.setValue(9.5)
-        self.accuracy.setToolTip('Precisão do OpenToonz: maior valor preserva mais detalhes. Penalidade = 10 − precisão.')
+        self.accuracy.setToolTip(tr("OpenToonz Accuracy: Higher value preserves more details. Penalty = 10 − accuracy."))
         self.smoothing=self.accuracy  # Compatibility with earlier integration probes.
-        form.addRow('Precisão',self.accuracy)
+        form.addRow(tr("Accuracy"),self.accuracy)
         self.maximum_width=QDoubleSpinBox();self.maximum_width.setRange(.1,2000);self.maximum_width.setValue(200);self.maximum_width.setSuffix(' px')
-        self.maximum_width.setToolTip('Limite do OpenToonz para a largura total. Regiões maiores podem gerar contornos.')
-        form.addRow('Espessura máxima',self.maximum_width)
-        self.preserve_color=QCheckBox('Preservar cor e transparência do bitmap');self.preserve_color.setChecked(True)
-        self.preserve_color.setToolTip('Aplica a aparência às curvas prontas. Desmarcado usa preto, como o OpenToonz em raster RGB.')
+        self.maximum_width.setToolTip(tr("OpenToonz limit for total width. Larger regions can generate outlines."))
+        form.addRow(tr("Maximum thickness"),self.maximum_width)
+        self.preserve_color=QCheckBox(tr("Preserve bitmap color and transparency"));self.preserve_color.setChecked(True)
+        self.preserve_color.setToolTip(tr("Applies the appearance to finished curves. Unchecked uses black, like OpenToonz in RGB raster."))
         form.addRow(self.preserve_color)
-        self.native_brush=QCheckBox('Usar o preset atual do Krita no resultado')
-        self.native_brush.setToolTip('A prévia mostra a geometria. O preset interpreta a pressão ao criar a camada.')
+        self.native_brush=QCheckBox(tr("Use the current Krita preset in the result"))
+        self.native_brush.setToolTip(tr("The preview shows the geometry. The preset interprets the pressure when creating the layer."))
         form.addRow(self.native_brush)
-        self.native_hint=QLabel('Prévia geométrica; o preset será aplicado ao criar a camada.')
+        self.native_hint=QLabel(tr("Geometric preview; the preset will be applied when creating the layer."))
         self.native_hint.setWordWrap(True);self.native_hint.hide();form.addRow(self.native_hint)
         self.native_brush.toggled.connect(self.native_hint.setVisible)
-        self.hide_source=QCheckBox('Ocultar a camada raster depois de converter');self.hide_source.setChecked(True)
+        self.hide_source=QCheckBox(tr("Hide raster layer after converting"));self.hide_source.setChecked(True)
         form.addRow(self.hide_source)
         self.preview=Preview(self);body.addWidget(self.preview,1)
-        self.compare=QComboBox();self.compare.addItems(['Resultado','Original','Comparar lado a lado'])
+        self.compare=QComboBox();self.compare.addItems([tr("Result"),tr("Original"),tr("Compare side by side")])
         navigation=QHBoxLayout();body.addLayout(navigation);navigation.addWidget(self.compare,1)
-        self.zoom_out=QPushButton('−');self.zoom_in=QPushButton('+');self.fit_button=QPushButton('Ajustar')
-        self.zoom_label=QLabel();self.zoom_label.setMinimumWidth(56);self.zoom_label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
-        for button,tip in ((self.zoom_out,'Diminuir zoom'),(self.zoom_in,'Aumentar zoom'),(self.fit_button,'Ajustar à janela')):
+        self.zoom_out=QPushButton('−');self.zoom_in=QPushButton('+');self.fit_button=QPushButton(tr("Fit"))
+        self.zoom_label=QLabel();self.zoom_label.setMinimumWidth(56);self.zoom_label.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignVCenter)
+        for button,tip in ((self.zoom_out,tr("Zoom out")),(self.zoom_in,tr("Zoom in")),(self.fit_button,tr("Fit to window"))):
             button.setAutoDefault(False);button.setToolTip(tip);navigation.addWidget(button)
         self.zoom_out.setMaximumWidth(32);self.zoom_in.setMaximumWidth(32);navigation.addWidget(self.zoom_label)
         self.zoom_out.clicked.connect(lambda:self.preview.zoom_by(1/1.25))
         self.zoom_in.clicked.connect(lambda:self.preview.zoom_by(1.25));self.fit_button.clicked.connect(self.preview.fit_to_view)
         self.preview.zoomChanged.connect(lambda scale:self.zoom_label.setText('{:.0f}%'.format(scale*100)))
         self.compare.currentIndexChanged.connect(self.draw_preview)
-        self.compare_hint=QLabel('Original à esquerda · Linework à direita');self.compare_hint.hide();body.addWidget(self.compare_hint)
+        self.compare_hint=QLabel(tr("Original on the left · Linework on the right"));self.compare_hint.hide();body.addWidget(self.compare_hint)
         self.compare.currentIndexChanged.connect(lambda index:self.compare_hint.setVisible(index==2))
-        self.info=QLabel('A camada original será preservada.');self.info.setWordWrap(True);body.addWidget(self.info)
+        self.info=QLabel(tr("The original layer will be preserved."));self.info.setWordWrap(True);body.addWidget(self.info)
         self.progress=QProgressBar();self.progress.hide();body.addWidget(self.progress)
         row=QHBoxLayout();body.addLayout(row)
-        self.preview_button=QPushButton('Atualizar prévia');self.apply_button=QPushButton('Criar camada Linework')
-        self.apply_button.setEnabled(False);self.cancel_button=QPushButton('Cancelar')
+        self.preview_button=QPushButton(tr("Update preview"));self.apply_button=QPushButton(tr("Create Linework layer"))
+        self.apply_button.setEnabled(False);self.cancel_button=QPushButton(tr("Cancel"))
         for button in (self.preview_button,self.apply_button,self.cancel_button):row.addWidget(button)
         self.preview_button.clicked.connect(self.start_preview);self.apply_button.clicked.connect(self.apply)
         self.cancel_button.clicked.connect(self.reject)
@@ -221,7 +222,7 @@ class VectorizeDialog(QDialog):
             signal.connect(self.invalidate)
         self.timer=QTimer(self);self.timer.setInterval(100);self.timer.timeout.connect(self.poll_progress)
         self.paint_timer=QTimer(self);self.paint_timer.setSingleShot(True);self.paint_timer.timeout.connect(self.paint_next)
-        from PyQt5.QtWidgets import QApplication
+        from .qt import QApplication
         QApplication.instance().aboutToQuit.connect(self.shutdown)
         self._result_paths=None;self.draw_preview()
         QTimer.singleShot(0,self.start_preview)
@@ -229,7 +230,7 @@ class VectorizeDialog(QDialog):
     def invalidate(self):
         self.strokes=None;self.apply_button.setEnabled(False)
         if self.worker:self.worker.cancel()
-        self.info.setText('Atualize a prévia para aplicar os novos ajustes.')
+        self.info.setText(tr("Update the preview to apply the new adjustments."))
 
     def busy(self,value):
         for control in (self.mode,self.threshold,self.noise,self.accuracy,self.maximum_width,self.preserve_color,self.native_brush,self.hide_source,self.preview_button):
@@ -239,14 +240,14 @@ class VectorizeDialog(QDialog):
 
     def start_preview(self):
         if self.worker or self._applying:return
-        self.busy(True);self.progress.setValue(0);self.info.setText('Extraindo linhas e espessura…')
-        bits=self.snapshot.constBits();bits.setsize(self.snapshot.byteCount())
+        self.busy(True);self.progress.setValue(0);self.info.setText(tr("Extracting lines and thickness…"))
+        bits=self.snapshot.constBits();bits.setsize(self.snapshot.sizeInBytes())
         try:
             self.worker=TraceWorker(bytes(bits),self.snapshot.width(),self.snapshot.height(),self.offset,
                 self.mode.currentIndex(),self.threshold.value(),self.noise.value(),self.accuracy.value(),self.maximum_width.value(),self.preserve_color.isChecked(),
                 self.source.opacity()/255.0,self)
         except Exception as exc:
-            self.busy(False);self.info.setText(str(exc));return
+            self.busy(False);self.info.setText(tr(str(exc)));return
         self.worker.finished.connect(self.preview_finished);self.timer.start();self.worker.start()
 
     def poll_progress(self):
@@ -258,10 +259,10 @@ class VectorizeDialog(QDialog):
         if not error:self._result_paths=worker.preview_paths
         worker.engine.close();worker.deleteLater();self.busy(False)
         if self._reject_pending:super().reject();return
-        if error:self.info.setText(str(error));return
+        if error:self.info.setText(tr(str(error)));return
         count=sum(len(s.points) for s in self.strokes)
-        self.info.setText('{} traços · {} pontos · {:.2f} s'.format(len(self.strokes),count,elapsed) if self.strokes
-                          else 'Nenhum traço encontrado. Ajuste o modo de detecção ou o limiar.')
+        self.info.setText(tr("{0} strokes · {1} points · {2:.2f} s").format(len(self.strokes),count,elapsed) if self.strokes
+                          else tr("No strokes found. Adjust the detection mode or threshold."))
         self.draw_preview()
 
     def draw_preview(self):
@@ -271,7 +272,7 @@ class VectorizeDialog(QDialog):
     def apply(self):
         if not self.strokes or self.worker or self._applying:return
         if self.source.parentNode() is None or self._geometry!=(self.document.width(),self.document.height(),self.document.xRes(),self.document.yRes()):
-            self.info.setText('A origem ou o tamanho do documento mudou. Abra a conversão novamente.');return
+            self.info.setText(tr("The source or document size changed. Open the conversion again."));return
         self._applying=True;self._apply_cancel=False;self.busy(True);self.progress.setValue(0)
         try:
             for s in self.strokes:s.brush=None
@@ -283,10 +284,10 @@ class VectorizeDialog(QDialog):
         except Exception as exc:self.apply_error(exc)
 
     def paint_next(self):
-        if self._apply_cancel:self.apply_error(InterruptedError('Conversão cancelada.'));return
+        if self._apply_cancel:self.apply_error(InterruptedError(tr("Conversion cancelled.")));return
         try:
             if self._apply_index>=len(self.strokes):self.commit_layer();return
-            self.info.setText('Aplicando pincel: {} de {}'.format(self._apply_index+1,len(self.strokes)))
+            self.info.setText(tr("Applying brush: {0} of {1}").format(self._apply_index+1,len(self.strokes)))
             stroke=self.strokes[self._apply_index]
             self._native_svg[stroke.uid]=self.renderer.svg_image(stroke);self._apply_index+=1
             self.progress.setValue(round(self._apply_index*100/len(self.strokes)));self.paint_timer.start(0)
@@ -297,9 +298,9 @@ class VectorizeDialog(QDialog):
         source_visible=self.source.visible()
         try:
             self.document.setActiveNode(self.source);select_tool(3);controller=current_controller(self.window)
-            if controller is None:raise ValueError('Não foi possível ativar Linework nesta visualização.')
+            if controller is None:raise ValueError(tr("Unable to activate Linework in this view."))
             layer=controller.create_native_layer(self.document)
-            layer.setName('Linework — '+self.source.name())
+            layer.setName(tr("Linework — ")+self.source.name())
             native_renderer=None
             if self.renderer:
                 class Prepared:
@@ -309,6 +310,7 @@ class VectorizeDialog(QDialog):
             write_layer(self.document,layer,self.strokes,native_renderer)
             if self.hide_source.isChecked():self.source.setVisible(False)
             self.document.setModified(True);self.document.refreshProjection();self.document.waitForDone()
+            controller.clear_binding()
             controller.document=self.document;controller.layer=layer
             controller._selection_pending=True;controller._selection_deadline=time.monotonic()+3
             controller.select_native_layer()
@@ -329,12 +331,12 @@ class VectorizeDialog(QDialog):
     def apply_error(self,error):
         self._applying=False
         if self.renderer:self.renderer.close();self.renderer=None
-        self.busy(False);self.info.setText(str(error))
+        self.busy(False);self.info.setText(tr(str(error)))
         if self._reject_pending:super().reject()
 
     def reject(self):
         if self.worker:
-            self._reject_pending=True;self.worker.cancel();self.info.setText('Cancelando…');return
+            self._reject_pending=True;self.worker.cancel();self.info.setText(tr("Canceling…"));return
         if self._applying:
             self._reject_pending=True;self._apply_cancel=True;return
         super().reject()
@@ -359,8 +361,8 @@ def open_vectorizer(window=None):
         return None
     view=window.activeView()
     if view is None or view.document() is None:
-        QMessageBox.information(parent,'Linework','Abra uma imagem e selecione uma camada raster.');return None
+        QMessageBox.information(parent,'Linework',tr("Open an image and select a raster layer."));return None
     try:
         dialog=VectorizeDialog(window);dialog.show();return dialog
     except Exception as exc:
-        QMessageBox.information(parent,'Linework',str(exc));return None
+        QMessageBox.information(parent,'Linework',tr(str(exc)));return None

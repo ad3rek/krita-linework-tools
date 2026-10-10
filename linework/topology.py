@@ -41,7 +41,7 @@ def prepared(stroke, width=None):
         for point in result.points:
             point.thickness *= ratio
             if not 0 <= point.thickness <= 20000:
-                raise ValueError('A espessura excede o intervalo suportado para o traço ativo.')
+                raise ValueError("The thickness exceeds the supported range for the active stroke.")
             for side in ('in', 'out'):
                 value = getattr(point, 'thickness_'+side)
                 if value is not None: setattr(point, 'thickness_'+side, value*ratio)
@@ -62,7 +62,7 @@ def reversed_stroke(stroke):
 
 def merged_point(points, incoming, outgoing, active, position):
     if position not in ('center', 'active'):
-        raise ValueError('Posição de mesclagem inválida.')
+        raise ValueError("Invalid merge position.")
     if position == 'active': result = copy.deepcopy(active)
     else:
         result = Point(sum(p.x for p in points)/len(points),
@@ -86,7 +86,7 @@ def merge_points(stroke, indices, active_index, position='center'):
     indices = sorted(set(indices))
     if (len(indices) < 2 or indices[0] < 0 or indices[-1] >= len(stroke.points) or
             indices != list(range(indices[0], indices[-1]+1))):
-        raise ValueError('Selecione dois ou mais pontos consecutivos do mesmo traço.')
+        raise ValueError("Select two or more consecutive points of the same stroke.")
     if active_index not in indices: active_index = indices[-1]
     result = prepared(stroke)
     points = [result.points[i] for i in indices]
@@ -109,9 +109,9 @@ def connect(a, b):
 
 def join_strokes(active, active_index, other, other_index, weld=False, position='center'):
     if active.uid == other.uid or not endpoint(active, active_index) or not endpoint(other, other_index):
-        raise ValueError('Selecione uma ponta de cada um de dois traços.')
+        raise ValueError("Select one end of each of two strokes.")
     count = len(active.points)+len(other.points)-int(weld)
-    if count > MAX_POINTS: raise ValueError('A união excede o limite de pontos por traço.')
+    if count > MAX_POINTS: raise ValueError("Joining exceeds the point limit per stroke.")
     a = prepared(active)
     b = prepared(other, active.width)
     if active_index == 0 and len(a.points) > 1: a = reversed_stroke(a)
@@ -131,9 +131,9 @@ def join_strokes(active, active_index, other, other_index, weld=False, position=
 
 
 def close_stroke(stroke):
-    if len(stroke.points) < 2: raise ValueError('Este traço não possui duas pontas distintas.')
-    if distance(stroke.points[0], stroke.points[-1]) < 1e-7: raise ValueError('Este traço já está fechado.')
-    if len(stroke.points) >= MAX_POINTS: raise ValueError('O fechamento excede o limite de pontos.')
+    if len(stroke.points) < 2: raise ValueError("This stroke does not have two distinct ends.")
+    if distance(stroke.points[0], stroke.points[-1]) < 1e-7: raise ValueError("This stroke is already closed.")
+    if len(stroke.points) >= MAX_POINTS: raise ValueError("Closing the stroke exceeds the point limit.")
     result = prepared(stroke)
     first = copy.deepcopy(result.points[0])
     connect(result.points[-1], first)
@@ -147,21 +147,21 @@ def selection_kind(strokes, keys, primary, operation):
     by_id = {s.uid: s for s in strokes}
     for uid, index in keys:
         if uid not in by_id or not 0 <= index < len(by_id[uid].points):
-            raise ValueError('Seleção de pontos inválida.')
+            raise ValueError("Invalid point selection.")
         grouped.setdefault(uid, []).append(index)
-    if len(keys) < 2: raise ValueError('Selecione os pontos com Shift+clique ou com o retângulo.')
+    if len(keys) < 2: raise ValueError("Select points with Shift+click or with the rectangle.")
     if operation == 'merge' and len(grouped) == 1:
         uid, indices = next(iter(grouped.items())); ordered = sorted(indices)
         if ordered == list(range(ordered[0], ordered[-1]+1)): return 'merge', uid, ordered
-        raise ValueError('Mescle pontos consecutivos; use Unir pontas para fechar um traço.')
+        raise ValueError("Merge consecutive points; use Join Ends to close a line.")
     if len(keys) != 2:
-        raise ValueError('Para unir traços, selecione exatamente duas pontas.')
+        raise ValueError("To join strokes, select exactly two ends.")
     pairs = sorted(keys)
     if any(not endpoint(by_id[uid], i) for uid, i in pairs):
-        raise ValueError('A união precisa de pontos nas extremidades dos traços.')
+        raise ValueError("Joining requires points at the ends of the strokes.")
     if len(grouped) == 1:
         stroke = by_id[pairs[0][0]]
-        if distance(stroke.points[0], stroke.points[-1]) < 1e-7: raise ValueError('Este traço já está fechado.')
+        if distance(stroke.points[0], stroke.points[-1]) < 1e-7: raise ValueError("This stroke is already closed.")
         return 'close', pairs[0][0], None
     active_key = primary if primary in keys else pairs[-1]
     other_key = next(p for p in pairs if p != active_key)
