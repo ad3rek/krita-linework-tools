@@ -1,0 +1,50 @@
+{
+  "release": "0.1.6",
+  "date": "2026-10-12",
+  "implementation_commit": "4ffa04f60246d681225c648c97b458f42b01fbec",
+  "cpu_tests": 105,
+  "cpu_skips": 0,
+  "application_reports": {
+    "linux-interface.json": {
+      "result": "pass",
+      "krita": "5.2.14",
+      "application_exit_code": 0,
+      "checks_passed": 9
+    },
+    "windows-6.0.4.1-interface.json": {
+      "result": "pass",
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 9
+    }
+  },
+  "native_binaries_identical_to": "v0.1.5",
+  "native_sha256": {
+    "linework/native/5.3.3/linework_native.dll": "19e3fcaaf02a5c45bc2a3d91d8d200ddd530b85ab2435f11400c8d16102196a0",
+    "linework/native/5.3.4.1/linework_native.dll": "026a24075eae4d69f01497bfb897113319fb053c2f42d92cfaa47c362af1a4b3",
+    "linework/native/5.3.4/linework_native.dll": "332b71e45446fca00cdc714aca6c5b4b026d965a5d3b6e5a0a11c4cd5091929d",
+    "linework/native/6.0.3/linework_native.dll": "16de08334bd100ac46bc19137d227fde94cf1ab1d29858972bc0a3de5adbc72d",
+    "linework/native/6.0.4.1/linework_native.dll": "2d669c3c98e41f5f11d7ff08af0a9aefacd23dfdbd812543b05ec377102e4f66",
+    "linework/native/6.0.4/linework_native.dll": "aba3eee5a33c3b7e3018b60f5ad88f65e5d5baa48ce9344747ed09c800470d95",
+    "linework/native/liblinework_native.so": "d4130c121a5f7be86776ad42b9906b2654e89f0d287bb9a341545dc30e9eb5c9",
+    "linework/native/liblinework_vectorize.so": "0a69e1da8606d4757283d9044cd47242348c4160c08959c049aeaa0fe3ba868f",
+    "linework/native/linework_native.dll": "76d28e5c44ca85ebe01e5ba17ef4d56700744af805d95ed554ef3199b062a39f",
+    "linework/native/linework_vectorize.dll": "04b0e1284c0bcee56cb8b0b897e0c01e0bcb72bd86ed9007320a3b99be270d4a"
+  },
+  "tested_python_sha256": {
+    "linework/tools.py": "b1125892d785d3db07c5e6bef25148173d30f07914fe14cb4ce7c05ab9fe076a",
+    "linework/native_brush.py": "5a2cfee89a45f420b8e10e98517c0b6931ef9666b1a0fb04d74232ce230c728e",
+    "linework/__init__.py": "352633b910fd0a88c96382e41cc72d8ddb336634d189729e94b2ea90a0f5e688"
+  },
+  "changes": [
+    "Cache named Linework toolbox controls and layer views instead of scanning the full Qt hierarchy every 350 ms",
+    "Retain per-window wrappers and release them on window destruction",
+    "Refresh cached targets after controls are destroyed and preserve theme changes"
+  ],
+  "scope": [
+    "Windows interface probe uses official Krita 6.0.4.1 under Wine 11.0; no physical Windows or tablet validation",
+    "Fresh application validation covers the interface; 0.1.5 animation/drawing reports retain their historical scope",
+    "Compatibility matrix is unchanged: Linux Krita 5.2.14 and seven version-specific Windows bridges",
+    "Android and macOS are outside this release"
+  ]
+}

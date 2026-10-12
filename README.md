@@ -6,9 +6,9 @@ Draw directly on the canvas with Krita brush presets, then edit the centerline, 
 
 Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2** to investigate its linework features and guide the reproduction of their behavior. The [implementation and scope](#codex-ghidra-and-reverse-engineering) are documented below.
 
-> **Version 0.1.5 · experimental desktop build.** Windows x64 supports Krita **5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1**, with automatic selection of a bridge compiled for each version. Linux x86_64 currently supports **5.2.14** with compatible system libraries. The bridge uses Krita's internal ABI; other builds require recompilation and validation. Android remains outside this release.
+> **Version 0.1.6 · experimental desktop build.** Windows x64 supports Krita **5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1**, with automatic selection of a bridge compiled for each version. Linux x86_64 currently supports **5.2.14** with compatible system libraries. The bridge uses Krita's internal ABI; other builds require recompilation and validation. Android remains outside this release.
 
-> **Version 0.1.5:** newly drawn and vectorized Linework uses one layer with an editable initial frame and native Timeline support. No Animate Layer script or additional animation layer is needed. Native toolbar size and increase/decrease size actions also work while a Linework tool is active.
+> **Version 0.1.6:** fixes idle interface slowdown by caching Linework toolbox controls and layer views between icon updates. Theme changes, rebuilt dockers and multiple windows remain supported. Timeline-ready layers and native brush size controls from 0.1.5 are included.
 
 ![Pepper lineart converted into a Linework layer in the real Krita interface](docs/images/pepper-vectorized.png)
 
@@ -16,16 +16,16 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 ## Download and install
 
-Download a platform package from [version 0.1.5](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.5). Save your work and close Krita before installing.
+Download a platform package from [version 0.1.6](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.6). Save your work and close Krita before installing.
 
-Version **0.1.5** unifies newly drawn and vectorized strokes into one Timeline-ready Linework layer. It fixes native brush size controls, keeps rapid consecutive strokes on their newly created layer and refreshes editable frame geometry after native Undo. [Changelog](CHANGELOG.md).
+Version **0.1.6** prevents repeated scans of Krita's complete Qt widget hierarchy during idle icon updates. It includes the Timeline-ready layers, native brush size controls and drawing fixes from 0.1.5. [Changelog](CHANGELOG.md) · [0.1.6 validation](docs/TESTING.md#016-validation).
 
 The [source from `main`](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip) can also be installed with the steps below. Previous release archives remain available unchanged.
 
 | Package | Required application | Validation environment |
 | --- | --- | --- |
-| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.5/Krita-Linework-Tools-0.1.5-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
-| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.5/Krita-Linework-Tools-0.1.5-windows-x86_64.zip) | Official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64 | Experimental preview; official application runtimes tested under Wine 11.0 |
+| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.6/Krita-Linework-Tools-0.1.6-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
+| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.6/Krita-Linework-Tools-0.1.6-windows-x86_64.zip) | Official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64 | Experimental preview; official application runtimes tested under Wine 11.0 |
 
 On Linux, extract the archive, open a terminal in its folder and run:
 

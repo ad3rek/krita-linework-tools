@@ -2,6 +2,20 @@
 
 The original validation environment is **Linux x86_64, Krita 5.2.14 / Qt 5.15.17 / Python 3.12**. The bridge requires compatible native libraries. Canvas regressions run the real application in isolation; they do not replace physical stylus validation.
 
+## 0.1.6 validation
+
+The release passed **105 CPU tests**, with no skips ([run log](validation/0.1.6/cpu-tests.txt)). This includes five real Qt icon-polling tests for a hierarchy with 5,000 unrelated widgets, repeated polling without repeated lookups, theme changes, rebuilt controls, multiple windows and cleanup after window destruction.
+
+The isolated interface probe passed in Linux Krita **5.2.14** and the official Windows Krita **6.0.4.1** runtime under Wine **11.0**, including all six tools, narrow Tool Options, collapsible controls, point-eraser strength and inherited theme palettes. Both applications exited normally. [Linux report](validation/0.1.6/linux-interface.json) · [Windows/Wine report](validation/0.1.6/windows-6.0.4.1-interface.json). Physical Windows and tablet testing remain outside this validation.
+
+All native `.so` and `.dll` binaries are byte-identical to 0.1.5; the changes in 0.1.6 affect Python icon-target caching and release documentation. The [0.1.5 native compilation matrix](validation/0.1.5/native-build.json) and its historical animation/drawing reports retain their original scope. [0.1.6 release report](validation/0.1.6/release.json).
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/gui/run.py interface
+python3 tests/gui/run_windows_wine.py interface --krita-bin /path/krita-x64-6.0.4.1/bin
+```
+
 ## 0.1.5 validation
 
 The release passed **100 CPU tests** ([log](validation/0.1.5/cpu-tests.txt)). New Linework creation uses the native frame backend directly. The application runs exercise automatic creation on the first stroke, the New Linework Layer menu, raster conversion with both smooth lines and the current preset, and saving/reopening their editable geometry.

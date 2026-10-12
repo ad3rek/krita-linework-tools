@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.6 — 2026-10-12
 
 - Cache Linework's named toolbox controls and layer views instead of scanning the entire Qt widget tree every 350 ms. Retain the main window's Python wrapper between polls, refresh cached widgets after their destruction, and release the cache when the window closes. Preserve theme updates and per-window layer icons.
 - Add real Qt regression tests with 5,000 unrelated widgets, repeated polling, theme changes, rebuilt controls, multiple windows and window cleanup.

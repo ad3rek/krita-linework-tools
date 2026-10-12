@@ -1,0 +1,320 @@
+{
+  "written_binding": {
+    "active": "Background",
+    "active_type": "paintlayer",
+    "active_id": "{6ec66625-e867-4dbe-8647-3a959a13aae2}",
+    "written_id": "{a07dd1e8-396a-4695-8487-fd23eb4ba540}",
+    "metadata": {
+      "version": 7,
+      "layers": {
+        "{a07dd1e8-396a-4695-8487-fd23eb4ba540}": {
+          "kind": "animated",
+          "geometry": [
+            900,
+            900,
+            72.0,
+            72.0
+          ],
+          "frames": {
+            "0": {
+              "appearances": {},
+              "fingerprint": "d66e0d7bfa7e56daed5941d4653bc5ec9a3eb3cf44ec47fa614d400bd1a0f84e",
+              "geometry": [
+                900,
+                900,
+                72,
+                72
+              ],
+              "strokes": [
+                {
+                  "color": "#202020",
+                  "id": "fa1b4ff342da4ad8b4352a244d82fa3a",
+                  "kind": "curve",
+                  "minimum": 0,
+                  "opacity": 1,
+                  "points": [
+                    [
+                      120,
+                      180,
+                      0.5
+                    ],
+                    [
+                      280,
+                      130,
+                      1
+                    ],
+                    [
+                      430,
+                      220,
+                      0.7
+                    ]
+                  ],
+                  "taper_end": 0,
+                  "taper_start": 0,
+                  "width": 18
+                },
+                {
+                  "color": "#287590",
+                  "id": "5a8d6fc9e72b43cb8e6d3915ec600536",
+                  "kind": "curve",
+                  "minimum": 0,
+                  "opacity": 1,
+                  "points": [
+                    [
+                      140,
+                      330,
+                      1
+                    ],
+                    [
+                      400,
+                      400,
+                      1
+                    ]
+                  ],
+                  "taper_end": 0,
+                  "taper_start": 0,
+                  "width": 12
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "document": "{04a3db84-71c9-4d48-aff0-bbe691b39941}",
+    "view_document": "{04a3db84-71c9-4d48-aff0-bbe691b39941}",
+    "layer": null,
+    "strokes": [],
+    "expected": [
+      "fa1b4ff342da4ad8b4352a244d82fa3a",
+      "5a8d6fc9e72b43cb8e6d3915ec600536"
+    ],
+    "selection": [],
+    "mode": "edit",
+    "status": "Draw on canvas · Strokes are automatically written to the layer."
+  },
+  "brush_narrow_native_options": "pass",
+  "curve_narrow_native_options": "pass",
+  "line_narrow_native_options": "pass",
+  "edit_binding_before_selection": {
+    "active": "Linework — editable strokes",
+    "active_type": "paintlayer",
+    "active_id": "{a07dd1e8-396a-4695-8487-fd23eb4ba540}",
+    "written_id": "{a07dd1e8-396a-4695-8487-fd23eb4ba540}",
+    "metadata": {
+      "version": 7,
+      "layers": {
+        "{a07dd1e8-396a-4695-8487-fd23eb4ba540}": {
+          "kind": "animated",
+          "geometry": [
+            900,
+            900,
+            72.0,
+            72.0
+          ],
+          "frames": {
+            "0": {
+              "appearances": {},
+              "fingerprint": "d66e0d7bfa7e56daed5941d4653bc5ec9a3eb3cf44ec47fa614d400bd1a0f84e",
+              "geometry": [
+                900,
+                900,
+                72,
+                72
+              ],
+              "strokes": [
+                {
+                  "color": "#202020",
+                  "id": "fa1b4ff342da4ad8b4352a244d82fa3a",
+                  "kind": "curve",
+                  "minimum": 0,
+                  "opacity": 1,
+                  "points": [
+                    [
+                      120,
+                      180,
+                      0.5
+                    ],
+                    [
+                      280,
+                      130,
+                      1
+                    ],
+                    [
+                      430,
+                      220,
+                      0.7
+                    ]
+                  ],
+                  "taper_end": 0,
+                  "taper_start": 0,
+                  "width": 18
+                },
+                {
+                  "color": "#287590",
+                  "id": "5a8d6fc9e72b43cb8e6d3915ec600536",
+                  "kind": "curve",
+                  "minimum": 0,
+                  "opacity": 1,
+                  "points": [
+                    [
+                      140,
+                      330,
+                      1
+                    ],
+                    [
+                      400,
+                      400,
+                      1
+                    ]
+                  ],
+                  "taper_end": 0,
+                  "taper_start": 0,
+                  "width": 12
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "document": "{04a3db84-71c9-4d48-aff0-bbe691b39941}",
+    "view_document": "{04a3db84-71c9-4d48-aff0-bbe691b39941}",
+    "layer": "Linework — editable strokes",
+    "strokes": [
+      "fa1b4ff342da4ad8b4352a244d82fa3a",
+      "5a8d6fc9e72b43cb8e6d3915ec600536"
+    ],
+    "expected": [
+      "fa1b4ff342da4ad8b4352a244d82fa3a",
+      "5a8d6fc9e72b43cb8e6d3915ec600536"
+    ],
+    "selection": [
+      [
+        "fa1b4ff342da4ad8b4352a244d82fa3a",
+        1
+      ],
+      [
+        "5a8d6fc9e72b43cb8e6d3915ec600536",
+        0
+      ]
+    ],
+    "mode": "pressure",
+    "status": "Draw on canvas · Strokes are automatically written to the layer."
+  },
+  "edit_binding_after_selection": {
+    "active": "Linework — editable strokes",
+    "active_type": "paintlayer",
+    "active_id": "{a07dd1e8-396a-4695-8487-fd23eb4ba540}",
+    "written_id": "{a07dd1e8-396a-4695-8487-fd23eb4ba540}",
+    "metadata": {
+      "version": 7,
+      "layers": {
+        "{a07dd1e8-396a-4695-8487-fd23eb4ba540}": {
+          "kind": "animated",
+          "geometry": [
+            900,
+            900,
+            72.0,
+            72.0
+          ],
+          "frames": {
+            "0": {
+              "appearances": {},
+              "fingerprint": "d66e0d7bfa7e56daed5941d4653bc5ec9a3eb3cf44ec47fa614d400bd1a0f84e",
+              "geometry": [
+                900,
+                900,
+                72,
+                72
+              ],
+              "strokes": [
+                {
+                  "color": "#202020",
+                  "id": "fa1b4ff342da4ad8b4352a244d82fa3a",
+                  "kind": "curve",
+                  "minimum": 0,
+                  "opacity": 1,
+                  "points": [
+                    [
+                      120,
+                      180,
+                      0.5
+                    ],
+                    [
+                      280,
+                      130,
+                      1
+                    ],
+                    [
+                      430,
+                      220,
+                      0.7
+                    ]
+                  ],
+                  "taper_end": 0,
+                  "taper_start": 0,
+                  "width": 18
+                },
+                {
+                  "color": "#287590",
+                  "id": "5a8d6fc9e72b43cb8e6d3915ec600536",
+                  "kind": "curve",
+                  "minimum": 0,
+                  "opacity": 1,
+                  "points": [
+                    [
+                      140,
+                      330,
+                      1
+                    ],
+                    [
+                      400,
+                      400,
+                      1
+                    ]
+                  ],
+                  "taper_end": 0,
+                  "taper_start": 0,
+                  "width": 12
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "document": "{04a3db84-71c9-4d48-aff0-bbe691b39941}",
+    "view_document": "{04a3db84-71c9-4d48-aff0-bbe691b39941}",
+    "layer": "Linework — editable strokes",
+    "strokes": [
+      "fa1b4ff342da4ad8b4352a244d82fa3a",
+      "5a8d6fc9e72b43cb8e6d3915ec600536"
+    ],
+    "expected": [
+      "fa1b4ff342da4ad8b4352a244d82fa3a",
+      "5a8d6fc9e72b43cb8e6d3915ec600536"
+    ],
+    "selection": [
+      [
+        "fa1b4ff342da4ad8b4352a244d82fa3a",
+        1
+      ],
+      [
+        "5a8d6fc9e72b43cb8e6d3915ec600536",
+        0
+      ]
+    ],
+    "mode": "edit",
+    "status": "Draw on canvas · Strokes are automatically written to the layer."
+  },
+  "collapse_preserves_edit_values": "pass",
+  "edit_narrow_native_options": "pass",
+  "thickness_narrow_native_options": "pass",
+  "strength_shown_only_for_point_eraser": "pass",
+  "eraser_narrow_native_options": "pass",
+  "theme_palette_inherited": "pass",
+  "result": "pass",
+  "krita": "5.2.14",
+  "application_exit_code": 0
+}
