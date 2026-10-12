@@ -19,12 +19,32 @@ _icons = {}
 
 def theme_icons(window):
     labels = dict(zip(TOOL_IDS, (tr(label) for label in TOOL_LABELS)))
-    for action in window.findChildren(QAction):
-        if action.objectName() in labels:
-            title = labels[action.objectName()]
-            if action.text() != title: action.setText(title)
-            if action.toolTip() != title: action.setToolTip(title)
-            if action.iconText() != title: action.setIconText(title)
+    # Cache only our named controls. Broad PyQt findChildren calls wrap the
+    # entire widget hierarchy, including thousands of preset widgets.
+    # libkis may return a short-lived Python wrapper for the main window.
+    # Retain one wrapper so its cached controls survive subsequent timer calls.
+    windows = globals().setdefault('_icon_window_cache', {})
+    key = sip.unwrapinstance(window)
+    retained = windows.get(key)
+    if retained is None or sip.isdeleted(retained):
+        windows[key] = window
+        window.destroyed.connect(lambda _=None, key=key: windows.pop(key, None))
+    else:
+        window = retained
+    targets = getattr(window, '_linework_icon_targets', None)
+    if (targets is None or
+            any(sip.isdeleted(widget) for group in targets[1:] for _, widget in group)):
+        actions = tuple((ident, widget) for ident in TOOL_IDS
+                        if (widget := window.findChild(QAction, ident)) is not None)
+        buttons = tuple((ident, widget) for ident in TOOL_IDS
+                        if (widget := window.findChild(QAbstractButton, ident)) is not None)
+        targets = (None, actions, buttons)
+        window._linework_icon_targets = targets
+    for ident, action in targets[1]:
+        title = labels[ident]
+        if action.text() != title: action.setText(title)
+        if action.toolTip() != title: action.setToolTip(title)
+        if action.iconText() != title: action.setIconText(title)
     color = window.palette().color(QPalette.ColorRole.WindowText).name()
     if color not in _icons:
         themed = {}
@@ -40,13 +60,12 @@ def theme_icons(window):
                 icon.addPixmap(QPixmap.fromImage(image))
             themed[ident] = icon
         _icons[color] = themed
-    for button in window.findChildren(QAbstractButton):
-        if button.objectName() in _icons[color]:
-            icon = _icons[color][button.objectName()]
-            if button.icon().cacheKey() != icon.cacheKey():
-                button.setIcon(icon)
-            title = labels[button.objectName()]
-            if button.toolTip() != title: button.setToolTip(title)
+    for ident, button in targets[2]:
+        icon = _icons[color][ident]
+        if button.icon().cacheKey() != icon.cacheKey():
+            button.setIcon(icon)
+        title = labels[ident]
+        if button.toolTip() != title: button.setToolTip(title)
 
 
 def active_tool():

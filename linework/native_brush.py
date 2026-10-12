@@ -84,7 +84,7 @@ def active_node(view):
 
 
 def update_layer_icons(window, layers):
-    from .qt import QWidget
+    from .qt import QAbstractItemView
     if not layers and _BRIDGE_LIBRARY is None:
         return
     library = load_library()
@@ -93,9 +93,27 @@ def update_layer_icons(window, layers):
     update.restype = ctypes.c_int
     icon = str(Path(__file__).with_name("linework-layer.svg")).encode()
     ids = "\n".join(layers).encode()
-    for widget in window.findChildren(QWidget):
-        if widget.metaObject().className() == "NodeView":
-            update(sip.unwrapinstance(widget), ids, icon)
+    # libkis may return a short-lived Python wrapper for the main window.
+    # Retain one wrapper so its cached controls survive subsequent timer calls.
+    windows = globals().setdefault('_icon_window_cache', {})
+    key = sip.unwrapinstance(window)
+    retained = windows.get(key)
+    if retained is None or sip.isdeleted(retained):
+        windows[key] = window
+        window.destroyed.connect(lambda _=None, key=key: windows.pop(key, None))
+    else:
+        window = retained
+    cached = getattr(window, '_linework_layer_icon_views', None)
+    if (cached is None or
+            any(sip.isdeleted(widget) for widget in cached[1])):
+        # The native layer docker names its NodeView listLayers. Restrict the
+        # lookup before creating Python wrappers, and tolerate rebuilt docks.
+        views = tuple(widget for widget in window.findChildren(QAbstractItemView, 'listLayers')
+                      if widget.metaObject().className() == "NodeView")
+        cached = (None, views)
+        window._linework_layer_icon_views = cached
+    for widget in cached[1]:
+        update(sip.unwrapinstance(widget), ids, icon)
 
 
 def capture_brush(view):

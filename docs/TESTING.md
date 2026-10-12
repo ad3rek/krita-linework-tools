@@ -59,6 +59,8 @@ python3 -m unittest discover -s tests -v
 
 The first command requires a C++17 `g++` compiler and rebuilds only the vectorizer. The suite also compiles a reference library from the original OpenToonz sources. Neither the OpenToonz application nor a running Krita is required.
 
+`test_icon_polling.py` uses PyQt5 with the offscreen platform to exercise repeated icon updates in a hierarchy containing 5,000 unrelated widgets. It also checks theme changes, rebuilt controls, multiple windows and cache cleanup. These tests require PyQt5 and are skipped when that binding is unavailable; they do not access a running Krita session.
+
 The initial 0.1 validation had **70 tests passed**, including 16 synthetic fixtures compared against the original core: quadratic position and radius controls match exactly. [Published run log](validation/cpu-tests.txt) · [Reference scope](validation/opentoonz-reference.json).
 
 ## Krita GUI regressions
