@@ -129,7 +129,8 @@ class Probe(Extension):
         assert self.geometry(0)==self.initial
         from linework.storage import read_layer,metadata
         assert [s.data() for s in read_layer(self.doc,self.layer)]==self.initial
-        assert metadata(self.doc)['version']==7
+        from linework.animation import compact_bridge
+        assert metadata(self.doc)['version'] == (8 if compact_bridge() else 7)
         self.result['one_linework_layer_is_editable_and_timeline_ready_without_conversion']='pass'
         self.native_action(2,0,5)
         assert self.geometry(5)==self.initial
@@ -269,9 +270,10 @@ class Probe(Extension):
         with zipfile.ZipFile(self.path) as archive:
             data=json.loads(archive.read(next(n for n in archive.namelist() if n.endswith('/annotations/org.felipe.linework.v1'))))
         from linework.storage import layer_id
-        assert data['layers'][layer_id(self.layer)]['frames']['23']['strokes']==self.geometry(21)
+        from linework.frame_payload import expand_record
+        assert expand_record(data['layers'][layer_id(self.layer)]['frames']['23'])['strokes']==self.geometry(21)
         self.result['save_immediately_after_native_copy_includes_geometry']='pass'
-        self.saved={f['time']:f['payload']['strokes'] for f in self.state()['frames']}
+        self.saved={f['time']:expand_record(f['payload'])['strokes'] for f in self.state()['frames']}
         self.after(self.reopen,200)
     def reopen(self):
         reopened=self.k.openDocument(str(self.path))
@@ -317,7 +319,8 @@ class Probe(Extension):
         assert self.doc.saveAs(str(mixed))
         with zipfile.ZipFile(mixed) as archive:
             data=json.loads(archive.read(next(n for n in archive.namelist() if n.endswith('/annotations/org.felipe.linework.v1'))))
-        assert data['layers'][layer_id(self.layer)]['frames']['25']['strokes']==self.saved[23]
+        from linework.frame_payload import expand_record
+        assert expand_record(data['layers'][layer_id(self.layer)]['frames']['25'])['strokes']==self.saved[23]
         self.result['vector_commit_keeps_native_animation_save_snapshot']='pass'
         self.doc.setActiveNode(self.layer); self.c.poll()
         for time in (0,3,8):

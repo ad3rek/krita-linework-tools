@@ -110,7 +110,9 @@ class Probe(Extension):
                     payload = json.loads(archive.read(entries[0]))
                 saved = payload['layers'].get(layer_id(self.layer))
                 if self.kind == 'vector' and saved.get('strokes') != self.expected: continue
-                if self.kind == 'animated' and saved.get('frames',{}).get('0',{}).get('strokes') != self.expected: continue
+                if self.kind == 'animated':
+                    from linework.frame_payload import expand_record
+                    if expand_record(saved.get('frames',{}).get('0',{})).get('strokes') != self.expected: continue
                 self.autosave_path = path
                 break
             except (OSError,zipfile.BadZipFile,KeyError,ValueError,AttributeError):

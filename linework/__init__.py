@@ -5,4 +5,4 @@ from .tools import install_tools
 
 install_tools()
 Krita.instance().addExtension(LineworkExtension(Krita.instance()))
-__version__ = '0.1.6'
+__version__ = '0.1.7'

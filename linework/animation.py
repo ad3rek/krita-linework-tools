@@ -13,6 +13,8 @@ from krita import Krita
 from .model import load_strokes
 from .editor import painter_path
 from .native_brush import load_library, native_busy
+from .frame_payload import compact_record, expand_record, DOCUMENT_VERSION, ENCODING
+from .appearance_cache import DecodedAppearanceCache
 
 
 class AnimationBusy(RuntimeError):
@@ -25,6 +27,24 @@ _shutting_down = False
 _syncing = False
 _pending = set()
 _callback = None
+_appearances = DecodedAppearanceCache()
+_appearance_owners = {}
+
+
+@lru_cache(maxsize=1)
+def compact_bridge():
+    # Older platform bridges remain usable with their existing frame format.
+    method = getattr(load_library(), 'linework_animation_schema', None)
+    if method is None:
+        return False
+    method.argtypes = []
+    method.restype = ctypes.c_int
+    return method() >= DOCUMENT_VERSION
+
+
+def require_current_bridge(data):
+    if data.get('version', 7) >= DOCUMENT_VERSION and not compact_bridge():
+        raise ValueError(tr("Reopen Krita to load the updated Linework animation bridge."))
 
 
 @lru_cache(maxsize=16)
@@ -81,6 +101,9 @@ def bootstrap_layer(document, layer, saved=None):
         saved = metadata(document)['layers'].get(layer_id(layer), {})
     if saved.get('kind') != 'animated':
         return info
+    if any(isinstance(value, dict) and value.get('encoding') == ENCODING
+           for value in saved.get('frames', {}).values()) and not compact_bridge():
+        raise ValueError(tr("Reopen Krita to load the updated Linework animation bridge."))
     if identity in _bootstrapping:
         raise AnimationBusy(tr("Wait for Krita to complete the frame operation."))
     _bootstrapping.add(identity)
@@ -142,6 +165,7 @@ def record(document, layer, frame=None):
     info = bootstrap_layer(document, layer)
     if not info.get('animated'):
         return None
+    _appearance_owners[info['owner']] = document.rootNode().uniqueId().toString()
     time = frame['time'] if frame else info['active_time']
     current = next((entry for entry in info['frames'] if entry['time'] == time), None)
     if current is None and not frame:
@@ -159,11 +183,12 @@ def record(document, layer, frame=None):
         # Undo command holds that pointer; adoption belongs to the edit command.
         return call('empty', layer, time, encoded(empty_record(document)))
     payload = current['payload']
+    expanded = expand_record(payload)
     from .storage import check_geometry
     check_geometry(document, payload)
     # Refuse external raster painting/transforms instead of overwriting them.
     call('restore', layer, time, encoded(payload))
-    return payload
+    return expanded
 
 
 def read_frame(document, layer):
@@ -173,14 +198,19 @@ def read_frame(document, layer):
     return load_strokes(payload['strokes']) if payload is not None else None
 
 
-def appearance(payload, stroke):
+def appearance(payload, stroke, owner=None):
     data = payload.get('appearances', {}).get(stroke.uid)
     if not data:
         raise ValueError(tr("The brush's saved appearance is not in the Linework frame."))
-    image = QImage.fromData(base64.b64decode(data['png']), 'PNG')
-    if image.isNull():
-        raise ValueError(tr("Could not read the brush appearance for this frame."))
-    return QRectF(*data['bounds']), image
+    def decode(png):
+        image = QImage.fromData(base64.b64decode(png), 'PNG')
+        if image.isNull():
+            raise ValueError(tr("Could not read the brush appearance for this frame."))
+        return image
+    if owner is None:
+        return QRectF(*data['bounds']), decode(data['png'])
+    bounds, image = _appearances.get(owner, stroke.uid, data, decode)
+    return QRectF(*bounds), image
 
 
 def png(image):
@@ -193,6 +223,7 @@ def png(image):
 
 
 def compose(document, payload, hidden=()):
+    owner = document.rootNode().uniqueId().toString()
     image = QImage(document.width(), document.height(), QImage.Format.Format_ARGB32_Premultiplied)
     if image.isNull():
         raise ValueError(tr("There is not enough memory to render the Linework frame."))
@@ -205,7 +236,7 @@ def compose(document, payload, hidden=()):
             if stroke.uid in hidden:
                 continue
             if stroke.brush:
-                bounds, pixels = appearance(payload, stroke)
+                bounds, pixels = appearance(payload, stroke, owner)
                 painter.setOpacity(1)
                 painter.drawImage(bounds, pixels)
             else:
@@ -237,7 +268,8 @@ def write_frame(document, layer, strokes, renderer, frame=None, backup=None):
             bounds, _, data = renderer.render(stroke)
             payload['appearances'][stroke.uid] = {'bounds': [bounds.x(), bounds.y(), bounds.width(), bounds.height()], 'png': data}
     pixels = png(compose(document, payload))
-    result = call('commit', layer, frame['time'], frame['id'], encoded(payload), pixels,
+    saved = compact_record(payload) if compact_bridge() else payload
+    result = call('commit', layer, frame['time'], frame['id'], encoded(saved), pixels,
                   len(pixels), sip.unwrapinstance(backup) if backup else None)
     frame.update(result['frame'])
     document.setModified(True)
@@ -247,6 +279,8 @@ def write_frame(document, layer, strokes, renderer, frame=None, backup=None):
 
 
 def initialize_layer(document, layer):
+    from .storage import metadata
+    require_current_bridge(metadata(document))
     document.waitForDone()
     payload = call('empty', layer, 0, encoded(empty_record(document)))
     call('restore', layer, 0, encoded(payload))
@@ -280,6 +314,7 @@ def convert(document, source, layer, view):
 def sync_document(document):
     from .storage import ANNOTATION, metadata, layer_id, document_geometry
     data = metadata(document)
+    require_current_bridge(data)
     changed = False
     owner = None
     for layer in document.rootNode().findChildNodes('', True, False, 'paintlayer'):
@@ -307,7 +342,9 @@ def sync_document(document):
                 data['layers'][key] = current
                 changed = True
     if changed:
-        data['version'] = 7
+        compact = any(payload.get('encoding') == ENCODING for item in data['layers'].values()
+                      if item.get('kind') == 'animated' for payload in item.get('frames', {}).values())
+        data['version'] = max(data.get('version', 7), DOCUMENT_VERSION if compact else 7)
         document.setAnnotation(ANNOTATION, 'Editable Linework strokes and animation frames', QByteArray(encoded(data)))
     if owner is not None:
         call('annotation', owner, 0)
@@ -316,6 +353,7 @@ def sync_document(document):
 def bootstrap_document(document):
     from .storage import metadata, layer_id
     data = metadata(document)
+    require_current_bridge(data)
     for layer in document.rootNode().findChildNodes('', True, False, 'paintlayer'):
         saved = data['layers'].get(layer_id(layer), {})
         if saved.get('kind') == 'animated':
@@ -327,6 +365,7 @@ def protect_save(document, data):
     from .storage import layer_id
     if data.get('version', 6) < 7:
         return
+    require_current_bridge(data)
     for layer in document.rootNode().findChildNodes('', True, False, 'paintlayer'):
         if data['layers'].get(layer_id(layer), {}).get('kind') == 'animated':
             call('annotation', layer, 0)
@@ -378,6 +417,9 @@ def install_callback():
         if reason == 2:
             _bootstrapped.difference_update({key for key in _bootstrapped if key[0] == owner})
             _pending.discard(owner)
+            identity = _appearance_owners.pop(owner, None)
+            if identity is not None:
+                _appearances.clear_owner(identity)
             return
         _pending.add(owner)
         if _shutting_down:
@@ -403,6 +445,8 @@ def install_callback():
         global _shutting_down
         _shutting_down = True
         _pending.clear()
+        _appearances.clear()
+        _appearance_owners.clear()
         register(callback_type())
     QApplication.instance().aboutToQuit.connect(shutdown)
     return True

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.7 — 2026-10-13
+
+- Store each native brush definition once per frame in schema 8 records. Read legacy records and migrate a frame when it is edited. Keep schema 8 in native save/autosave snapshots and refuse compact documents when the running bridge is outdated.
+- Reuse decoded stroke appearances during frame composition, validating both PNG content and bounds. Bound the shared cache to 64 MiB and release document entries when the native image is destroyed.
+- Rebuild the Linux Krita 5.2.14 bridge and all seven supported Windows bridges for compact frame records. Preserve legacy reading and refuse compact documents with an outdated bridge.
+- Add serialization, cache invalidation and budget regressions, plus a real Krita benchmark for legacy reload, compact save/reload, exact pixels and native Undo/Redo.
+
+- Pass 116 CPU tests, fresh Linux regressions, and the 300-stroke, animation, drawing and autosave suites in official Windows 5.3.4.1/6.0.4.1 under Wine. Record the Windows 5.2.14 native failure during bulk multi-document closing; its separate close regression passes.
+
 ## 0.1.6 — 2026-10-12
 
 - Cache Linework's named toolbox controls and layer views instead of scanning the entire Qt widget tree every 350 ms. Retain the main window's Python wrapper between polls, refresh cached widgets after their destruction, and release the cache when the window closes. Preserve theme updates and per-window layer icons.

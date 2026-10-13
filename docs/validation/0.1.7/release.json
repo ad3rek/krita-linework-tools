@@ -1,0 +1,149 @@
+{
+  "release": "0.1.7",
+  "date": "2026-10-13",
+  "cpu_tests": 116,
+  "cpu_skips": 0,
+  "application_reports": {
+    "windows-5.3.4.1-performance-lightweight.json": {
+      "result": "pass",
+      "krita": "5.3.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 7
+    },
+    "windows-5.3.4.1-animation.json": {
+      "result": "pass",
+      "krita": "5.3.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 27
+    },
+    "windows-5.3.4.1-stroke-lifecycle.json": {
+      "result": "pass",
+      "krita": "5.3.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 10
+    },
+    "windows-5.3.4.1-autosave-recovery.json": {
+      "result": "pass",
+      "krita": "5.3.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 9
+    },
+    "windows-6.0.4.1-performance-lightweight.json": {
+      "result": "pass",
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 7
+    },
+    "windows-6.0.4.1-animation.json": {
+      "result": "pass",
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 27
+    },
+    "windows-6.0.4.1-stroke-lifecycle.json": {
+      "result": "pass",
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 10
+    },
+    "windows-6.0.4.1-autosave-recovery.json": {
+      "result": "pass",
+      "krita": "6.0.4.1 (git bd6e8d0)",
+      "application_exit_code": 0,
+      "checks_passed": 9
+    },
+    "windows-5.2.14-performance-lightweight.json": {
+      "result": "fail",
+      "krita": "5.2.14 (git 31056c6)",
+      "application_exit_code": 1,
+      "checks_passed": 7
+    },
+    "windows-5.2.14-animation-close.json": {
+      "result": "pass",
+      "krita": "5.2.14 (git 31056c6)",
+      "application_exit_code": 0,
+      "checks_passed": 3
+    },
+    "linux-animation.json": {
+      "result": "pass",
+      "krita": "5.2.14",
+      "application_exit_code": 0,
+      "checks_passed": 27
+    },
+    "linux-animation-close.json": {
+      "result": "pass",
+      "krita": "5.2.14",
+      "application_exit_code": 0,
+      "checks_passed": 3
+    },
+    "linux-autosave-recovery.json": {
+      "result": "pass",
+      "krita": "5.2.14",
+      "application_exit_code": 0,
+      "checks_passed": 9
+    },
+    "linux-stroke-lifecycle.json": {
+      "result": "pass",
+      "krita": "5.2.14",
+      "application_exit_code": 0,
+      "checks_passed": 10
+    },
+    "linux-performance-lightweight.json": {
+      "result": "pass",
+      "krita": "5.2.14",
+      "application_exit_code": 0,
+      "checks_passed": 7
+    }
+  },
+  "native_sha256": {
+    "linework/native/5.3.3/linework_native.dll": "13fd6864470140e521db14f55fae910215207661198da84176d478597160b474",
+    "linework/native/5.3.4/linework_native.dll": "ce9f73b9232be9494107af3a2c3115fb64c5497cfcc34010e96719da6b6a6983",
+    "linework/native/5.3.4.1/linework_native.dll": "d58e015645b7047eebad20ceb5ab8b0d9297cf379b0db25eb0a697a8d9c60640",
+    "linework/native/6.0.3/linework_native.dll": "7e0ed63a2709301273bcff772473ea7894a68b944d70c0da5212ffff65aee7a9",
+    "linework/native/6.0.4/linework_native.dll": "d011c4cebad34c348b8049c6b4bd40a6220ba38e5831b2a08730b43063a47bff",
+    "linework/native/6.0.4.1/linework_native.dll": "41b81be5ac79b555f3188ca7e3c05f79a96bc620082b5cb9e975b52a3341550a",
+    "linework/native/liblinework_native.so": "2b92e2e142bed256d2db29064b8f032c059e7c25fcedcde229ec10a2ed0c268c",
+    "linework/native/liblinework_vectorize.so": "0a69e1da8606d4757283d9044cd47242348c4160c08959c049aeaa0fe3ba868f",
+    "linework/native/linework_native.dll": "e49f0d41ab8e908d48fef64e43f6572290818c1b177afd03769d1d444da59736",
+    "linework/native/linework_vectorize.dll": "04b0e1284c0bcee56cb8b0b897e0c01e0bcb72bd86ed9007320a3b99be270d4a"
+  },
+  "tested_python_sha256": {
+    "linework/__init__.py": "ead45634ccec4b4d0e7d62f0f8ce9370e90f703fa03763ab76b5539ce04f9d2a",
+    "linework/animation.py": "d532f3c956a3d9ebabd06a68a886ba7ded4179e5c4d122d6157718cd278e11da",
+    "linework/appearance_cache.py": "17df505572199f16980c45fb69005b43802913d9fdde48ad8215a09b0257d3b2",
+    "linework/curve_fit.py": "af16e690fe34640987f6c420739da2bfbdad41cc537be758efc2ca5348914c7d",
+    "linework/editor.py": "20dfe534d737d8276d7cd430e682b957a4f41002f40575b81380318151375d8d",
+    "linework/eraser.py": "865062a4212a63c147c74d62e82c631186f0a04a630b54b1210ba8b070d31643",
+    "linework/frame_payload.py": "6bc7b93cd6ae7a41abe97fbbba78fd6deb60d20b0aa7643c195f9726531cfc6d",
+    "linework/i18n.py": "13f4f58b9af1d33d8d258f7071274763b83a4376b9cc97566c90d4133812cc09",
+    "linework/model.py": "73ecac35c76c4fc3fdfb2c6a08f56afba66b4c306096ec53864e179000e697be",
+    "linework/native_brush.py": "5a2cfee89a45f420b8e10e98517c0b6931ef9666b1a0fb04d74232ce230c728e",
+    "linework/native_library.py": "1ca0153b56b7bc1107cb7fe8e3596b6ce3907b478c1493911577dced6fd32515",
+    "linework/native_smoothing.py": "bd16c16ff4fc1192f39e14e9fda3549f8370c7e2f8f766bfb0f74324e2520d6c",
+    "linework/options_ui.py": "8b1456bfd8a32908e5d1cae053ace01c404dc51da9e7e7496c444e230755531f",
+    "linework/plugin.py": "20286373b02a4aef4881eb71ecc45580556831a58bb68d96de30ddccca715a50",
+    "linework/preview.py": "8ad66d02030aa28516104dfe66482b2f1b5d48b0c664cb1d73fa41be676ccd0d",
+    "linework/qt.py": "3d3ce42b355a1ca5b6f73c32b0d0752a63bb7c562307f70c2ddf6bdf71a902ff",
+    "linework/selection.py": "e4d436517b517ff640f79ddfd68d536d0fe865bb11b591b1328df4f7274684b4",
+    "linework/spatial.py": "57335ff9dfb7f2b41cdaf2efffb776e37b5a7d23511490fb61358ea4b24e72d5",
+    "linework/storage.py": "1ee164d9be3fc0e07c5ac7b2891155d3c7ec211139b57b8562cefd4978a16d66",
+    "linework/svg_fingerprint.py": "008338bf57e2ed2bec68371ae6921a450de9deb72db2c8aed29fa7b007368ddf",
+    "linework/tool_options.py": "96124d5568a75b9ca2dae59b2d55bb0642173437f28ec61e296ba47eefeff394",
+    "linework/tools.py": "b1125892d785d3db07c5e6bef25148173d30f07914fe14cb4ce7c05ab9fe076a",
+    "linework/topology.py": "bf8ab0b95f2e7fb9c3e38badddca80066238bb8c7304b975a137c497881d46c3",
+    "linework/tracing.py": "66526a952484594e33f71f459a168d2a6d084a8e182bd8c6b9e0da093928eddb",
+    "linework/transforms.py": "e8b930bda79663c71d54ce3352c4666fb0c44eb2cd06bab053ed9c380c77cda7",
+    "linework/vectorize.py": "0d90375f8d91ac68f1abfaf48a06fbdc1fea89d5a6af77129fdfd77c2c3d3f6d"
+  },
+  "known_limitations": [
+    "Windows 5.2.14 bulk probe passes its geometry/pixel/save/reopen assertions but crashes during simultaneous main-window closing under Wine. The separate animation-close probe passes.",
+    "Windows validation uses Wine 11.0 and official application runtimes; physical Windows hardware and stylus drivers remain untested.",
+    "Timings measure synthetic workloads, not total Krita memory or a general speed guarantee.",
+    "Autosave validation reopens timer-generated files; it does not simulate a crash or the startup recovery dialog."
+  ],
+  "compatibility": [
+    "Linux x86_64 Krita 5.2.14 with compatible Qt 5.15.17 libraries",
+    "Windows x64 official Krita 5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4, 6.0.4.1; experimental preview",
+    "Migrated schema 8 documents require Linework 0.1.7 or newer for editing; saved appearance remains visible without the plugin."
+  ]
+}

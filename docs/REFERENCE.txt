@@ -178,3 +178,12 @@ and references in the supplied local SAI2 executable. No executable, decompiled
 code or proprietary SAI resource is included. See README.md for method/scope.
 To uninstall, close Krita and remove linework.desktop, linework.action and the
 linework folder from resources/pykrita. Saved .kra appearances remain visible.
+
+Compact frame metadata (schema 8; release 0.1.7)
+Each frame stores exact native brush definitions once in a shared-brushes-v1
+table keyed by canonical JSON SHA-256. Stroke records refer to that table.
+Loading validates references and restores independent editable brush settings.
+Legacy frames migrate only on edit. Native snapshots and saves retain schema 8.
+An older native bridge refuses compact documents before mutation.
+Decoded appearance reuse checks both PNG content and image bounds, is limited
+to 64 MiB, and releases a document's entries when its native image is destroyed.

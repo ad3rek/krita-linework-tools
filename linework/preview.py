@@ -30,7 +30,8 @@ class SavedAppearanceCache:
             return self.images[stroke.uid]
         if layer.type() == 'paintlayer':
             from .animation import record, appearance
-            bounds, image = appearance(payload or record(document, layer, frame), stroke)
+            bounds, image = appearance(payload or record(document, layer, frame), stroke,
+                                       document.rootNode().uniqueId().toString())
             self.images[stroke.uid] = (bounds, image)
             self.bytes += image.sizeInBytes()
             while self.bytes > 64*1024*1024 and len(self.images) > 1:

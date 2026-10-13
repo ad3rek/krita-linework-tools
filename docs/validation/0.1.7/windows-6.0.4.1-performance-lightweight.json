@@ -1,0 +1,20 @@
+{
+  "legacy_v7_file_created": "pass",
+  "legacy_reload_retains_exact_geometry_and_pixels": "pass",
+  "legacy_frame_migrates_on_edit_with_exact_pixels": "pass",
+  "strokes": 300,
+  "legacy_annotation_bytes": 4948216,
+  "compact_annotation_bytes": 277718,
+  "metadata_reduction_pct": 94.388,
+  "cached_and_original_composition_pixels_equal": "pass",
+  "original_compose_ms": 76.276,
+  "cached_compose_ms": 38.621,
+  "legacy_full_commit_ms": 3793.9,
+  "optimized_full_commit_ms": 2144.304,
+  "compact_native_undo_redo_restores_exact_geometry_and_pixels": "pass",
+  "native_save_retains_version_8_and_one_shared_preset": "pass",
+  "compact_kra_reopens_with_exact_geometry_and_pixels": "pass",
+  "result": "pass",
+  "krita": "6.0.4.1 (git bd6e8d0)",
+  "application_exit_code": 0
+}

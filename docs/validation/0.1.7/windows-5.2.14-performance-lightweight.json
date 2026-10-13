@@ -1,0 +1,22 @@
+{
+  "legacy_v7_file_created": "pass",
+  "legacy_reload_retains_exact_geometry_and_pixels": "pass",
+  "legacy_frame_migrates_on_edit_with_exact_pixels": "pass",
+  "strokes": 300,
+  "legacy_annotation_bytes": 4948216,
+  "compact_annotation_bytes": 277718,
+  "metadata_reduction_pct": 94.388,
+  "cached_and_original_composition_pixels_equal": "pass",
+  "original_compose_ms": 105.0,
+  "cached_compose_ms": 54.918,
+  "legacy_full_commit_ms": 3044.283,
+  "optimized_full_commit_ms": 1894.56,
+  "compact_native_undo_redo_restores_exact_geometry_and_pixels": "pass",
+  "native_save_retains_version_8_and_one_shared_preset": "pass",
+  "compact_kra_reopens_with_exact_geometry_and_pixels": "pass",
+  "result": "fail",
+  "krita": "5.2.14 (git 31056c6)",
+  "application_exit_code": 1,
+  "failure_stage": "application_exit",
+  "scope": "All integrity assertions completed. A native crash occurred during simultaneous main-window closing with the bulk documents under Wine; its debugger was terminated for cleanup. This run is not a passing application regression."
+}

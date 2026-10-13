@@ -16,6 +16,8 @@
 #include <kundo2magicstring.h>
 #include <climits>
 
+extern "C" LINEWORK_EXPORT int linework_animation_schema() { return 8; }
+
 class LineworkRasterFrame final : public KisRasterKeyframe {
 public:
     KisPaintDeviceWSP owner;
@@ -144,6 +146,7 @@ class LineworkAnimationAnnotation final : public KisAnnotation {
         KisImageSP image=source;
         if (!image) return m_annotation;
         auto data=QJsonDocument::fromJson(m_annotation).object();
+        int version=std::max(7,data.value("version").toInt(7));
         auto layers=data.value("layers").toObject();
         std::function<void(KisNodeSP)> visit=[&](KisNodeSP node) {
             if (auto paint=dynamic_cast<KisPaintLayer*>(node.data())) {
@@ -160,6 +163,7 @@ class LineworkAnimationAnnotation final : public KisAnnotation {
                         auto frame=channel->keyframeAt<KisRasterKeyframe>(time);
                         if (auto editable=dynamic_cast<LineworkRasterFrame*>(frame.data())) {
                             auto payload=QJsonDocument::fromJson(editable->payload).object();
+                            if (payload.value("encoding").toString()==QStringLiteral("shared-brushes-v1")) version=8;
                             frames[QString::number(time)]=payload;
                             geometry=payload.value("geometry"); owned=true;
                         }
@@ -181,7 +185,7 @@ class LineworkAnimationAnnotation final : public KisAnnotation {
             for (auto child=node->firstChild();child;child=child->nextSibling()) visit(child);
         };
         visit(image->root());
-        data["layers"]=layers; data["version"]=7;
+        data["layers"]=layers; data["version"]=version;
         return QJsonDocument(data).toJson(QJsonDocument::Compact);
     }
 public:

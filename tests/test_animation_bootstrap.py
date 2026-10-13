@@ -13,7 +13,8 @@ class BootstrapTests(unittest.TestCase):
         node=next(n for n in ast.parse(source.read_text()).body if isinstance(n,ast.FunctionDef) and n.name=='bootstrap_layer')
         self.state={'animated':True,'owner':'image','node':'layer','frames':[{'time':0,'id':7,'editable':False}]}
         self.namespace={'_bootstrapped':set(),'_bootstrapping':set(),'AnimationBusy':Busy,
-                        'tr':lambda s:s,'encoded':json.dumps}
+                        'tr':lambda s:s,'encoded':json.dumps,
+                        'ENCODING':'shared-brushes-v1','compact_bridge':lambda:True}
         self.restore_hook=lambda:None
         self.calls=[]
         def call(name,*args):
@@ -49,5 +50,11 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(self.calls.count('restore'),1)
         self.assertFalse(self.namespace['_bootstrapping'])
         self.assertTrue(self.namespace['_bootstrapped'])
+    def test_compact_record_refuses_an_old_bridge_before_restoration(self):
+        self.namespace['compact_bridge'] = lambda: False
+        self.saved['frames']['0']['encoding'] = 'shared-brushes-v1'
+        with self.assertRaises(ValueError):
+            self.bootstrap(self.doc, object(), self.saved)
+        self.assertEqual(self.calls.count('restore'), 0)
 
 if __name__=='__main__':unittest.main()

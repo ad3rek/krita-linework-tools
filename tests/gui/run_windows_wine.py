@@ -17,7 +17,7 @@ def windows_path(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close', 'brush_size', 'autosave_recovery', 'unified_vectorize'])
+    parser.add_argument('probe',choices=['cc_lineart','multi_point','smoothing','color','stroke_lifecycle','eraser_topology', 'performance', 'performance_lightweight', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close', 'brush_size', 'autosave_recovery', 'unified_vectorize'])
     parser.add_argument('--krita-bin',required=True,type=Path,help='Official Windows Krita bin directory')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--wine-prefix',type=Path,help='Reuse a dedicated test prefix; do not use your normal Wine prefix')
@@ -32,7 +32,7 @@ def main():
     for directory in ('docs/validation','docs/images','examples'):
         (output/directory).mkdir(parents=True,exist_ok=True)
     name = {'cc_lineart':'cc-lineart.json','multi_point':'multi-point.json','smoothing':'smoothing.json',
-            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json', 'brush_size':'brush-size.json', 'autosave_recovery':'autosave-recovery.json', 'unified_vectorize':'unified-vectorize.json'}[args.probe]
+            'color':'color.json','stroke_lifecycle':'stroke-lifecycle.json','eraser_topology':'eraser-topology.json', 'performance':'performance.json', 'performance_lightweight':'performance-lightweight.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json', 'brush_size':'brush-size.json', 'autosave_recovery':'autosave-recovery.json', 'unified_vectorize':'unified-vectorize.json'}[args.probe]
     report = output/'docs/validation'/name
     report.unlink(missing_ok=True)
     (output/'phase.json').unlink(missing_ok=True)

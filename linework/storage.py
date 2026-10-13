@@ -20,7 +20,7 @@ def metadata(document):
     if not raw:
         return {"version": 6, "layers": {}}
     data = json.loads(raw.decode("utf-8"))
-    if data.get("version") not in (1, 2, 3, 4, 5, 6, 7) or not isinstance(data.get("layers"), dict):
+    if data.get("version") not in (1, 2, 3, 4, 5, 6, 7, 8) or not isinstance(data.get("layers"), dict):
         raise ValueError(tr("Linework data of unsupported version."))
     return data
 
@@ -109,6 +109,9 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False, f
         from .animation import write_frame
         return write_frame(document, layer, strokes, native_renderer, frame, backup)
     data = metadata(document)
+    if data.get('version', 6) >= 8:
+        from .animation import require_current_bridge
+        require_current_bridge(data)
     if layer.locked():
         raise ValueError(tr("Unlock the layer before applying."))
     key = layer_id(layer)

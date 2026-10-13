@@ -2,6 +2,28 @@
 
 The original validation environment is **Linux x86_64, Krita 5.2.14 / Qt 5.15.17 / Python 3.12**. The bridge requires compatible native libraries. Canvas regressions run the real application in isolation; they do not replace physical stylus validation.
 
+## 0.1.7 validation
+
+The release passed **116 CPU tests**, with no skips ([run log](validation/0.1.7/cpu-tests.txt)). New regressions cover exact shared-brush serialization, independent editable copies, legacy records, invalid references, decoded-image invalidation, document cleanup and the strict 64 MiB cache budget.
+
+Fresh Linux Krita **5.2.14** application runs passed animation (27 checks), rapid stroke lifecycle, native Undo/Redo, save/reopen, multiple-view closing and real timer-generated autosave reloading. The [300-stroke benchmark](validation/0.1.7/linux-performance-lightweight.json) checks legacy schema 7 loading, migration on edit, exact composed pixels, schema 8 save/reopen and native Undo/Redo. [Animation](validation/0.1.7/linux-animation.json) · [Strokes](validation/0.1.7/linux-stroke-lifecycle.json) · [Autosave](validation/0.1.7/linux-autosave-recovery.json) · [Closing](validation/0.1.7/linux-animation-close.json).
+
+In that synthetic 2048 × 2048 Linux document, annotation data fell from **4,945,552 to 275,054 bytes (94.4%)**, cached composition took **25.7 ms versus 93.4 ms**, and median edit commit time fell from **3,568 to 2,326 ms (34.8%)**. The benchmark compares equivalent legacy and optimized paths in the same application session, with exact pixel checks. These numbers describe this workload; they do not measure total Krita memory or promise the same gain for other artwork. Other processes were active during measurement.
+
+The same 300-stroke integrity/performance probe, all 27 animation checks, rapid stroke lifecycle and timer-generated autosave reloading passed in official Windows Krita **5.3.4.1** and **6.0.4.1** under **Wine 11.0**, with normal exits. [5.3.4.1 benchmark](validation/0.1.7/windows-5.3.4.1-performance-lightweight.json) · [6.0.4.1 benchmark](validation/0.1.7/windows-6.0.4.1-performance-lightweight.json) · [All application reports](validation/0.1.7/release.json).
+
+**Windows 5.2.14 limitation:** the bulk probe completed its geometry, exact pixel, migration, native Undo/Redo and save/reopen assertions, then hit a native crash during simultaneous closing of its documents under Wine. [Failing run and scope](validation/0.1.7/windows-5.2.14-performance-lightweight.json). The separate cancelled-close/reopened-view probe [passed with a normal exit](validation/0.1.7/windows-5.2.14-animation-close.json). The bulk close path is not validated. Windows remains experimental; physical Windows/tablets and the earlier full 743-stroke bulk replay/history case remain unvalidated.
+
+The first Windows benchmark attempts queried frames while bootstrap was still in progress. The probe now waits for native image operations and retries `AnimationBusy` before continuing, matching the production controller's guard. Final 5.3.4.1 and 6.0.4.1 runs pass with normal exits; the 5.2.14 bulk closing failure remains recorded above.
+
+All eight application bridges were rebuilt with schema 8 support. The standalone vectorizers are unchanged. [Build matrix](validation/0.1.7/native-build.json). Existing documents remain readable and migrate by frame on edit; migrated documents require **Linework 0.1.7 or newer** for editing. Saved raster appearances remain visible without the plugin.
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/gui/run.py performance_lightweight
+python3 tests/gui/run_windows_wine.py performance_lightweight --krita-bin /path/krita-x64-6.0.4.1/bin
+```
+
 ## 0.1.6 validation
 
 The release passed **105 CPU tests**, with no skips ([run log](validation/0.1.6/cpu-tests.txt)). This includes five real Qt icon-polling tests for a hierarchy with 5,000 unrelated widgets, repeated polling without repeated lookups, theme changes, rebuilt controls, multiple windows and cleanup after window destruction.

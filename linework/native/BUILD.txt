@@ -1,5 +1,5 @@
 LINEWORK NATIVE BRIDGES
-Public release: 0.1.5 (development reports retain their original version labels)
+Public release: 0.1.7 (development reports retain their original version labels)
 
 Linux build: KDE Neon x86_64, Qt 5.15.17, Python 3.12.
 Windows builds: official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64,
@@ -159,3 +159,10 @@ bounded LRU of immutable parsed presets; every stroke clones settings before
 applying style or diameter sensors. Source resource identity/version/checksum
 and exact XML determine reuse. Close the stream/image before deleting its cache.
 Python falls back to the original entry points on an older native bridge.
+
+Compact animation records (0.1.7)
+All shipped bridges export linework_animation_schema() = 8. Native annotation
+cloning, snapshots and saves preserve schema 8 and shared-brushes-v1 frame
+payloads. Python expands validated records for editing and stores exact brush
+definitions once per frame. Bridges lacking this capability write legacy
+records and refuse documents already using schema 8 before mutation.

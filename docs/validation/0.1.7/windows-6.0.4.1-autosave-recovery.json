@@ -1,0 +1,15 @@
+{
+  "vector_native_autosave_retains_editable_annotation": "pass",
+  "vector_autosave_reopens_with_same_layer_and_strokes": "pass",
+  "vector_autosave_allows_point_edit": "pass",
+  "vector_autosave_allows_thickness_edit": "pass",
+  "vector_autosave_native_undo_preserves_editability": "pass",
+  "animated_native_autosave_retains_editable_annotation": "pass",
+  "animated_autosave_reopens_with_editable_frame": "pass",
+  "animated_autosave_allows_thickness_edit": "pass",
+  "animated_autosave_native_undo_preserves_editability": "pass",
+  "result": "pass",
+  "krita": "6.0.4.1 (git bd6e8d0)",
+  "scope": "Native timer-triggered background autosave, KRA reload and editing; no actual crash or startup recovery dialog.",
+  "application_exit_code": 0
+}

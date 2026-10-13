@@ -6,9 +6,9 @@ Draw directly on the canvas with Krita brush presets, then edit the centerline, 
 
 Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse engineering of Paint Tool SAI 2** to investigate its linework features and guide the reproduction of their behavior. The [implementation and scope](#codex-ghidra-and-reverse-engineering) are documented below.
 
-> **Version 0.1.6 · experimental desktop build.** Windows x64 supports Krita **5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1**, with automatic selection of a bridge compiled for each version. Linux x86_64 currently supports **5.2.14** with compatible system libraries. The bridge uses Krita's internal ABI; other builds require recompilation and validation. Android remains outside this release.
+> **Version 0.1.7 · experimental desktop build.** Windows x64 supports Krita **5.2.14, 5.3.3, 5.3.4, 5.3.4.1, 6.0.3, 6.0.4 and 6.0.4.1**, with automatic selection of a bridge compiled for each version. Linux x86_64 currently supports **5.2.14** with compatible system libraries. The bridge uses Krita's internal ABI; other builds require recompilation and validation. Android remains outside this release.
 
-> **Version 0.1.6:** fixes idle interface slowdown by caching Linework toolbox controls and layer views between icon updates. Theme changes, rebuilt dockers and multiple windows remain supported. Timeline-ready layers and native brush size controls from 0.1.5 are included.
+> **Version 0.1.7:** stores brush definitions once per editable frame and reuses decoded stroke appearances with a 64 MiB cache limit. A 300-stroke Linux test reduced frame metadata by 94% and edit commit time by 35%; timings apply to this synthetic workload. Earlier drawing, animation and idle interface fixes are included.
 
 ![Pepper lineart converted into a Linework layer in the real Krita interface](docs/images/pepper-vectorized.png)
 
@@ -16,16 +16,18 @@ Developed with **OpenAI Codex**. **Ghidra 11.0.3 was used for static reverse eng
 
 ## Download and install
 
-Download a platform package from [version 0.1.6](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.6). Save your work and close Krita before installing.
+Download a platform package from [version 0.1.7](https://github.com/ad3rek/krita-linework-tools/releases/tag/v0.1.7). Save your work and close Krita before installing.
 
-Version **0.1.6** prevents repeated scans of Krita's complete Qt widget hierarchy during idle icon updates. It includes the Timeline-ready layers, native brush size controls and drawing fixes from 0.1.5. [Changelog](CHANGELOG.md) · [0.1.6 validation](docs/TESTING.md#016-validation).
+Version **0.1.7** reduces repeated brush metadata and PNG decoding during frame edits. New or edited frames use schema 8. Existing documents remain readable and frames migrate when edited. **Keep 0.1.7 or newer installed to edit migrated documents; older plugins reject their newer metadata.** Saved raster appearances remain visible without the plugin. [Changelog](CHANGELOG.md) · [0.1.7 validation](docs/TESTING.md#016-validation).
 
 The [source from `main`](https://github.com/ad3rek/krita-linework-tools/archive/refs/heads/main.zip) can also be installed with the steps below. Previous release archives remain available unchanged.
 
 | Package | Required application | Validation environment |
 | --- | --- | --- |
-| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.6/Krita-Linework-Tools-0.1.6-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
-| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.6/Krita-Linework-Tools-0.1.6-windows-x86_64.zip) | Official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64 | Experimental preview; official application runtimes tested under Wine 11.0 |
+| [Linux x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.7/Krita-Linework-Tools-0.1.7-linux-x86_64.zip) | Krita 5.2.14, compatible Qt 5.15.17 libraries | KDE Neon, Python 3.12 |
+| [Windows x86_64](https://github.com/ad3rek/krita-linework-tools/releases/download/v0.1.7/Krita-Linework-Tools-0.1.7-windows-x86_64.zip) | Official Krita 5.2.14 / 5.3.3 / 5.3.4 / 5.3.4.1 / 6.0.3 / 6.0.4 / 6.0.4.1 x64 | Experimental preview; official application runtimes tested under Wine 11.0 |
+
+**Windows 5.2.14 limitation:** the 300-stroke probe passed saving, reopening and pixel/geometry checks but crashed when closing its multiple documents under Wine. The same probe and the animation, drawing and autosave suites passed with normal exits on 5.3.4.1 and 6.0.4.1. Windows remains an experimental preview. [Validation and exact scope](docs/TESTING.md#017-validation).
 
 On Linux, extract the archive, open a terminal in its folder and run:
 

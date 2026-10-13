@@ -1,0 +1,57 @@
+{
+  "release": "0.1.7",
+  "result": "pass",
+  "windows_toolchain": "LLVM-MinGW 18.1.8 UCRT",
+  "linux_sdk": "Qt 5.15.17; Krita 5.2.14",
+  "bridges": [
+    {
+      "target": "5.3.3",
+      "file": "linework/native/5.3.3/linework_native.dll",
+      "sha256": "13fd6864470140e521db14f55fae910215207661198da84176d478597160b474",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "5.3.4",
+      "file": "linework/native/5.3.4/linework_native.dll",
+      "sha256": "ce9f73b9232be9494107af3a2c3115fb64c5497cfcc34010e96719da6b6a6983",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "5.3.4.1",
+      "file": "linework/native/5.3.4.1/linework_native.dll",
+      "sha256": "d58e015645b7047eebad20ceb5ab8b0d9297cf379b0db25eb0a697a8d9c60640",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "6.0.3",
+      "file": "linework/native/6.0.3/linework_native.dll",
+      "sha256": "7e0ed63a2709301273bcff772473ea7894a68b944d70c0da5212ffff65aee7a9",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "6.0.4",
+      "file": "linework/native/6.0.4/linework_native.dll",
+      "sha256": "d011c4cebad34c348b8049c6b4bd40a6220ba38e5831b2a08730b43063a47bff",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "6.0.4.1",
+      "file": "linework/native/6.0.4.1/linework_native.dll",
+      "sha256": "41b81be5ac79b555f3188ca7e3c05f79a96bc620082b5cb9e975b52a3341550a",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "5.2.14",
+      "file": "linework/native/linework_native.dll",
+      "sha256": "e49f0d41ab8e908d48fef64e43f6572290818c1b177afd03769d1d444da59736",
+      "schema_8_export": "pass"
+    },
+    {
+      "target": "Linux 5.2.14",
+      "file": "linework/native/liblinework_native.so",
+      "sha256": "2b92e2e142bed256d2db29064b8f032c059e7c25fcedcde229ec10a2ed0c268c",
+      "schema_8_export": "pass"
+    }
+  ],
+  "scope": "All bridges rebuilt from the release sources. Runtime tests are listed separately; export inspection is not a runtime regression."
+}
