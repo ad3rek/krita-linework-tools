@@ -322,7 +322,8 @@ extern "C" LINEWORK_EXPORT const char *linework_animation_info(Node *wrapper,int
         auto active=state.channel->activeKeyframeAt<KisRasterKeyframe>(uiTime);
         return lineworkAnimationResult({{"animated",true},{"owner",owner},{"node",node},{"time",uiTime},
             {"active_time",state.channel->activeKeyframeTime(uiTime)},
-            {"active_id",active ? active->frameID() : -1},{"frames",frames}});
+            {"active_id",active ? active->frameID() : -1},
+            {"pixel_revision",state.device->sequenceNumber()},{"frames",frames}});
     } catch (const std::exception &error) { return lineworkAnimationError(error); }
 }
 

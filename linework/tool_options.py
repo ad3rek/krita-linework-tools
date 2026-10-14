@@ -674,6 +674,7 @@ class LineworkToolOptions(QWidget):
         self.binding = None
         self._unrecognized_annotation = None
         self._bound_annotation = None
+        self._rejected_binding = None
         self._writing = False
         self._clearing = False
         self._window_closing = False
@@ -872,6 +873,7 @@ class LineworkToolOptions(QWidget):
         modes = ("pen", "curve", "line", "edit", "pressure", "erase")
         self.active = True
         self._error = None
+        self._rejected_binding = None
         self.status.hide()
         self.mode = modes[mode]
         if mode == 0: self.smoothing.reload()
@@ -946,6 +948,7 @@ class LineworkToolOptions(QWidget):
         if self._clearing:
             return
         self._clearing = True
+        self._rejected_binding = None
         self._selection_pending = False
         self._pending_input.clear()
         if not sip.isdeleted(self.input_timer): self.input_timer.stop()
@@ -1070,7 +1073,30 @@ class LineworkToolOptions(QWidget):
             self._writing = False
         self.poll()
 
-    def create_native_layer(self, document, kind='paintlayer'):
+    def static_copy(self):
+        view = self.current_view()
+        if not view or view.document() is None:
+            return
+        try:
+            self._writing = True
+            from .static_layers import static_copy
+            document = view.document()
+            source = active_node(view)
+            layer = static_copy(document, source, self.create_native_layer)
+            # Both layers remain available. The native Layers docker controls
+            # visibility; an Undo of creation must not hide the original.
+            self.clear_binding()
+            self.select_created_layer(document, layer, source)
+        except Exception as exc:
+            self.fail(exc)
+        finally:
+            self._writing = False
+        self.poll()
+
+    def create_native_layer(self, document, kind=None):
+        if kind is None:
+            kind = ('vectorlayer' if Krita.instance().readSetting('linework','layer_mode','animation') == 'static'
+                    else 'paintlayer')
         # Use Krita's layer action so its layer model, node manager and selection
         # are updated together, including the native Layers docker.
         action = Krita.instance().action("add_new_shape_layer" if kind == 'vectorlayer' else 'add_new_paint_layer')
@@ -1195,6 +1221,12 @@ class LineworkToolOptions(QWidget):
         if (self._selection_pending or self._polling or (self._input_depth and not allow_input) or self._writing or self._clearing or self._brush_change or not self.active or
                 (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy()):
             return
+        from .tools import active_tool
+        if active_tool() < 0:
+            # Native tool switches can precede delivery of our deactivate
+            # callback. Do not bind/hash Linework frames while Transform owns
+            # the canvas, even if the previous controller is still active.
+            return
         self._polling = True
         try:
             view = self.current_view()
@@ -1212,12 +1244,25 @@ class LineworkToolOptions(QWidget):
             preset = view.currentBrushPreset()
             self.brush_label.setText(tr("Current: ")+(preset.name() if preset else tr("none")))
             active = active_node(view)
+            if active is not None and active.type() == 'vectorlayer':
+                from .native_brush import vector_layer
+                active = vector_layer(active)
             # Empty documents and transient node-manager updates can report no
             # active node. Keep the explicitly created layer while it exists.
             if active is None and self.layer and self.binding and document.rootNode().uniqueId().toString() == self.binding[0]:
                 active = document.nodeByUniqueID(self.layer.uniqueId())
             native = self._canvas
             key = self.binding_key(document, active, native)
+            # A transformed raster frame is deliberately rejected. Rechecking
+            # hundreds of strokes on every timer can keep other plugins inside
+            # libkis activeNode() event delivery indefinitely. Retry when Undo,
+            # painting, a frame/annotation change or explicit input invalidates it.
+            if self._rejected_binding is not None:
+                from .animation import pixel_revision
+                signature = (key, pixel_revision(active), bytes(document.annotation(ANNOTATION)))
+                if self._rejected_binding == signature and not allow_input:
+                    return
+                self._rejected_binding = None
             newly_managed = False
             annotation_changed = False
             if active and active.type() in ('vectorlayer', 'paintlayer'):
@@ -1239,6 +1284,8 @@ class LineworkToolOptions(QWidget):
                 if view.canvas().wrapAroundMode():
                     raise ValueError(tr("Disable wrap-around mode to use Linework."))
                 strokes = read_layer(document, active, view)
+                if strokes is not None:
+                    self._error = None
                 key = self.binding_key(document, active, native)
                 self.document = document
                 self.layer = active if strokes is not None else None
@@ -1295,6 +1342,16 @@ class LineworkToolOptions(QWidget):
             return
         except Exception as exc:
             self.fail(exc)
+            if isinstance(exc, ValueError) and 'key' in locals():
+                from .animation import pixel_revision
+                try:
+                    revision = pixel_revision(active)
+                    # Older bridges have no invalidation token. Keep their
+                    # existing behavior rather than permanently hiding Undo.
+                    if revision is not None:
+                        self._rejected_binding = (key, revision, bytes(document.annotation(ANNOTATION)))
+                except (RuntimeError, ValueError):
+                    pass
         finally:
             self._polling = False
 

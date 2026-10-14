@@ -73,6 +73,24 @@ def native_busy():
     return bool(function())
 
 
+def vector_layer(layer):
+    """Modern libkis queries may return a generic Node for a vector layer."""
+    if layer is None or layer.type() != 'vectorlayer' or hasattr(layer, 'shapes'):
+        return layer
+    from krita import VectorLayer
+    method = getattr(load_library(), 'linework_vector_wrapper', None)
+    if method is None:
+        raise ValueError(tr('Install the updated Linework package to edit vector layers in this Krita build.'))
+    method.argtypes = [ctypes.c_void_p]
+    method.restype = ctypes.c_void_p
+    pointer = method(sip.unwrapinstance(layer))
+    if not pointer:
+        raise ValueError(tr('The vector layer is no longer available.'))
+    wrapped = sip.wrapinstance(pointer, VectorLayer)
+    sip.transferback(wrapped)
+    return wrapped
+
+
 def active_node(view):
     """Read this canvas' selected node without delivering nested GUI events."""
     from .qt import QUuid

@@ -81,7 +81,9 @@ def select_tool(mode):
 
 
 def current_controller(window):
-    return next((c for c in CONTROLLERS.values() if not sip.isdeleted(c) and c._window == window.qwindow() and c.active), None)
+    return next((c for c in CONTROLLERS.values()
+                 if not sip.isdeleted(c) and c._window == window.qwindow() and c.active
+                 and not sip.isdeleted(c._canvas) and c._canvas.isVisible()), None)
 
 
 def install_tools():

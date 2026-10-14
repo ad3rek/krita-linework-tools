@@ -166,3 +166,12 @@ cloning, snapshots and saves preserve schema 8 and shared-brushes-v1 frame
 payloads. Python expands validated records for editing and stores exact brush
 definitions once per frame. Bridges lacking this capability write legacy
 records and refuse documents already using schema 8 before mutation.
+
+Development static layers and raster rejection invalidation (unreleased)
+linework_vector_wrapper creates a real libkis VectorLayer from a generic Node
+whose underlying node is KisShapeLayer. Python explicitly owns and releases
+this additional wrapper; a generic Node must never be cast as VectorLayer.
+linework_animation_info now includes the active paint device's sequenceNumber
+as pixel_revision, a cheap invalidation token for external raster edits/Undo.
+An older bridge retains its previous polling behavior. Rebuild the bridge to
+provide these capabilities; published 0.1.7 binaries remain unchanged.

@@ -154,6 +154,13 @@ def frame_key(document, layer):
     return tuple(frame[key] for key in ('time', 'id', 'revision')) if frame else None
 
 
+def pixel_revision(layer):
+    """Cheap native invalidation token, including external painting and Undo."""
+    if layer is None or layer.type() != 'paintlayer':
+        return None
+    return call('info', layer, 0).get('pixel_revision')
+
+
 def playback(view, pause=False):
     method = load_library().linework_animation_playback
     method.argtypes = [ctypes.c_void_p, ctypes.c_int]

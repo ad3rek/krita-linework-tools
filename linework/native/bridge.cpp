@@ -107,6 +107,14 @@ template struct Access<ShapeLayerCanvas,&KisShapeLayer::canvas>;
 template struct Access<ShapeShape,&Shape::shape>;
 
 #include "smoothing.h"
+#include <VectorLayer.h>
+
+extern "C" LINEWORK_EXPORT void *linework_vector_wrapper(Node *wrapper) {
+    if (!wrapper) return nullptr;
+    auto node=(wrapper->*member(NodeNode{}))();
+    auto layer=dynamic_cast<KisShapeLayer*>(node.data());
+    return layer ? new VectorLayer(KisShapeLayerSP(layer)) : nullptr;
+}
 
 extern "C" LINEWORK_EXPORT int linework_native_busy() {
     return KisBusyWaitBroker::instance()->guiThreadIsWaitingForBetterWeather();
