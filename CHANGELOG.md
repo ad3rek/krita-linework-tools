@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Preserve whole-layer Linework geometry, brush definitions, embedded appearances and animation frames through native Ctrl+C/Ctrl+V and Layer menu clipboard transfer. Keep native pixels and ordinary bitmap clipboard behavior; persist transferred records in the destination document.
+- Read the active node without delivering synchronized GUI events from the extension timer, prevent nested icon/synchronization updates, and defer controller binding while a native tool owns the canvas. This avoids Transform entering frame verification through a reentrant timer.
+- Add regression coverage for clipboard editing, native Undo/Redo, save/reopen and native move/scale/rotate event-loop responsiveness. Native raster transforms remain protected external edits; Undo restores editable Linework.
+
 ## 0.1.7 — 2026-10-13
 
 - Store each native brush definition once per frame in schema 8 records. Read legacy records and migrate a frame when it is edited. Keep schema 8 in native save/autosave snapshots and refuse compact documents when the running bridge is outdated.

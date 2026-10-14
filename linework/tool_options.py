@@ -1195,6 +1195,12 @@ class LineworkToolOptions(QWidget):
         if (self._selection_pending or self._polling or (self._input_depth and not allow_input) or self._writing or self._clearing or self._brush_change or not self.active or
                 (self.overlay and (self.overlay._finishing or self.overlay.renderer.busy)) or native_busy()):
             return
+        from .tools import active_tool
+        if active_tool() < 0:
+            # Native tool switches can precede delivery of our deactivate
+            # callback. Do not bind/hash Linework frames while Transform owns
+            # the canvas, even if the previous controller is still active.
+            return
         self._polling = True
         try:
             view = self.current_view()

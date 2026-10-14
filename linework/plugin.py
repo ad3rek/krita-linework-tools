@@ -4,7 +4,7 @@ from krita import Extension, Krita
 from .qt import QTimer, QEvent, Qt
 from .qt import QApplication
 from .storage import metadata
-from .native_brush import update_layer_icons, native_busy
+from .native_brush import update_layer_icons, native_busy, active_node
 from .tools import select_tool, current_controller, theme_icons
 
 
@@ -19,12 +19,16 @@ class LineworkExtension(Extension):
         self._transform_pending = None
         self._syncing = False
         self._tablet_down = False
+        self._updating_icons = False
+        from .clipboard import LayerClipboard
+        self.clipboard = LayerClipboard(self)
         from .animation import install_callback
         install_callback()
         notifier = Krita.instance().notifier()
         notifier.setActive(True)
         notifier.imageCreated.connect(lambda: QTimer.singleShot(0, self.initialize_animation))
         notifier.viewCreated.connect(lambda: QTimer.singleShot(0, self.initialize_animation))
+        notifier.viewCreated.connect(lambda: QTimer.singleShot(0, self.clipboard.watch_current_actions))
         QApplication.instance().installEventFilter(self)
 
     def eventFilter(self, obj, event):
@@ -42,7 +46,10 @@ class LineworkExtension(Extension):
         window = Krita.instance().activeWindow()
         view = window.activeView() if window else None
         document = view.document() if view else None
-        layer = document.activeNode() if document else None
+        # Modern libkis activeNode() pumps synchronized GUI events. Calling it
+        # from this timer can reenter other timers and frame verification while
+        # Krita is changing transform-tool state.
+        layer = active_node(view) if document else None
         if layer is None or layer.type() != 'vectorlayer':
             self._transform_pending = None
             return
@@ -60,7 +67,17 @@ class LineworkExtension(Extension):
         finally:self._syncing = False
 
     def update_icons(self):
+        if self._updating_icons:
+            return
+        self._updating_icons = True
+        try:
+            self._update_icons()
+        finally:
+            self._updating_icons = False
+
+    def _update_icons(self):
         if native_busy(): return
+        self.clipboard.watch_current_actions()
         from .animation import flush
         flush()
         self.sync_native_transforms()
@@ -85,6 +102,10 @@ class LineworkExtension(Extension):
                 continue
 
     def createActions(self, window):
+        # The native action runs first; adoption waits for Krita's queued node
+        # insertion and uses the destination view selected by that same action.
+        qwindow = window.qwindow()
+        QTimer.singleShot(0, lambda:self.clipboard.watch_window(qwindow))
         action = window.createAction("linework_edit", tr("Linework Brush"), "tools/scripts")
         action.triggered.connect(lambda: select_tool(0))
         new_action = window.createAction("linework_new", tr("New Linework layer…"), "tools/scripts")

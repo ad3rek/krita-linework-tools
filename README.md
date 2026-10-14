@@ -63,6 +63,12 @@ Choose **Linework Brush**, pick a preset in Krita's brush panel and draw on the 
 
 The toolbox icons follow Krita's theme and the group has a separator. Controls use the native Tool Options docker. The first stroke creates a Linework layer when the active layer is not already Linework; **Tools → Scripts → New Linework Layer** starts another one.
 
+### Whole-layer clipboard transfer (development source)
+
+The development source preserves editable Linework records when copying a whole layer with **Ctrl+C / Ctrl+V** or **Layer → Copy layer / Paste layer**. Geometry, native brush definitions, embedded appearances and animation frames travel alongside Krita's own layer clipboard; the pasted layer remains independently editable and its records survive `.kra` saving and reopening. Destination canvas dimensions are recorded without stretching the native pasted pixels. Partial raster selections and Copy Merged retain Krita's ordinary bitmap behavior.
+
+This change is not in the unchanged 0.1.7 release archives. The new [clipboard and Transform regression scope](docs/TESTING.md#development-layer-clipboard-and-transform-polling) was exercised in a locally adapted Krita Flatpak 5.3.1 bridge. Native raster Transform operations preserve their pixels; they still count as external raster edits rather than editable centerline transformations. Undo restores the original Linework geometry. Existing vector Linework layers retain their native affine editing support.
+
 The interface follows Krita's selected language. Catalogs cover all 75 locales listed by the matching Krita source release, with English fallback for missing messages. Most translations are automatic and need community review; several locales have only partial coverage. See [translation coverage and contribution instructions](docs/TRANSLATIONS.md).
 
 Krita presets produce raster textures. The editable geometry and the rendered appearance are both embedded in the Linework layer and saved in `.kra`. The saved appearance remains visible without the plugin; rerendering requires the original preset and its resources.
@@ -95,7 +101,7 @@ The bridge carries geometry through Krita's native keyframe duplication, includi
 
 The regression uses real canvas input, native frame operations, a mouse click on a Timeline cell and its duplicate action. It verifies per-frame brush/color/thickness edits, both eraser modes, linked clones, full blank-frame creation/edit undo/redo, saving during a point preview, immediate save after duplication, editing after reopening, native PNG saves and playback. It also paints with Krita's ordinary brush, verifies that Linework refuses to overwrite those pixels, then confirms native undo restores editable geometry. These are automated application checks; they do not replace physical tablet testing.
 
-New Linework layers use paint-layer keyframes while preserving editable path geometry in each frame. Use **Linework Edit** and its **Strokes** selection mode to select entire paths. Krita's native **Select Shapes** and shape transforms apply only to legacy vector layers; they do not operate on the new frame backend. Painting or transforming the animated pixels with other tools is detected before a Linework edit and preserved, but cannot be converted automatically back to its original paths. Whole-layer duplication, cross-document frame transfer, automatic in-betweening and physical tablet validation are outside the current animation regression scope.
+New Linework layers use paint-layer keyframes while preserving editable path geometry in each frame. Use **Linework Edit** and its **Strokes** selection mode to select entire paths. Krita's native **Select Shapes** and shape transforms apply only to legacy vector layers; they do not operate on the new frame backend. Painting or transforming the animated pixels with other tools is detected before a Linework edit and preserved, but cannot be converted automatically back to its original paths. The release animation regression does not cover whole-layer duplication, cross-document frame transfer, automatic in-betweening or physical tablets. The development clipboard regression above adds whole-layer transfer, including its animation frames.
 
 ## Convert a lineart into editable strokes
 

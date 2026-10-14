@@ -29,7 +29,7 @@ def blank_png(path, size=900):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color', 'stroke_lifecycle', 'eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close', 'brush_size', 'autosave_recovery', 'unified_vectorize', 'performance_lightweight'])
+    parser.add_argument('probe', choices=['cc_lineart', 'multi_point', 'smoothing', 'color', 'stroke_lifecycle', 'eraser_topology', 'performance', 'interface', 'animation', 'layer_lifecycle', 'thickness_handles', 'localization', 'animation_close', 'brush_size', 'autosave_recovery', 'unified_vectorize', 'performance_lightweight', 'clipboard', 'native_transform'])
     parser.add_argument('--output', type=Path, help='Directory for reports, captures and test documents')
     parser.add_argument('--language', default='en', help='Krita interface language for this isolated run')
     args = parser.parse_args()
@@ -42,7 +42,7 @@ def main():
         if not shutil.which(command):
             parser.error(command+' is required (Linux / Krita 5.2.14 / compatible Qt 5 ABI).')
     report = output/'docs/validation'/({'cc_lineart': 'cc-lineart.json',
-        'multi_point': 'multi-point.json', 'smoothing': 'smoothing.json', 'color': 'color.json',
+        'multi_point': 'multi-point.json', 'smoothing': 'smoothing.json', 'color': 'color.json', 'clipboard':'clipboard.json', 'native_transform':'native-transform.json',
         'stroke_lifecycle': 'stroke-lifecycle.json', 'eraser_topology': 'eraser-topology.json', 'performance':'performance.json', 'interface':'interface.json', 'animation':'animation.json', 'layer_lifecycle':'layer-lifecycle.json', 'thickness_handles':'thickness-handles.json', 'localization':'localization.json', 'animation_close':'animation-close.json', 'brush_size':'brush-size.json', 'autosave_recovery':'autosave-recovery.json', 'unified_vectorize':'unified-vectorize.json', 'performance_lightweight':'performance-lightweight.json'}[args.probe])
     report.unlink(missing_ok=True)
     (output/'phase.json').unlink(missing_ok=True)

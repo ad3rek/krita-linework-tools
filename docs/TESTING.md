@@ -2,6 +2,16 @@
 
 The original validation environment is **Linux x86_64, Krita 5.2.14 / Qt 5.15.17 / Python 3.12**. The bridge requires compatible native libraries. Canvas regressions run the real application in isolation; they do not replace physical stylus validation.
 
+## Development: layer clipboard and Transform polling
+
+This source change was validated in **Krita Flatpak 5.3.1 / Qt 5 / Python 3.13**, with the previously adapted schema-8 native bridge. The official 0.1.7 packages are unchanged. Windows, physical tablet input and a large real artwork were not revalidated for this change.
+
+- `clipboard`: actual Ctrl+C/Ctrl+V shortcuts and native Layer clipboard actions, two distinct documents with different canvas dimensions, preserved geometry/pixels and a second animation frame, independent destination editing, native Undo/Redo, and `.kra` save/reopen. Ordinary raster clipboard data must not inherit stale Linework records.
+- `native_transform`: native Transform tool activation and canvas gestures for move, scale and rotation, event-loop responsiveness, changed native pixels, and Undo restoring exact pixels and editable geometry. Raster transformations still invoke the external-edit guard after application; the probe does not claim editable affine centerline conversion.
+- `test_transform_polling.py`: an event-delivering `activeNode()` trap and a nested timer callback fail against the unpatched extension and pass with the guarded selection read. These tests accompany the captured native stack showing frame fingerprinting nested inside `Document::activeNode()` event delivery.
+
+Run the probes with `python3 tests/gui/run.py clipboard` and `python3 tests/gui/run.py native_transform` in a matching official Linux runtime. Flatpak validation uses isolated XDG directories, its own native libraries and Xvfb. Test records distinguish failed reproduction, corrected runs and normal application exits.
+
 ## 0.1.7 validation
 
 The release passed **116 CPU tests**, with no skips ([run log](validation/0.1.7/cpu-tests.txt)). New regressions cover exact shared-brush serialization, independent editable copies, legacy records, invalid references, decoded-image invalidation, document cleanup and the strict 64 MiB cache budget.
