@@ -6,7 +6,7 @@ import json
 import math
 from .qt import QByteArray
 from .model import load_strokes, svg
-from .native_brush import refresh_layer, shape_write
+from .native_brush import refresh_layer, shape_write, vector_layer
 
 ANNOTATION = "org.felipe.linework.v1"
 
@@ -46,6 +46,7 @@ def matches_shape(shape, name, record):
 
 
 def check_layer(layer, record, verify=True):
+    layer = vector_layer(layer)
     expected = record.get("shapes", {})
     actual = {s.name(): s for s in layer.shapes()}
     for name, fingerprint in expected.items():
@@ -88,8 +89,8 @@ def read_layer(document, layer, view=None):
 
 def write_layer(document, layer, strokes, native_renderer=None, trusted=False, frame=None, backup=None):
     if layer is None:
-        # All newly created Linework layers share the native Timeline backend.
-        # The vector branch below remains a reader/editor for older documents.
+        # Direct callers retain the animation backend. Tool-created layers
+        # explicitly choose vector/paint according to the user's static setting.
         from .animation import initialize_layer
         layer = document.createNode(tr("Linework — editable strokes"), "paintlayer")
         active = document.activeNode()
@@ -108,6 +109,7 @@ def write_layer(document, layer, strokes, native_renderer=None, trusted=False, f
     if layer is not None and layer.type() == "paintlayer":
         from .animation import write_frame
         return write_frame(document, layer, strokes, native_renderer, frame, backup)
+    layer = vector_layer(layer)
     data = metadata(document)
     if data.get('version', 6) >= 8:
         from .animation import require_current_bridge

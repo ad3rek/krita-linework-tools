@@ -17,9 +17,10 @@ class TransformPollingTests(unittest.TestCase):
         self.doc=SimpleNamespace(activeNode=lambda: (_ for _ in ()).throw(AssertionError('activeNode pumps GUI events')))
         self.view=SimpleNamespace(document=lambda:self.doc)
         self.window=SimpleNamespace(activeView=lambda:self.view)
-        application=SimpleNamespace(activeWindow=lambda:self.window,windows=lambda:[])
+        application=SimpleNamespace(activeWindow=lambda:self.window,windows=lambda:[],documents=lambda:[])
         self.calls={'busy':0,'flush':0,'sync':0}
-        self.obj=SimpleNamespace(_syncing=False,_tablet_down=False,_transform_pending=None,_updating_icons=False)
+        self.obj=SimpleNamespace(_syncing=False,_tablet_down=False,_transform_pending=None,_updating_icons=False,
+                                 _shutting_down=False,_annotations={})
         self.obj.clipboard=SimpleNamespace(watch_current_actions=lambda:None)
         def busy():
             self.calls['busy']+=1

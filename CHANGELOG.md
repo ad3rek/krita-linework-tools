@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add an optional static vector backend for new Linework drawings and raster vectorization, plus a separate static copy of an editable one-frame paint layer using its saved native PNGs.
+- Adopt native vector affine transforms even when the parent pose changes without changing the SVG digest. Preserve transformed appearances without repainting all strokes, and retain animation schemas in mixed documents.
+- Wrap generic vector Nodes as actual libkis VectorLayers, with explicit Python ownership. Expose a native pixel revision token so rejected raster frames retry after Undo or edits instead of being decoded every timer tick; clear the error after successful rebinding.
+- Coalesce busy-document initialization retries, guard reentrant setup/shutdown, release closed document annotation caches, and skip hidden/destroyed canvases when resolving script actions.
+- Validate clipboard sidecars and MIME lifetime across nested native events; wait for delayed metadata on the same clipboard object and release closed paste destinations.
+
 - Preserve whole-layer Linework geometry, brush definitions, embedded appearances and animation frames through native Ctrl+C/Ctrl+V and Layer menu clipboard transfer. Keep native pixels and ordinary bitmap clipboard behavior; persist transferred records in the destination document.
 - Read the active node without delivering synchronized GUI events from the extension timer, prevent nested icon/synchronization updates, and defer controller binding while a native tool owns the canvas. This avoids Transform entering frame verification through a reentrant timer.
 - Add regression coverage for clipboard editing, native Undo/Redo, save/reopen and native move/scale/rotate event-loop responsiveness. Native raster transforms remain protected external edits; Undo restores editable Linework.

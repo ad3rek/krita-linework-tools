@@ -20,6 +20,9 @@ class LineworkExtension(Extension):
         self._syncing = False
         self._tablet_down = False
         self._updating_icons = False
+        self._initializing_animation = False
+        self._animation_init_queued = False
+        self._shutting_down = False
         from .clipboard import LayerClipboard
         self.clipboard = LayerClipboard(self)
         from .animation import install_callback
@@ -30,6 +33,12 @@ class LineworkExtension(Extension):
         notifier.viewCreated.connect(lambda: QTimer.singleShot(0, self.initialize_animation))
         notifier.viewCreated.connect(lambda: QTimer.singleShot(0, self.clipboard.watch_current_actions))
         QApplication.instance().installEventFilter(self)
+        QApplication.instance().aboutToQuit.connect(self.shutdown)
+
+    def shutdown(self):
+        self._shutting_down = True
+        self.timer.stop()
+        self._annotations.clear()
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.TabletPress:self._tablet_down = True
@@ -76,7 +85,7 @@ class LineworkExtension(Extension):
             self._updating_icons = False
 
     def _update_icons(self):
-        if native_busy(): return
+        if self._shutting_down or native_busy(): return
         self.clipboard.watch_current_actions()
         from .animation import flush
         flush()
@@ -101,6 +110,13 @@ class LineworkExtension(Extension):
             except (RuntimeError, ValueError):
                 continue
 
+        # Annotation blobs include embedded brush appearances. Closing a large
+        # document must release its cache even when its window remains open.
+        live = {document.rootNode().uniqueId().toString()
+                for document in Krita.instance().documents()}
+        for key in self._annotations.keys() - live:
+            del self._annotations[key]
+
     def createActions(self, window):
         # The native action runs first; adoption waits for Krita's queued node
         # insertion and uses the destination view selected by that same action.
@@ -112,6 +128,12 @@ class LineworkExtension(Extension):
         # Krita passes a stack-allocated libkis Window to createActions. Never
         # retain that wrapper in a callback; resolve the active window on use.
         new_action.triggered.connect(self.new_layer)
+        static_action = window.createAction('linework_static_mode', tr('Static Linework layers (editable transforms)'), 'tools/scripts')
+        static_action.setCheckable(True)
+        static_action.setChecked(Krita.instance().readSetting('linework','layer_mode','animation') == 'static')
+        static_action.toggled.connect(self.static_mode)
+        static_copy = window.createAction('linework_static_copy', tr('Create a static Linework copy…'), 'tools/scripts')
+        static_copy.triggered.connect(self.static_copy)
         vectorize_action = window.createAction('linework_vectorize', tr("Vectorize layer in Linework…"), 'tools/scripts')
         vectorize_action.triggered.connect(self.vectorize)
         blank = window.createAction('linework_blank_frame', tr("New Linework frame…"), 'tools/scripts')
@@ -122,14 +144,28 @@ class LineworkExtension(Extension):
             created.setToolTip(created.text()); created.setIconText(created.text())
 
     def initialize_animation(self):
+        if self._shutting_down or self._initializing_animation:
+            return
         from .animation import bootstrap_document, AnimationBusy
-        for document in Krita.instance().documents():
-            try:
-                bootstrap_document(document)
-            except AnimationBusy:
-                QTimer.singleShot(100, self.initialize_animation)
-            except (RuntimeError, ValueError):
-                continue
+        self._initializing_animation = True
+        retry = False
+        try:
+            for document in Krita.instance().documents():
+                try:
+                    bootstrap_document(document)
+                except AnimationBusy:
+                    retry = True
+                except (RuntimeError, ValueError):
+                    continue
+        finally:
+            self._initializing_animation = False
+        if retry and not self._animation_init_queued:
+            self._animation_init_queued = True
+            QTimer.singleShot(100, self.retry_animation_initialization)
+
+    def retry_animation_initialization(self):
+        self._animation_init_queued = False
+        self.initialize_animation()
 
     def animation_frame(self, duplicate):
         window = Krita.instance().activeWindow()
@@ -153,3 +189,15 @@ class LineworkExtension(Extension):
         controller = current_controller(window)
         if controller:
             controller.new_layer()
+
+    def static_mode(self, enabled):
+        Krita.instance().writeSetting('linework','layer_mode','static' if enabled else 'animation')
+
+    def static_copy(self):
+        window = Krita.instance().activeWindow()
+        if window is None:
+            return
+        select_tool(3)
+        controller = current_controller(window)
+        if controller:
+            controller.static_copy()

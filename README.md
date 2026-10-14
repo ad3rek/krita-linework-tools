@@ -69,6 +69,16 @@ The development source preserves editable Linework records when copying a whole 
 
 This change is not in the unchanged 0.1.7 release archives. The new [clipboard and Transform regression scope](docs/TESTING.md#development-layer-clipboard-and-transform-polling) was exercised in a locally adapted Krita Flatpak 5.3.1 bridge. Native raster Transform operations preserve their pixels; they still count as external raster edits rather than editable centerline transformations. Undo restores the original Linework geometry. Existing vector Linework layers retain their native affine editing support.
 
+### Static drawings and editable transforms (development source)
+
+Enable **Tools → Scripts → Static Linework layers (editable transforms)** for static drawings. New layers, the first drawn stroke and raster vectorization then create vector Linework layers. Moving, scaling and rotating them with Krita's native Transform tool keeps the points and handles editable. The plugin adopts the transformed shapes and saved appearances directly, avoiding a replay of every brush stroke during its timer. Nonuniform scale changes nominal width by the geometric mean of the two scale factors.
+
+For an existing editable paint Linework layer with one frame, choose **Create a static Linework copy…**. It preserves the original layer and embeds its existing native brush PNGs in the new vector layer. Both layers remain visible; hide the original in Layers when necessary. Several-frame animation and externally changed raster pixels are refused before creating a copy. Whole-document image resizing, perspective and warp transformations do not update the centerlines.
+
+The animation backend remains the default unless static mode is enabled. Its raster Transform operations preserve the changed pixels and require native Undo to return to the original editable paths. A rejected frame is now checked once until its pixel revision, annotation, frame or explicit input changes. Initialization retries are shared across busy documents, and closing documents releases their annotation cache.
+
+These development changes require a rebuilt native bridge when this Krita build returns generic vector `Node` wrappers. The local Flatpak 5.3.1 package was rebuilt and validated; the published 0.1.7 archives and bundled bridges for other builds remain unchanged. See the [development validation scope](docs/TESTING.md#development-layer-clipboard-and-transform-polling).
+
 The interface follows Krita's selected language. Catalogs cover all 75 locales listed by the matching Krita source release, with English fallback for missing messages. Most translations are automatic and need community review; several locales have only partial coverage. See [translation coverage and contribution instructions](docs/TRANSLATIONS.md).
 
 Krita presets produce raster textures. The editable geometry and the rendered appearance are both embedded in the Linework layer and saved in `.kra`. The saved appearance remains visible without the plugin; rerendering requires the original preset and its resources.
@@ -143,7 +153,7 @@ During point, handle or thickness dragging, affected strokes' original appearanc
 
 *Synthetic test curves: selection across strokes, independent diameters and controls in native Tool Options.*
 
-Moving, scaling, rotating or mirroring with native shape tools updates the points and handles and rerenders the preset. Uniform scaling scales thickness; nonuniform scaling uses the geometric mean of the two scale factors. Resizing the whole document does not currently update the stored centerline metadata.
+In the development source, moving, scaling, rotating or mirroring vector layers with native shape tools updates points and handles while preserving the transformed shapes and their appearances. The published 0.1.7 release rerenders presets after these operations. Uniform scaling scales thickness; nonuniform scaling uses the geometric mean of the two scale factors. Resizing the whole document does not currently update the stored centerline metadata.
 
 ## Erasing, merging and joining
 

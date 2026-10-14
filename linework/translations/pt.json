@@ -269,5 +269,12 @@
   "Direct thickness control requires a Pixel, Color Smudge or Quick Brush preset.": "O controle direto de espessura requer uma predefinição de Pixel, Color Smudge ou Quick Brush.",
   "Unable to create Linework layer.": "Não foi possível criar a camada Linework.",
   "Krita does not allow you to create a Linework layer in this document.": "O Krita não permite criar uma camada Linework neste documento.",
-  "Krita did not create a Linework layer in the Layers panel.": "O Krita não criou uma camada Linework no painel de camadas."
+  "Krita did not create a Linework layer in the Layers panel.": "O Krita não criou uma camada Linework no painel de camadas.",
+  " — static copy": " — cópia estática",
+  "Create a static Linework copy…": "Criar uma cópia estática de Linework…",
+  "Select an editable Linework paint layer first.": "Selecione primeiro uma camada de pintura Linework editável.",
+  "Static Linework layers (editable transforms)": "Camadas Linework estáticas (transformações editáveis)",
+  "Static copies require one frame. Preserve animated layers for animation.": "Cópias estáticas exigem um único quadro. Preserve as camadas animadas para animação.",
+  "The vector layer is no longer available.": "A camada vetorial não está mais disponível.",
+  "Install the updated Linework package to edit vector layers in this Krita build.": "Instale o pacote atualizado do Linework para editar camadas vetoriais nesta versão do Krita."
 }

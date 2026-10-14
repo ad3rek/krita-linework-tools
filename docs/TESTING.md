@@ -4,13 +4,19 @@ The original validation environment is **Linux x86_64, Krita 5.2.14 / Qt 5.15.17
 
 ## Development: layer clipboard and Transform polling
 
-This source change was validated in **Krita Flatpak 5.3.1 / Qt 5 / Python 3.13**, with the previously adapted schema-8 native bridge. The official 0.1.7 packages are unchanged. Windows, physical tablet input and a large real artwork were not revalidated for this change.
+This source change was validated in **Krita Flatpak 5.3.1 / Qt 5 / Python 3.13**, with a locally rebuilt schema-8 native bridge including vector wrappers and pixel revision tokens. The official 0.1.7 packages are unchanged. Windows and physical tablet input were not revalidated. The local CPU suite passes 146 tests; private large-artwork checks are described below.
 
 - `clipboard`: actual Ctrl+C/Ctrl+V shortcuts and native Layer clipboard actions, two distinct documents with different canvas dimensions, preserved geometry/pixels and a second animation frame, independent destination editing, native Undo/Redo, and `.kra` save/reopen. Ordinary raster clipboard data must not inherit stale Linework records.
 - `native_transform`: native Transform tool activation and canvas gestures for move, scale and rotation, event-loop responsiveness, changed native pixels, and Undo restoring exact pixels and editable geometry. Raster transformations still invoke the external-edit guard after application; the probe does not claim editable affine centerline conversion.
 - `test_transform_polling.py`: an event-delivering `activeNode()` trap and a nested timer callback fail against the unpatched extension and pass with the guarded selection read. These tests accompany the captured native stack showing frame fingerprinting nested inside `Document::activeNode()` event delivery.
 
-Run the probes with `python3 tests/gui/run.py clipboard` and `python3 tests/gui/run.py native_transform` in a matching official Linux runtime. Flatpak validation uses isolated XDG directories, its own native libraries and Xvfb. Test records distinguish failed reproduction, corrected runs and normal application exits.
+The additional `static_transform` probe uses the native Transform options and Enter to apply movement, scale and rotation, verifies changed projection pixels, native Undo, equivalent restored Bézier geometry, actual point dragging after another resize, and `.kra` reopening. `static_transfer` invokes the static-copy action, verifies that its source and saved native PNG remain intact, then exercises Ctrl+C/Ctrl+V and Layer clipboard actions, a single native paste Undo step, independent point editing and reopening.
+
+Lifecycle CPU regressions cover coalesced busy-document retries, reentrancy, shutdown/cache release, delayed clipboard enrichment, replaced MIME ownership and closed destinations. Native-affine regressions cover unchanged SVG digests with changed world poses, nonuniform thickness, protected animation schemas and refusal of external SVG/style changes. Rejected raster frames retry after native pixel/annotation changes or explicit input, rather than decoding on every timer. Script controller selection skips hidden/destroyed canvases.
+
+Private local application regressions also exercised raster resize rejection without repeated decoding, native Undo restoring 938 editable strokes and clearing the error, and 938 recovered static strokes, native movement/scale/rotation under a competing `Document.activeNode()` timer, point dragging and exact geometry after saving/reopening. Artwork and private recovery payloads are kept outside Git. This check is not an upstream synthetic fixture, and its timings include local load; some operations take several seconds.
+
+Run the probes with `python3 tests/gui/run.py static_transform`, `python3 tests/gui/run.py static_transfer`, `python3 tests/gui/run.py clipboard` and `python3 tests/gui/run.py native_transform` in a matching official Linux runtime. Flatpak validation uses isolated XDG directories, its own native libraries and Xvfb. Test records distinguish failed reproduction, corrected runs and normal application exits.
 
 ## 0.1.7 validation
 

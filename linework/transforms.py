@@ -7,7 +7,7 @@ from collections import OrderedDict
 from .qt import QByteArray
 from .qt import QTransform
 from .model import load_strokes, outline, transform_stroke
-from .native_brush import shape_frame, shape_canonical, render_shape, NativeBrushRenderer
+from .native_brush import shape_frame, shape_canonical, vector_layer
 from .svg_fingerprint import payload_digest
 
 _legacy_states = OrderedDict()
@@ -50,6 +50,7 @@ def legacy_frame(document, shape, stroke):
 
 
 def pending_signature(document, layer):
+    layer = vector_layer(layer)
     from .storage import metadata, layer_id
     record = metadata(document)['layers'].get(layer_id(layer))
     if record is None:return None
@@ -76,6 +77,7 @@ def pending_signature(document, layer):
 def sync_layer(document, layer, view):
     from .storage import metadata, layer_id, digest, check_geometry, ANNOTATION
     if layer is None or layer.type() != 'vectorlayer':return False
+    layer = vector_layer(layer)
     data = metadata(document);key=layer_id(layer);record=data['layers'].get(key)
     if record is None:return False
     check_geometry(document,record)
@@ -89,17 +91,17 @@ def sync_layer(document, layer, view):
         name='lw_'+stroke.uid;shape=actual.get(name)
         if shape is None:raise ValueError(tr("A Linework stroke was removed by the native tool."))
         old_state=states.get(name)
+        if old_state is None and name in cached and cached[name][0]==record['shapes'][name]:
+            old_state=cached[name][1]
         current=shape_frame(shape)
         if old_state and all(math.isclose(a,b,rel_tol=1e-10,abs_tol=1e-10)
                              for a,b in zip(coefficients(current),old_state['frame'])):
             continue
-        if digest(shape) == record['shapes'][name]:
+        if old_state is None and digest(shape) == record['shapes'][name]:
             if name not in new_states:
                 new_states[name]=shape_state(shape)
                 cached[name]=(record['shapes'][name],new_states[name])
             continue
-        if old_state is None and name in cached and cached[name][0]==record['shapes'][name]:
-            old_state=cached[name][1]
         if old_state:
             if canonical_digest(shape, old_state.get('payload_version', 1)) != old_state['payload']:
                 raise ValueError(tr("The SVG geometry or style has changed. Linework supports moving, rotating and resizing the line."))
@@ -118,19 +120,18 @@ def sync_layer(document, layer, view):
         # modified: the next real write persists poses together with the strokes.
         return False
     if layer.locked():raise ValueError(tr("Unlock the layer before updating the transformation."))
-    renderer=NativeBrushRenderer(view)
-    try:
-        # Resolve presets and prepare all images before touching any shape.
-        for name,shape,stroke in changed:
-            if stroke.brush:renderer.render(stroke)
-        for name,shape,stroke in changed:
-            render_shape(document,layer,shape,stroke,renderer)
-            new_states[name]=shape_state(shape)
-            record['shapes'][name]=digest(shape)
-    finally:renderer.close()
+    # Krita has already transformed the owned shapes. Adopt their geometry and
+    # appearance as-is; repainting hundreds of native brush strokes here can
+    # monopolize the GUI timer and also changes the exact transformed pixels.
+    for name,shape,stroke in changed:
+        new_states[name]=shape_state(shape)
+        record['shapes'][name]=digest(shape)
     record['strokes']=[s.data() for s in strokes];record['poses']=new_states
-    data['version']=5
+    data['version']=max(6,data.get('version',6))
     document.setAnnotation(ANNOTATION,tr("Linework plugin editable lines and pressure"),
                            QByteArray(json.dumps(data,ensure_ascii=False).encode('utf-8')))
-    document.setModified(True);document.refreshProjection();document.waitForDone()
+    if data['version'] >= 7:
+        from .animation import protect_save
+        protect_save(document,data)
+    document.setModified(True)
     return True
