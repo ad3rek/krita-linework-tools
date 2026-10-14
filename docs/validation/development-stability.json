@@ -39,6 +39,11 @@
       "result": "pass",
       "application_exit_code": 0,
       "checks": 8
+    },
+    "static_creation": {
+      "result": "pass",
+      "application_exit_code": 0,
+      "checks": 7
     }
   },
   "native_bridge_sha256": "0ccc547d766b1f63ae49466f59460ad4347d6d5eabf14b3215efe8ae623e20a1",
@@ -53,7 +58,8 @@
     "linework/native_brush.py": "27dac0b91eb518090dd13eff02af7bb2143a17c9f00437f7205664d76e8cd289",
     "linework/animation.py": "3616a3dd1403167eb746a8423d5e4849a592f66d461735cbc98242574867ade0",
     "linework/native/bridge.cpp": "c40e0c9208540783cdfd207ced753d3d885c32178bcf58d5dec53930b833bf66",
-    "linework/native/animation.h": "82e0031c13c5e34f3efcd9d667fdcf3e106cbbf802405ec2640d2b709607c341"
+    "linework/native/animation.h": "82e0031c13c5e34f3efcd9d667fdcf3e106cbbf802405ec2640d2b709607c341",
+    "linework/vectorize.py": "d842c2bc93be4f4fcfaea1615fba50fb2cc57e01c3210aba8a9223c5e25817c2"
   },
   "private_large_artwork": {
     "strokes": 938,
@@ -71,5 +77,5 @@
     "Animation paint pixels transformed externally require native Undo; use static mode for editable affine transforms",
     "Large-artwork operations can take several seconds"
   ],
-  "application_feature_checks": 93
+  "application_feature_checks": 100
 }

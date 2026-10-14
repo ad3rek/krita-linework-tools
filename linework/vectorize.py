@@ -306,6 +306,7 @@ class VectorizeDialog(QDialog):
             native_renderer=None
             if self.renderer:
                 class Prepared:
+                    svg_image = NativeBrushRenderer.svg_image
                     def __init__(self,images):self.images=images
                     def render(self,stroke):return self.images[stroke.uid]
                 native_renderer=Prepared(self._native_images)
